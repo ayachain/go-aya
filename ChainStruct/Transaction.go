@@ -1,4 +1,4 @@
-package MemoryPool
+package ChainStruct
 
 import (
 	"bytes"
@@ -89,13 +89,24 @@ func GenTransaction(sender string, value string, data DappPerfrom, key* ecdsa.Pr
 
 }
 
-func (t* Transaction) Deserialize( msg[] byte ) (err error) {
+func (t* Transaction) EncodeToHex() (hex string, err error){
 
-	err = json.Unmarshal(msg, t)
+	bs, err := json.Marshal(t)
+
+	if err != nil {
+		return "", err
+	}
+
+	return hexutil.Encode(bs), nil
+}
+
+func (t* Transaction) DecodeFromHex( hex string ) (err error) {
+
+	bs, err := hexutil.Decode(hex)
 
 	if err != nil {
 		return err
 	}
 
-	return nil
+	return json.Unmarshal(bs, t)
 }

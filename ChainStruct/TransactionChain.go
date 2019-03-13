@@ -1,10 +1,9 @@
 package ChainStruct
 
 import (
-	"AyaChain/MemoryPool"
-	"encoding/json"
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ipfs/go-ipfs-api"
+	"github.com/pkg/errors"
+	"strings"
 )
 
 const (
@@ -22,47 +21,69 @@ const (
 	MTopics_AyaChainTransactionPool_Broadcast = "AyaChainTransactionPool.Broadcast"
 )
 
+
 type TransactionChain struct {
 
 	Chain
-
-	IpfsShell* 	shell.Shell
-
-	peerType	string
-
-	ayaChainTransactionPool_Commit_Subscription* shell.PubSubSubscription
+	sh* 			shell.Shell
+	peerType		string
 }
 
-func (tc* TransactionChain) Deamon() (err error) {
+func (tc* TransactionChain) SetPeerType(t string) {
+	tc.peerType = t
+}
 
-	tc.IpfsShell = shell.NewLocalShell()
+func (tc* TransactionChain) DeamonMasterPeer() (err error) {
 
-	commitSubscription, err := tc.IpfsShell.PubSubSubscribe(WTopics_AyaChainTransactionPool_Commit)
+	tc.sh = shell.NewLocalShell()
 
-	if err != nil {
+	if !strings.EqualFold(tc.peerType, AyaPeerType_Master) {
+		return errors.New("This Peer is't MasterNode.")
+	}
+
+	if err := tc.master_ListenningTransactionCommit(); err != nil {
 		return err
 	}
 
-	tc.ayaChainTransactionPool_Commit_Subscription = commitSubscription
+	return nil
+}
 
-	go func() {
+func (tc* TransactionChain) DeamonWorkerPeer() (err error) {
 
-		for {
+	tc.sh = shell.NewLocalShell()
 
-			switch tc.peerType {
+	if !strings.EqualFold(tc.peerType, AyaPeerType_Worker) {
+		return errors.New("This Peer is't WorkerNode.")
+	}
 
-			case AyaPeerType_Master:
+	if err := tc.woker_ListenningTransactionBroadcast(); err != nil {
+		return err
+	}
 
-				msg, err := tc.ayaChainTransactionPool_Commit_Subscription.Next()
+	return nil
+}
+
+
+//关注其他节点提交的交易
+func (tc* TransactionChain) master_ListenningTransactionCommit() (err error) {
+
+	//关注提交交易的Topics
+	if subscription, err := tc.sh.PubSubSubscribe(WTopics_AyaChainTransactionPool_Commit); err == nil {
+
+		go func() {
+
+			for {
+
+				msg, err := subscription.Next()
 
 				if err != nil {
 					panic(err)
 					continue
 				}
 
-				tx := &MemoryPool.Transaction{}
+				tx := &Transaction{}
 
-				if err := tx.Deserialize(msg.Data); err != nil {
+				if err := tx.DecodeFromHex(string(msg.Data)); err != nil {
 					panic(err)
 					continue
 				}
@@ -73,7 +94,7 @@ func (tc* TransactionChain) Deamon() (err error) {
 				}
 
 				//交易验证成功,加入交易池
-				tc.GenerateNewBlock(hexutil.Encode(msg.Data))
+				tc.GenerateNewBlock(string(msg.Data))
 
 				//开始广播最新的交易
 				blockHex, err := tc.LatestBlock().EncodeToHex()
@@ -83,14 +104,47 @@ func (tc* TransactionChain) Deamon() (err error) {
 					continue
 				}
 
-				if err = tc.IpfsShell.PubSubPublish(MTopics_AyaChainTransactionPool_Broadcast, blockHex); err != nil {
+				if err = tc.sh.PubSubPublish(MTopics_AyaChainTransactionPool_Broadcast, blockHex); err != nil {
 					panic(err)
 					continue
 				}
-
-			case AyaPeerType_Worker:
 			}
-		}
+		}()
 
-	}()
+	} else {
+		return err
+	}
+
+	return nil
+}
+
+
+//关注主节点广播的已经确认的交易
+func (tc* TransactionChain) woker_ListenningTransactionBroadcast() (err error) {
+
+	if subscription, err := tc.sh.PubSubSubscribe(MTopics_AyaChainTransactionPool_Broadcast); err == nil {
+
+		go func() {
+
+			for {
+
+				msg, err := subscription.Next()
+
+				if err != nil {
+					panic(err)
+				}
+
+				tcb := &Block{}
+
+				if err = tcb.DecodeFromHex(string(msg.Data)); err == nil {
+					tc.AppendBlock(tcb)
+					tc.DumpPrint()
+				}
+			}
+		}()
+	} else {
+		return err
+	}
+
+	return nil
 }

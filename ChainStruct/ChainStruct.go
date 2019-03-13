@@ -92,10 +92,19 @@ func (c *Chain) LatestBlock() (b *Block) {
 
 func (c *Chain) GenerateNewBlock(datapath string){
 
-	newBlock := Block{c.LatestBlock().Index + 1, time.Now().Unix(), datapath, c.LatestBlock().BlockHash, ""}
-	newBlock.BlockHash = newBlock.GetHash()
-	c.blocks.PushBack(&newBlock)
+	if c.BlockNumber() <= 0 {
+		c.GenerateChain(datapath)
+	} else {
+		newBlock := Block{c.LatestBlock().Index + 1, time.Now().Unix(), datapath, c.LatestBlock().BlockHash, ""}
+		newBlock.BlockHash = newBlock.GetHash()
+		c.blocks.PushBack(&newBlock)
+	}
 
+}
+
+func (c *Chain) AppendBlock(bl *Block) {
+
+	c.blocks.PushBack(bl)
 }
 
 func (c *Chain) DumpPrint() {

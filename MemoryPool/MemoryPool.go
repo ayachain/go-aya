@@ -1,7 +1,7 @@
 package MemoryPool
 
 import (
-	"AyaChain/ChainStruct"
+	"../ChainStruct"
 	"encoding/hex"
 	"encoding/json"
 )

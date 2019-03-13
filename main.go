@@ -1,58 +1,98 @@
 package main
 
 import (
-	"AyaChain/MemoryPool"
+	"./ChainStruct"
 	"encoding/hex"
+	"flag"
 	"fmt"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ipfs/go-ipfs-api"
+	"time"
 )
 
 func main() {
 
-	key, err := crypto.GenerateKey()
-	if err != nil {
-		fmt.Println(err)
-	}
+	peerType := flag.String("t","master","Peer Type")
 
-	// 私钥:64个字符
-	privateKey := hex.EncodeToString(key.D.Bytes())
-	fmt.Println("PrivKey:" + privateKey)
+	flag.Parse()
 
-	// 得到地址：42个字符
-	address := crypto.PubkeyToAddress(key.PublicKey).Hex()
-	fmt.Println("Address:" + address)
+	txPool := &ChainStruct.TransactionChain{}
 
-	for i := 0; i < 10; i++ {
+	switch *peerType {
+	case "master":
 
-		tx, err := MemoryPool.GenTransaction(
-			address,
-			string(i),
-			MemoryPool.DappPerfrom{"path", "SayHello", []string{"Martin"}},
-			key)
-
-		if err != nil {
+		txPool.SetPeerType(ChainStruct.AyaPeerType_Master)
+		if err := txPool.DeamonMasterPeer(); err != nil {
 			panic(err)
 			return
 		}
 
-		verify, err := tx.Verify()
+		fmt.Printf("Master Peer Starting.")
 
-		if err != nil {
+	case "worker":
+
+		txPool.SetPeerType(ChainStruct.AyaPeerType_Worker)
+		if err := txPool.DeamonWorkerPeer(); err != nil {
 			panic(err)
 			return
 		}
 
-		if verify {
-			err = MemoryPool.MainPool.PushTransaction(*tx)
+		fmt.Printf("Worker Peer Starting.")
 
+	case "test":
+
+		//发送交易
+		go func() {
+
+			key, err := crypto.GenerateKey()
 			if err != nil {
-				panic(err)
+				fmt.Println(err)
 			}
-		}
+
+			// 私钥:64个字符
+			privateKey := hex.EncodeToString(key.D.Bytes())
+			fmt.Println("PrivKey:" + privateKey)
+
+			// 得到地址：42个字符
+			address := crypto.PubkeyToAddress(key.PublicKey).Hex()
+			fmt.Println("Address:" + address)
+
+			for i := 0; i < 5000; i++ {
+
+				time.Sleep(time.Duration(2) * time.Second)
+
+				tx, err := ChainStruct.GenTransaction(
+					address,
+					string(i),
+					ChainStruct.DappPerfrom{"path", "SayHello", []string{"Martin"}},
+					key)
+
+				if err != nil {
+					panic(err)
+					return
+				}
+
+				txHex, err := tx.EncodeToHex()
+
+				if shell.NewLocalShell().PubSubPublish(ChainStruct.WTopics_AyaChainTransactionPool_Commit, txHex) != nil {
+					continue
+				}
+			}
+
+		}()
+
 	}
 
-	MemoryPool.MainPool.TransactionChain.DumpPrint()
+	go func() {
+
+		txPool.DumpPrint()
+		time.Sleep(5000)
+
+	}()
+
+	select {
+
+	}
 
 	return
 
@@ -64,39 +104,4 @@ func main() {
 	//chain.GenerateNewBlock("Content5")
 	//
 	//chain.DumpPrint()
-
-	sh := shell.NewLocalShell()
-
-	sub, err := sh.PubSubSubscribe("XMSP2P")
-
-	if err != nil {
-		panic(err)
-	}
-
-	go func() {
-		for {
-
-			m, e := sub.Next()
-
-			if e != nil {
-				panic(e)
-			}
-
-			//json,e := json.Marshal(m)
-
-			if e != nil {
-				panic(e)
-			} else {
-				fmt.Println(string(m.Data))
-			}
-
-		}
-	}()
-
-	fmt.Println("Subscribe XMSP2P Starting.")
-
-	select {
-
-	}
-
 }
