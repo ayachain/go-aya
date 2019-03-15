@@ -3,6 +3,7 @@ package dappstate
 import (
 	"github.com/ipfs/go-ipfs-api"
 	"github.com/pkg/errors"
+	"log"
 )
 
 const ListnerTopicPrefix  = "AyaChainListner."
@@ -64,6 +65,10 @@ func (l* baseListner) Shutdown() (err error) {
 	return <- l.shutdownchan
 }
 
+func (l* baseListner) Handle(msg *shell.Message) {
+	log.Println("Impl Listen must override this interface.")
+}
+
 func (l* baseListner) StartListening() error {
 
 	if l.state == nil {
@@ -75,6 +80,9 @@ func (l* baseListner) StartListening() error {
 	go func( in chan error ){
 
 		if subs, err := shell.NewLocalShell().PubSubSubscribe(l.topics); err == nil {
+
+			log.Println("Begin Listner Topics : " + l.topics)
+			l.threadstate = ListennerThread_Running
 
 			l.subscription = subs
 
@@ -97,7 +105,7 @@ func (l* baseListner) StartListening() error {
 
 				} else {
 					if l.threadstate == ListennerThread_Running {
-						l.Handle(msg)
+						l.Listener.Handle(msg)
 					}
 				}
 
@@ -112,4 +120,6 @@ func (l* baseListner) StartListening() error {
 		}
 
 	}(l.shutdownchan)
+
+	return nil
 }

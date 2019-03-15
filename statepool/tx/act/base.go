@@ -5,13 +5,19 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 )
 
+type BaseActInf interface {
+	EncodeToHex() (hex string, err error)
+	DecodeFromHex(hex string) (err error)
+}
+
 type BaseAct struct {
+	BaseActInf
 	TStr	string
 	DPath	string
 }
 
-func NewBaseAct(dpath string) (act* BaseAct) {
-	return &BaseAct{"BaseAct", dpath}
+func NewBaseAct(dpath string) BaseActInf {
+	return &BaseAct{TStr:"BaseAct", DPath:dpath}
 }
 
 func (act *BaseAct) EncodeToHex() (hex string, err error) {

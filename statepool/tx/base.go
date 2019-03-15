@@ -3,24 +3,39 @@ package tx
 import (
 	"../../utils"
 	"./act"
-	"bytes"
 	"encoding/json"
-	"github.com/ethereum/go-ethereum/crypto/secp256k1"
+	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/crypto"
+	"log"
+	"strings"
 )
 
 type Tx struct {
-
 	Sender			string
 	Signature		string
-	Action			*act.BaseAct
-
+	ActHex			string
 }
 
-func NewTx(sender string, act* act.BaseAct) (tx* Tx) {
+func NewTx(sender string, acti act.BaseActInf) (tx* Tx) {
 
-	tx = &Tx{Sender:sender, Signature:nil, Action:act}
+	if hex, err := acti.EncodeToHex(); err != nil {
+		return nil
+	} else {
+		tx = &Tx{Sender:sender, Signature:"", ActHex:hex}
+	}
 
 	return tx
+}
+
+func (tx* Tx) GetActHash() []byte {
+
+	hbs, err := utils.GetHashBytes(tx.ActHex)
+
+	if err != nil {
+		return nil
+	}
+
+	return hbs
 }
 
 func (tx* Tx) VerifySign() (b bool) {
@@ -29,30 +44,51 @@ func (tx* Tx) VerifySign() (b bool) {
 		return false
 	}
 
-	hbs, err := utils.GetHashBytes(tx.Action)
+	hbs, err := utils.GetHashBytes(tx.ActHex)
+
+	if err != nil {
+		log.Println(err)
+		return false
+	}
+
+	hbs = crypto.Keccak256(hbs)
+
+	if err != nil {
+		log.Println(err)
+		return false
+	}
+
+	sigbs, err := hexutil.Decode(tx.Signature)
 
 	if err != nil {
 		return false
 	}
 
-	if pub, err := secp256k1.RecoverPubkey(hbs, []byte(tx.Signature)); err != nil {
+	if pub, err := crypto.SigToPub(hbs, sigbs); err != nil {
 		return false
 	} else {
-		return bytes.Equal(pub, []byte(tx.Sender))
+		addr := crypto.PubkeyToAddress(*pub)
+		return strings.EqualFold(addr.String(), tx.Sender)
 	}
 
 }
 
-func (tx* Tx) Encode() (bs[] byte, err error) {
+func (tx* Tx) EncodeToHex() (hex string, err error) {
 
 	if bs, err := json.Marshal(tx); err == nil {
-		return bs,nil
+		return hexutil.Encode(bs),nil
 	} else {
-		return nil, err
+		return "", err
 	}
 
 }
 
-func (tx* Tx) Decode(bs[] byte) error {
-	return json.Unmarshal(bs, tx)
+func (tx* Tx) DecodeFromHex(hex string) error {
+
+	if bs, err := hexutil.Decode(hex); err != nil {
+		return nil
+	} else {
+		return json.Unmarshal(bs, tx)
+	}
+
 }

@@ -16,7 +16,7 @@ type BlockListener struct {
 
 func NewBlockListner( ds* DappState ) Listener {
 
-	topics := ListnerTopicPrefix + ds.SourceHash + ".Block.Broadcast"
+	topics := ListnerTopicPrefix + ds.IPNSHash + ".Block.Broadcast"
 
 	newListner := &BlockListener{
 		baseListner{

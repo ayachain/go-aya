@@ -1,8 +1,8 @@
 package dappstate
 
 import (
-	"github.com/ipfs/go-ipfs-api"
 	TX "../tx"
+	"github.com/ipfs/go-ipfs-api"
 	"log"
 )
 
@@ -12,7 +12,7 @@ type TxListener struct {
 
 func NewTxListner( ds* DappState ) Listener {
 
-	topics := ListnerTopicPrefix + ds.SourceHash + ".Tx.Commit"
+	topics := ListnerTopicPrefix + ds.IPNSHash + ".Tx.Commit"
 
 	newListner := &TxListener{
 		baseListner:baseListner{
@@ -22,16 +22,19 @@ func NewTxListner( ds* DappState ) Listener {
 		},
 	}
 
+	newListner.Listener = newListner
+
 	return newListner
 }
 
 //收到新的交易
-func (l *TxListener) Handle(msg *shell.Message) {
+//func (l* baseListner) Handle(msg *shell.Message) {
+func (l *TxListener) Handle ( msg *shell.Message ) {
 
 	mtx := TX.Tx{}
 
 	//解码返回Tx对象
-	if err := mtx.Decode(msg.Data); err != nil {
+	if err := mtx.DecodeFromHex(string(msg.Data)); err != nil {
 		log.Print(err)
 		return
 	}
@@ -44,5 +47,7 @@ func (l *TxListener) Handle(msg *shell.Message) {
 
 	//放入队列中，等待打包
 	l.state.Pool.TxQueue.PushBack(mtx)
+
+	l.state.Pool.PrintTxQueue()
 
 }

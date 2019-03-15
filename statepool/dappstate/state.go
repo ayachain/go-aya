@@ -2,6 +2,7 @@ package dappstate
 
 import (
 	TX "../tx"
+	"context"
 	"github.com/ipfs/go-ipfs-api"
 	"github.com/libp2p/go-libp2p-peer"
 	"github.com/pkg/errors"
@@ -11,7 +12,7 @@ import (
 //Dapp 状态机
 type DappState struct {
 
-	SourceHash		string
+	IPNSHash		string
 	LatestBDHash 	string
 	Pool*			TX.TxPool
 	sh*				shell.Shell				`json:"-"`
@@ -23,12 +24,13 @@ type DappState struct {
 func NewDappState(shash string, bdhash string) (dstate *DappState) {
 
 	dstate = &DappState{
-		SourceHash:shash,
+		IPNSHash:shash,
 		LatestBDHash:bdhash,
 	}
 
 	dstate.Pool = TX.NewTxPool()
 	dstate.sh = shell.NewLocalShell()
+	dstate.listnerMap = make(map[string]Listener)
 
 	return dstate
 }
@@ -63,13 +65,66 @@ func (dstate *DappState) Daemon() error {
 	}()
 
 	//接收主节点广播的新块
-	if err = dstate.AddListner(CreateListener(DappListner_Broadcast, dstate)); err != nil {
+	//if err = dstate.AddListner(CreateListener(DappListner_Broadcast, dstate)); err != nil {
+	//	return err
+	//}
+
+	//接收交易提交
+	if err = dstate.AddListner(CreateListener(DappListner_TxCommit, dstate)); err != nil {
 		return err
 	}
 
 	return dstate.StartingListening()
 }
 
+func (dstate *DappState) DestoryMFSEnv() error {
+
+	ish := shell.NewLocalShell()
+
+	basePath := "/" + dstate.IPNSHash
+
+	if err := ish.Request("files/rm").
+		Arguments(basePath).
+		Option("r",true).
+		Exec(context.Background(), nil); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+//装载App
+func (dstate *DappState) InitDappMFSEnv() error {
+
+	ish := shell.NewLocalShell()
+
+	ctx := context.Background()
+
+	basePath := "/" + dstate.IPNSHash
+
+	//1.创建IPFS MFS 文件系统,文件名为dappPath应该为一个IPNS,使用IPFS作为文件夹名称
+	if err := ish.Request("files/mkdir").
+		Arguments(basePath).
+		Exec(ctx, nil); err != nil {
+		return err
+	}
+
+	//2.下载目录_dapp
+	if err := ish.Request("files/cp").
+		Arguments("/ipfs/" + dstate.IPNSHash, basePath + "/_dapp").
+		Exec(ctx, nil); err != nil {
+			return nil
+	}
+
+	//3.下载数据目录
+	if err := ish.Request("files/cp").
+		Arguments("/ipfs/" + dstate.LatestBDHash, basePath + "/_data").
+		Exec(ctx, nil); err != nil {
+			return err
+	}
+
+	return nil
+}
 
 func (dstate *DappState) Clean() {
 

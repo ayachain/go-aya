@@ -7,19 +7,27 @@ import (
 
 func GetHash(v interface{}) (hstr string, err error) {
 
-	if bs, err := json.Marshal(v); err == nil {
+	switch v.(type) {
+	case string:
+		hstr, err = shell.NewLocalShell().BlockPut([]byte(v.(string)),"", "sha2-256",32)
 
-		hstr, err := shell.NewLocalShell().BlockPut(bs,"sha2-256", "",-1)
+	case []byte:
+		hstr, err = shell.NewLocalShell().BlockPut([]byte(v.([]byte)),"", "sha2-256",32)
 
-		if err != nil {
-			return "", err
-		} else {
-			return hstr,nil
+	default:
+
+		if bs, err := json.Marshal(v); err == nil {
+			hstr, err = shell.NewLocalShell().BlockPut(bs, "", "sha2-256", 32)
 		}
 
-	} else {
-		return "", err
 	}
+
+	if err != nil {
+		return "", err
+	} else {
+		return hstr,nil
+	}
+
 }
 
 func GetHashBytes(v interface{}) (hbs[] byte, err error) {
