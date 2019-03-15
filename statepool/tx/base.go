@@ -4,6 +4,7 @@ import (
 	"../../utils"
 	"./act"
 	"bytes"
+	"encoding/json"
 	"github.com/ethereum/go-ethereum/crypto/secp256k1"
 )
 
@@ -40,4 +41,18 @@ func (tx* Tx) VerifySign() (b bool) {
 		return bytes.Equal(pub, []byte(tx.Sender))
 	}
 
+}
+
+func (tx* Tx) Encode() (bs[] byte, err error) {
+
+	if bs, err := json.Marshal(tx); err == nil {
+		return bs,nil
+	} else {
+		return nil, err
+	}
+
+}
+
+func (tx* Tx) Decode(bs[] byte) error {
+	return json.Unmarshal(bs, tx)
 }

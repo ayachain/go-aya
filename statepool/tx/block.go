@@ -10,12 +10,13 @@ type Block struct {
 	Index	uint64
 	Prev	string
 	Txs[]	Tx
+	BDHash	string		//Base Dir Ipfs Hash
 	Hash	string		`json:"-"`
 }
 
-func NewBlock(index uint64, prev string, txs[] Tx) (b* Block){
+func NewBlock(index uint64, prev string, txs[] Tx, bdhash string) (b* Block){
 
-	b = &Block{Index:index, Prev:prev, Txs:txs}
+	b = &Block{Index:index, Prev:prev, Txs:txs, BDHash:bdhash}
 
 	return b
 }
