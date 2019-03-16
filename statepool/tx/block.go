@@ -1,7 +1,7 @@
 package tx
 
 import (
-	"../../utils"
+	"github.com/ayachain/go-aya/utils"
 	"encoding/json"
 	"fmt"
 	"github.com/ipfs/go-ipfs-api"

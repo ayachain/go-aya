@@ -1,7 +1,7 @@
 package tx
 
 import (
-	"../../utils"
+	"github.com/ayachain/go-aya/utils"
 	"container/list"
 	"github.com/pkg/errors"
 	"strings"

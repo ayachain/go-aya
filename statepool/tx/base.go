@@ -1,8 +1,8 @@
 package tx
 
 import (
-	"../../utils"
-	"./act"
+	"github.com/ayachain/go-aya/statepool/tx/act"
+	"github.com/ayachain/go-aya/utils"
 	"encoding/json"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"

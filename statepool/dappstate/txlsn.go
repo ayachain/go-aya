@@ -1,7 +1,7 @@
 package dappstate
 
 import (
-	TX "../tx"
+	Atx "github.com/ayachain/go-aya/statepool/tx"
 	"github.com/ipfs/go-ipfs-api"
 	"log"
 )
@@ -27,7 +27,7 @@ func NewTxListner( ds* DappState ) Listener {
 
 func (l *TxListener) Handle(msg *shell.Message) {
 
-	mtx := TX.Tx{}
+	mtx := Atx.Tx{}
 
 	//解码返回Tx对象
 	if err := mtx.DecodeFromHex(string(msg.Data)); err != nil {

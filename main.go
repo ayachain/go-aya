@@ -1,9 +1,9 @@
 package main
 
 import (
-	DState "./statepool/dappstate"
-	Tx "./statepool/tx"
-	Act "./statepool/tx/act"
+	Atx "github.com/ayachain/go-aya/statepool/tx"
+	Act "github.com/ayachain/go-aya/statepool/tx/act"
+	DState "github.com/ayachain/go-aya/statepool/dappstate"
 	"encoding/hex"
 	"fmt"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -71,7 +71,7 @@ func main() {
 				act := Act.NewPerfromAct("QmP7htLz57Gz6jiCVnWQEYeRxr3V7CzVjnkjtSLWYL8seQ", "main", []string{"Parmas1", strconv.Itoa(txindex)})
 
 				//签名
-				tx := Tx.NewTx(address, act)
+				tx := Atx.NewTx(address, act)
 
 				sig, err := crypto.Sign(crypto.Keccak256(tx.GetActHash()), key)
 

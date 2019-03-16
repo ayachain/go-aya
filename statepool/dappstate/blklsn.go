@@ -1,7 +1,7 @@
 package dappstate
 
 import (
-	TX "../tx"
+	Atx "github.com/ayachain/go-aya/statepool/tx"
 	"github.com/ipfs/go-ipfs-api"
 	"strings"
 )
@@ -10,7 +10,7 @@ type BlockListener struct {
 
 	BaseListner
 
-	RecvBlockChan	chan *TX.Block
+	RecvBlockChan	chan *Atx.Block
 }
 
 func NewBlockListner( ds* DappState ) Listener {
@@ -22,7 +22,7 @@ func NewBlockListner( ds* DappState ) Listener {
 			state:ds,
 			topics:topics,
 			threadstate:ListennerThread_Stop,
-		},make(chan *TX.Block),
+		},make(chan *Atx.Block),
 	}
 
 	newListner.handleDelegate = newListner.Handle
@@ -49,7 +49,7 @@ func (l *BlockListener) Handle(msg *shell.Message) {
 		return
 	}
 
-	if bcb, err := TX.ReadBlock(string(msg.Data)); err == nil {
+	if bcb, err := Atx.ReadBlock(string(msg.Data)); err == nil {
 
 		bcb.PrintIndent()
 

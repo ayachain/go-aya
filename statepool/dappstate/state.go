@@ -1,7 +1,7 @@
 package dappstate
 
 import (
-	TX "../tx"
+	Atx "github.com/ayachain/go-aya/statepool/tx"
 	"context"
 	"github.com/ipfs/go-ipfs-api"
 	"github.com/libp2p/go-libp2p-peer"
@@ -15,7 +15,7 @@ type DappState struct {
 
 	IPNSHash		string
 	LatestBDHash 	string
-	Pool*			TX.TxPool
+	Pool*			Atx.TxPool
 	sh*				shell.Shell				`json:"-"`
 	//Master Peer IDS 可信任的主节点ID
 	mpids[]			string					`json:"-"`
@@ -31,7 +31,7 @@ func NewDappState(shash string, bdhash string) (dstate *DappState) {
 		LatestBDHash:bdhash,
 	}
 
-	dstate.Pool = TX.NewTxPool()
+	dstate.Pool = Atx.NewTxPool()
 	dstate.sh = shell.NewLocalShell()
 	dstate.listnerMap = make(map[string]Listener)
 	dstate.broadcasterMap = make(map[string]Broadcaster)
