@@ -7,12 +7,16 @@ const (
 
 func CreateListener(ltype int, ds *DappState) Listener {
 
+	var l Listener
+
 	switch ltype {
 	case DappListner_Broadcast:
-		return NewBlockListner(ds)
+		l =  NewBlockListner(ds)
 	case DappListner_TxCommit:
-		return NewTxListner(ds)
+		l = NewTxListner(ds)
+	default:
+		l = nil
 	}
 
-	return nil
+	return l
 }

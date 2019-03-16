@@ -15,24 +15,30 @@ import (
 
 func main() {
 
+	//生成一个Dapp状态机
 	fristDemoState := DState.NewDappState("QmP7htLz57Gz6jiCVnWQEYeRxr3V7CzVjnkjtSLWYL8seQ","QmbjTJhV7G1tdSURQGg54MfFtFG89jrWM1EzAwBEUs1wgT")
 
+	//在Main函数推出时执行，主要是清理虚拟目录
 	defer func() {
 		if err := fristDemoState.DestoryMFSEnv(); err != nil {
 			panic(err)
 		}
 	}()
 
+	//开始时执行，防止目录因为异常结束虚拟目录依然存在，导致InitDappMFSEnv失败
 	fristDemoState.DestoryMFSEnv()
 
+	//根据设置的SHash和DBHash生成虚拟目录环境
 	if err := fristDemoState.InitDappMFSEnv(); err != nil {
 		panic(err)
 	}
 
+	//启动状态机守护线程，当中有主题的监听，监听的Topics：AyaChainListner.QmP7htLz57Gz6jiCVnWQEYeRxr3V7CzVjnkjtSLWYL8seQ.Tx.Commit
 	if err := fristDemoState.Daemon(); err == nil {
 
 		fmt.Println("DappState Daemoning.")
 
+		//启动测试线程发送交易
 		go func() {
 
 			//模拟发送交易
@@ -89,6 +95,7 @@ func main() {
 
 		}()
 
+		//阻塞主线程
 		select {}
 
 	} else {

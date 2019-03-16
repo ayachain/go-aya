@@ -8,7 +8,7 @@ import (
 
 type BlockListener struct {
 
-	baseListner
+	BaseListner
 
 	RecvBlockChan	chan *TX.Block
 
@@ -19,12 +19,14 @@ func NewBlockListner( ds* DappState ) Listener {
 	topics := ListnerTopicPrefix + ds.IPNSHash + ".Block.Broadcast"
 
 	newListner := &BlockListener{
-		baseListner{
+		BaseListner{
 			state:ds,
 			topics:topics,
 			threadstate:ListennerThread_Stop,
 		},make(chan *TX.Block),
 	}
+
+	//newListner.Listener = newListner
 
 	return newListner
 }

@@ -92,3 +92,13 @@ func (tx* Tx) DecodeFromHex(hex string) error {
 	}
 
 }
+
+func (tx* Tx) MarshalJson() string {
+
+	if bs, err := json.Marshal(tx); err != nil {
+		return ""
+	} else {
+		return string(bs)
+	}
+
+}

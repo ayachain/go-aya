@@ -74,6 +74,19 @@ func (dstate *DappState) Daemon() error {
 		return err
 	}
 
+	//开始接收TxPool的Block广播信道
+	go func() {
+
+		for {
+
+			boardcastBlockHash := <- dstate.Pool.BlockBoardcastChan
+
+
+
+		}
+
+	}()
+
 	return dstate.StartingListening()
 }
 

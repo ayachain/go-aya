@@ -20,16 +20,16 @@ type Listener interface {
 
 	Shutdown() error
 
-	Handle(msg *shell.Message)
-
 	ThreadState() int
 
 	GetTopics() string
 }
 
-type baseListner struct {
+type BaseListner struct {
 
 	Listener
+
+	HandleDelegate func (msg *shell.Message)
 
 	state*	DappState
 
@@ -42,15 +42,15 @@ type baseListner struct {
 	subscription*	shell.PubSubSubscription
 }
 
-func (l* baseListner) GetTopics() string {
+func (l* BaseListner) GetTopics() string {
 	return l.topics
 }
 
-func (l* baseListner) ThreadState() (s int){
+func (l* BaseListner) ThreadState() (s int){
 	return l.threadstate
 }
 
-func (l* baseListner) Shutdown() (err error) {
+func (l* BaseListner) Shutdown() (err error) {
 
 	if l.subscription != nil {
 
@@ -65,11 +65,7 @@ func (l* baseListner) Shutdown() (err error) {
 	return <- l.shutdownchan
 }
 
-func (l* baseListner) Handle(msg *shell.Message) {
-	log.Println("Impl Listen must override this interface.")
-}
-
-func (l* baseListner) StartListening() error {
+func (l* BaseListner) StartListening() error {
 
 	if l.state == nil {
 		return errors.New("Befor StartListening must set this dapp state to listner instance.")
@@ -105,7 +101,7 @@ func (l* baseListner) StartListening() error {
 
 				} else {
 					if l.threadstate == ListennerThread_Running {
-						l.Listener.Handle(msg)
+						l.HandleDelegate(msg)
 					}
 				}
 
