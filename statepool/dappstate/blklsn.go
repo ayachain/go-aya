@@ -11,12 +11,11 @@ type BlockListener struct {
 	BaseListner
 
 	RecvBlockChan	chan *TX.Block
-
 }
 
 func NewBlockListner( ds* DappState ) Listener {
 
-	topics := ListnerTopicPrefix + ds.IPNSHash + ".Block.Broadcast"
+	topics := BroadcasterTopicPrefix + ds.IPNSHash + ".Block.Broadcast"
 
 	newListner := &BlockListener{
 		BaseListner{
@@ -26,7 +25,7 @@ func NewBlockListner( ds* DappState ) Listener {
 		},make(chan *TX.Block),
 	}
 
-	//newListner.Listener = newListner
+	newListner.handleDelegate = newListner.Handle
 
 	return newListner
 }
@@ -34,7 +33,7 @@ func NewBlockListner( ds* DappState ) Listener {
 func (l *BlockListener) Handle(msg *shell.Message) {
 
 	/*
-	逻辑总体说明：在BlockListen接收到广播的块以后需要完成以下逻辑
+	逻辑说明：在BlockListen接收到广播的块以后需要完成以下逻辑
 	1.确认广播人发送方为当前Dapp中定义主节点
 	2.如果本地的交易池没有BaseBlock则把接收的块当做BaseBlock然后继续等待后续的出块广播
 	3.如果本地的交易池有BaseBlock但是没有PandingBlock
@@ -51,6 +50,8 @@ func (l *BlockListener) Handle(msg *shell.Message) {
 	}
 
 	if bcb, err := TX.ReadBlock(string(msg.Data)); err == nil {
+
+		bcb.PrintIndent()
 
 		if l.state.Pool.BaseBlock == nil {
 			//若本节点交易池没有任何数据，接收到新块直接认为是已确认到块

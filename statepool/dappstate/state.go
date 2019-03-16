@@ -6,6 +6,7 @@ import (
 	"github.com/ipfs/go-ipfs-api"
 	"github.com/libp2p/go-libp2p-peer"
 	"github.com/pkg/errors"
+	"io/ioutil"
 	"strings"
 )
 
@@ -19,6 +20,8 @@ type DappState struct {
 	//Master Peer IDS 可信任的主节点ID
 	mpids[]			string					`json:"-"`
 	listnerMap 		map[string]Listener 	`json:"-"`
+	broadcasterMap  map[string]Broadcaster	`json:"-"`
+
 }
 
 func NewDappState(shash string, bdhash string) (dstate *DappState) {
@@ -31,6 +34,7 @@ func NewDappState(shash string, bdhash string) (dstate *DappState) {
 	dstate.Pool = TX.NewTxPool()
 	dstate.sh = shell.NewLocalShell()
 	dstate.listnerMap = make(map[string]Listener)
+	dstate.broadcasterMap = make(map[string]Broadcaster)
 
 	return dstate
 }
@@ -64,32 +68,61 @@ func (dstate *DappState) Daemon() error {
 
 	}()
 
-	//接收主节点广播的新块
-	//if err = dstate.AddListner(CreateListener(DappListner_Broadcast, dstate)); err != nil {
-	//	return err
-	//}
-
-	//接收交易提交
-	if err = dstate.AddListner(CreateListener(DappListner_TxCommit, dstate)); err != nil {
+	if err = dstate.initListner(); err != nil {
 		return err
 	}
 
-	//开始接收TxPool的Block广播信道
-	go func() {
+	if err = dstate.initBroadcast(); err != nil {
+		return err
+	}
 
-		for {
+	//启动主节点打包
+	dstate.Pool.StartGenBlockDaemon()
 
-			boardcastBlockHash := <- dstate.Pool.BlockBoardcastChan
-
-
-
-		}
-
-	}()
-
-	return dstate.StartingListening()
+	return nil
 }
 
+//根据工厂中定义的枚举，获取广播的信道
+func (dstate *DappState) GetBroadcastChannel(btype int) chan interface{} {
+
+	for _, v := range dstate.broadcasterMap {
+
+		if v.TypeCode() == btype {
+			return v.Channel()
+		}
+	}
+
+	return nil
+}
+
+func (dstate *DappState) initListner() error {
+
+	//接收交易提交
+	if err := dstate.AddListner(CreateListener(DappListner_TxCommit, dstate)); err != nil {
+		return err
+	}
+
+	if err := dstate.AddListner(CreateListener(DappListner_Broadcast, dstate)); err != nil {
+		return err
+	}
+
+	return dstate.startingListening()
+}
+func (dstate *DappState) initBroadcast() error {
+
+	//打开Block广播频道
+	bbc := CreateBroadcaster(DappBroadcaster_Block, dstate)
+	if err := dstate.AddBroadcaster(bbc); err != nil {
+		return err
+	} else {
+		//设置广播信道
+		dstate.Pool.BlockBroadcastChan = bbc.Channel()
+	}
+
+	return dstate.startingBroadcasting()
+}
+
+//装载，卸载Dapp虚拟目录
 func (dstate *DappState) DestoryMFSEnv() error {
 
 	ish := shell.NewLocalShell()
@@ -105,8 +138,6 @@ func (dstate *DappState) DestoryMFSEnv() error {
 
 	return nil
 }
-
-//装载App
 func (dstate *DappState) InitDappMFSEnv() error {
 
 	ish := shell.NewLocalShell()
@@ -136,33 +167,67 @@ func (dstate *DappState) InitDappMFSEnv() error {
 			return err
 	}
 
+	//4.加载主节点列表 在根目录的 /_data/_master 文件中
+	if rep, err := ish.Request("files/read").
+		Arguments(basePath + "/_data/_master").
+		Send(ctx); err != nil {
+
+			return err
+
+		} else {
+
+			//正确获取返回值，判断返回值中是否存在文件内容
+			if rep.Error != nil {
+
+				return errors.New( rep.Error.Message )
+
+			} else {
+
+				//正确内容
+				if bs,err := ioutil.ReadAll(rep.Output); err != nil {
+
+					return nil
+
+				} else {
+
+					//此处先简单按照","分割读出，后续应该改为一个Json，主节点列表应该含有签名，确认是Dapp的拥有者授权的主节点
+					dstate.mpids = strings.Split( strings.Trim(string(bs), "\n") , ",")
+
+				}
+
+			}
+		}
+
+
 	return nil
 }
 
-func (dstate *DappState) Clean() {
 
-	dstate.ShutdownListening()
+func (dstate *DappState) AddListner(l Listener) error {
 
-	dstate.listnerMap = map[string]Listener{}
+	if _,exist := dstate.listnerMap[l.GetTopics()]; exist {
+		return errors.New(l.GetTopics() + " Listner instance are already exist.")
+	}
+
+	dstate.listnerMap[l.GetTopics()] = l
+
+	return nil
 }
-
-func (dstate *DappState) ShutdownListening() {
+func (dstate *DappState) shutdownListening() {
 
 	for _,v := range dstate.listnerMap {
 		v.Shutdown()
 	}
 
 }
-
-//启动所有主题关注者
-func (dstate *DappState) StartingListening() error {
+func (dstate *DappState) startingListening() error {
 
 	var err error
 
 	defer func() {
 
 		if err != nil {
-			dstate.ShutdownListening()
+			dstate.shutdownListening()
 		}
 
 	}()
@@ -181,13 +246,49 @@ func (dstate *DappState) StartingListening() error {
 	return err
 }
 
-func (dstate *DappState) AddListner(l Listener) error {
+func (dstate *DappState) AddBroadcaster(b Broadcaster) error {
 
-	if _,exist := dstate.listnerMap[l.GetTopics()]; exist {
-		return errors.New(l.GetTopics() + " Listner instance are already exist.")
+	if _, exist := dstate.broadcasterMap[b.GetTopics()]; exist {
+		return errors.New(b.GetTopics() + " Broadcaster instance are already exist.")
 	}
 
-	dstate.listnerMap[l.GetTopics()] = l
+	dstate.broadcasterMap[b.GetTopics()] = b
 
 	return nil
+}
+func (dstate *DappState) startingBroadcasting() error {
+
+	var err error
+
+	defer func() {
+
+		if err != nil {
+			dstate.shutdownBroadcasting()
+		}
+
+	}()
+
+	for _, v := range dstate.broadcasterMap {
+
+		if err = v.OpenChannel(); err != nil {
+			return err
+		}
+	}
+
+	return err
+
+}
+func (dstate *DappState) shutdownBroadcasting() {
+	for _,v := range dstate.broadcasterMap {
+		v.CloseChannel()
+	}
+}
+
+func (dstate *DappState) Clean() {
+
+	dstate.shutdownListening()
+	dstate.listnerMap = map[string]Listener{}
+
+	dstate.shutdownBroadcasting()
+	dstate.broadcasterMap = map[string]Broadcaster{}
 }

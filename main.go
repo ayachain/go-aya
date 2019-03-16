@@ -2,8 +2,8 @@ package main
 
 import (
 	DState "./statepool/dappstate"
+	Tx "./statepool/tx"
 	Act "./statepool/tx/act"
-	Tx  "./statepool/tx"
 	"encoding/hex"
 	"fmt"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -14,6 +14,23 @@ import (
 )
 
 func main() {
+
+	//模拟发送交易
+	//生成地址和私钥
+	key, err := crypto.GenerateKey()
+	if err !=nil {
+		fmt.Println(err)
+	}
+
+	// 私钥:64个字符
+	privateKey := hex.EncodeToString(key.D.Bytes())
+	log.Println("PrivateKey : " + privateKey)
+
+	// 得到地址：42个字符
+	address := crypto.PubkeyToAddress(key.PublicKey).Hex()
+	log.Println("Address : " + address)
+
+
 
 	//生成一个Dapp状态机
 	fristDemoState := DState.NewDappState("QmP7htLz57Gz6jiCVnWQEYeRxr3V7CzVjnkjtSLWYL8seQ","QmbjTJhV7G1tdSURQGg54MfFtFG89jrWM1EzAwBEUs1wgT")
@@ -36,25 +53,10 @@ func main() {
 	//启动状态机守护线程，当中有主题的监听，监听的Topics：AyaChainListner.QmP7htLz57Gz6jiCVnWQEYeRxr3V7CzVjnkjtSLWYL8seQ.Tx.Commit
 	if err := fristDemoState.Daemon(); err == nil {
 
-		fmt.Println("DappState Daemoning.")
+		log.Println("AyaChain Daemon is ready.")
 
 		//启动测试线程发送交易
 		go func() {
-
-			//模拟发送交易
-			//生成地址和私钥
-			key, err := crypto.GenerateKey()
-			if err !=nil {
-				fmt.Println(err)
-			}
-
-			// 私钥:64个字符
-			privateKey := hex.EncodeToString(key.D.Bytes())
-			fmt.Println(privateKey)
-
-			// 得到地址：42个字符
-			address := crypto.PubkeyToAddress(key.PublicKey).Hex()
-			fmt.Println(address)
 
 			txindex := 0
 
@@ -62,6 +64,8 @@ func main() {
 
 				txindex++
 
+				//内部休眠时间为100毫秒 所以在保证在100毫秒内可以发送3比交易测试
+				//time.Sleep(time.Millisecond * 35)
 				time.Sleep(time.Second * 2)
 
 				act := Act.NewPerfromAct("QmP7htLz57Gz6jiCVnWQEYeRxr3V7CzVjnkjtSLWYL8seQ", "main", []string{"Parmas1", strconv.Itoa(txindex)})
@@ -84,7 +88,7 @@ func main() {
 				}
 
 				//发送交易
-				topics := "AyaChainListner.QmP7htLz57Gz6jiCVnWQEYeRxr3V7CzVjnkjtSLWYL8seQ.Tx.Commit"
+				topics := "AyaChainChannel.QmP7htLz57Gz6jiCVnWQEYeRxr3V7CzVjnkjtSLWYL8seQ.Tx.Commit"
 
 				if txhex, err := tx.EncodeToHex(); err != nil {
 					panic(err)

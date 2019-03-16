@@ -13,13 +13,13 @@ type TxListener struct {
 
 func NewTxListner( ds* DappState ) Listener {
 
-	topics := ListnerTopicPrefix + ds.IPNSHash + ".Tx.Commit"
+	topics := BroadcasterTopicPrefix + ds.IPNSHash + ".Tx.Commit"
 
 	newListner := &TxListener{}
 	newListner.BaseListner.state = ds
 	newListner.BaseListner.topics = topics
 	newListner.BaseListner.threadstate = ListennerThread_Stop
-	newListner.HandleDelegate = newListner.Handle
+	newListner.handleDelegate = newListner.Handle
 	newListner.handTxCount = 0
 
 	return newListner

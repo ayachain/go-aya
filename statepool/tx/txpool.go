@@ -23,14 +23,13 @@ type TxPool struct {
 
 	//当TxPool决定打包交易时，会通过此通道发送新块当IPFSHash，委托TxPool的拥有者进行交易广播
 	//随后马上会监听此信道，查看结果，如果返回为nil，则表示成功广播
-	BlockBroadcastChan		chan string
+	BlockBroadcastChan		chan interface{}
 }
 
 func NewTxPool() (txp *TxPool) {
 
 	txp = &TxPool{}
 	txp.TxQueue = list.New()
-	txp.BlockBroadcastChan = make(chan string)
 
 	return
 }
@@ -43,7 +42,7 @@ func (txp* TxPool) PushTx(mtx Tx) error {
 
 	txp.TxQueue.PushBack(mtx)
 
-	log.Println("TxPool Pushed New Tx : " + mtx.MarshalJson())
+	//log.Println("TxPool Pushed New Tx : " + mtx.MarshalJson())
 
 	return nil
 }
@@ -66,7 +65,7 @@ func (txp* TxPool) PrintTxQueue() {
 //1.若交易池中无交易则直接休眠100毫秒，为了保证相应的即时性此处的休眠时间可以根据情况跳转，暂时设置在100毫秒
 //2.若交易池中有滞留的交易，并且上一块已经确定，则直接打包Block进行广播
 //3.若交易池中有滞留的交易，但是上一块还为确定，则需要等待上一块确认
-func (txp *TxPool) GenBlockDaemon() {
+func (txp *TxPool) StartGenBlockDaemon() {
 
 	go func() {
 
@@ -101,32 +100,52 @@ func (txp *TxPool) GenBlockDaemon() {
 				}
 
 				//2.创建Block
-				pblock := NewBlock( txp.PendingBlock.Index + 1, txp.PendingBlock.Hash, ptxs, "")
+				bestBlock := txp.BaseBlock
 
-				if bhash, err := pblock.WriteBlock(); err != nil {
+				if bestBlock == nil {
+					bestBlock = txp.PendingBlock
+				}
+
+				var pblock *Block
+
+				if bestBlock == nil {
+					//新链,生成创世块
+					pblock = NewBlock(0, "", ptxs, "")
+				} else {
+					pblock = NewBlock( bestBlock.Index + 1, bestBlock.Hash, ptxs, "")
+				}
+
+				if bhash, err := pblock.GetHash(); err != nil {
 					//若在写入时候出现问题，则交易的备份直接还原到TxQueue中
 					txp.TxQueue.PushFrontList(btxList)
 					log.Println(err)
 					continue
 				} else {
 					//写入成功先广播Block，广播成功后删除备份继续等待
-					//委托DappState进行交易广播
+					//委托DappState的广播者进行交易广播
 					txp.BlockBroadcastChan <- bhash
 					ret := <-txp.BlockBroadcastChan
 
-					if ret == "" {
+					if ret == nil {
+
 						//广播成功
 						btxList.Init()
 						continue
 
 					} else {
-						//广播失败
+
+						//广播失败，还原队列
 						txp.TxQueue.PushFrontList(btxList)
 						btxList.Init()
+
+						switch ret.(type) {
+						case error:
+							fmt.Println(ret.(error))
+						}
+
 						continue
 					}
 				}
-
 
 			} else {
 				//若无交易休眠500毫秒继续循环

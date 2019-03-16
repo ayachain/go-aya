@@ -6,8 +6,6 @@ import (
 	"log"
 )
 
-const ListnerTopicPrefix  = "AyaChainListner."
-
 const (
 	ListennerThread_Stop 	= -1
 	ListennerThread_Running = 0
@@ -29,7 +27,7 @@ type BaseListner struct {
 
 	Listener
 
-	HandleDelegate func (msg *shell.Message)
+	handleDelegate func (msg *shell.Message)
 
 	state*	DappState
 
@@ -77,7 +75,7 @@ func (l* BaseListner) StartListening() error {
 
 		if subs, err := shell.NewLocalShell().PubSubSubscribe(l.topics); err == nil {
 
-			log.Println("Begin Listner Topics : " + l.topics)
+			log.Println("Listner : " + l.topics + " Start Listening.")
 			l.threadstate = ListennerThread_Running
 
 			l.subscription = subs
@@ -101,7 +99,7 @@ func (l* BaseListner) StartListening() error {
 
 				} else {
 					if l.threadstate == ListennerThread_Running {
-						l.HandleDelegate(msg)
+						l.handleDelegate(msg)
 					}
 				}
 

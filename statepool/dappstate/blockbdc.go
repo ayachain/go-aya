@@ -8,16 +8,9 @@ func NewBlockBroadCaseter(ds* DappState) Broadcaster {
 
 	bbc := &BlockBroadCaseter{}
 	bbc.state = ds
+	bbc.typeCode = DappBroadcaster_Block
 	bbc.topics = BroadcasterTopicPrefix + ds.IPNSHash + ".Block.Broadcast"
-	bbc.Channel = make(chan interface{})
+	bbc.channel = make(chan interface{})
 
 	return bbc
-}
-
-func (bb *BlockBroadCaseter) OpenChannel() error {
-	return nil
-}
-
-func (bb *BlockBroadCaseter) CloseChannel() error {
-	return nil
 }

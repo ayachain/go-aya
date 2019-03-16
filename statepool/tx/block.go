@@ -3,6 +3,7 @@ package tx
 import (
 	"../../utils"
 	"encoding/json"
+	"fmt"
 	"github.com/ipfs/go-ipfs-api"
 )
 
@@ -56,5 +57,14 @@ func ReadBlock(hash string) (b *Block, err error) {
 		return nil, err
 	}
 
+	b.Hash = hash
+
 	return b, nil
+}
+
+func (b *Block) PrintIndent() {
+
+	bs, _ := json.MarshalIndent(b, "", "  ")
+
+	fmt.Println(string(bs))
 }
