@@ -8,19 +8,17 @@ import (
 
 type TxListener struct {
 	BaseListner
-	handTxCount uint64
 }
 
 func NewTxListner( ds* DappState ) Listener {
 
-	topics := BroadcasterTopicPrefix + ds.IPNSHash + ".Tx.Commit"
+	topics := BroadcasterTopicPrefix + ds.IPNSHash + ".Tx.Broadcast"
 
 	newListner := &TxListener{}
 	newListner.BaseListner.state = ds
 	newListner.BaseListner.topics = topics
 	newListner.BaseListner.threadstate = ListennerThread_Stop
 	newListner.handleDelegate = newListner.Handle
-	newListner.handTxCount = 0
 
 	return newListner
 }

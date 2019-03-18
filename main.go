@@ -1,13 +1,13 @@
 package main
 
 import (
+	"encoding/hex"
+	"flag"
+	"fmt"
+	DState "github.com/ayachain/go-aya/statepool/dappstate"
 	Atx "github.com/ayachain/go-aya/statepool/tx"
 	Act "github.com/ayachain/go-aya/statepool/tx/act"
-	DState "github.com/ayachain/go-aya/statepool/dappstate"
-	"encoding/hex"
-	"fmt"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ipfs/go-ipfs-api"
 	"log"
 	"strconv"
 	"time"
@@ -15,10 +15,21 @@ import (
 
 func main() {
 
+	nodeType := flag.String("t", "worker","")
+
+	flag.Parse()
+
+	peerType := DState.DappPeerType_Worker
+
+	if *nodeType == "master" {
+		peerType = DState.DappPeerType_Master
+	}
+
+
 	//模拟发送交易
 	//生成地址和私钥
 	key, err := crypto.GenerateKey()
-	if err !=nil {
+	if err != nil {
 		fmt.Println(err)
 	}
 
@@ -29,7 +40,6 @@ func main() {
 	// 得到地址：42个字符
 	address := crypto.PubkeyToAddress(key.PublicKey).Hex()
 	log.Println("Address : " + address)
-
 
 
 	//生成一个Dapp状态机
@@ -43,15 +53,17 @@ func main() {
 	}()
 
 	//开始时执行，防止目录因为异常结束虚拟目录依然存在，导致InitDappMFSEnv失败
-	fristDemoState.DestoryMFSEnv()
+	//fristDemoState.DestoryMFSEnv()
 
 	//根据设置的SHash和DBHash生成虚拟目录环境
 	if err := fristDemoState.InitDappMFSEnv(); err != nil {
-		panic(err)
+		//测试时候，忽略这个错误
+		//panic(err)
 	}
 
-	//启动状态机守护线程，当中有主题的监听，监听的Topics：AyaChainListner.QmP7htLz57Gz6jiCVnWQEYeRxr3V7CzVjnkjtSLWYL8seQ.Tx.Commit
-	if err := fristDemoState.Daemon(); err == nil {
+
+	//启动状态机守护线程，当中有主题的监听
+	if err := fristDemoState.Daemon(peerType); err == nil {
 
 		log.Println("AyaChain Daemon is ready.")
 
@@ -87,16 +99,20 @@ func main() {
 					return
 				}
 
-				//发送交易
-				topics := "AyaChainChannel.QmP7htLz57Gz6jiCVnWQEYeRxr3V7CzVjnkjtSLWYL8seQ.Tx.Commit"
+				if txhex, err := tx.EncodeToHex(); err == nil {
 
-				if txhex, err := tx.EncodeToHex(); err != nil {
-					panic(err)
+					fristDemoState.GetBroadcastChannel(DState.PubsubChannel_Tx) <- txhex
+					//获取结果
+					ret := <- fristDemoState.GetBroadcastChannel(DState.PubsubChannel_Tx)
+
+					if ret != nil {
+						panic(err)
+					}
+
 				} else {
-					err = shell.NewLocalShell().PubSubPublish(topics, txhex)
+					panic(err)
 				}
 			}
-
 		}()
 
 		//阻塞主线程

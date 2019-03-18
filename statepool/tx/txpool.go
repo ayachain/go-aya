@@ -103,7 +103,13 @@ func (txp *TxPool) StartGenBlockDaemon() {
 				bestBlock := txp.BaseBlock
 
 				if bestBlock == nil {
-					bestBlock = txp.PendingBlock
+
+					if txp.PendingBlock != nil {
+
+						bestBlock = txp.PendingBlock
+
+					}
+
 				}
 
 				var pblock *Block
@@ -112,7 +118,7 @@ func (txp *TxPool) StartGenBlockDaemon() {
 					//新链,生成创世块
 					pblock = NewBlock(0, "", ptxs, "")
 				} else {
-					pblock = NewBlock( bestBlock.Index + 1, bestBlock.Hash, ptxs, "")
+					pblock = NewBlock( txp.PendingBlock.Index + 1, bestBlock.Hash, ptxs, "")
 				}
 
 				if bhash, err := pblock.GetHash(); err != nil {
@@ -127,8 +133,19 @@ func (txp *TxPool) StartGenBlockDaemon() {
 					ret := <-txp.BlockBroadcastChan
 
 					if ret == nil {
-
 						//广播成功
+
+						//改变交易池
+						if txp.BaseBlock == nil {
+							txp.BaseBlock = pblock
+						} else if txp.PendingBlock == nil {
+							txp.PendingBlock = pblock
+						} else {
+							txp.BaseBlock = txp.PendingBlock
+							txp.PendingBlock = pblock
+						}
+
+						log.Printf( "BlockBBC:%d", pblock.Index )
 						btxList.Init()
 						continue
 

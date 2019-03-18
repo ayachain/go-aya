@@ -3,7 +3,6 @@ package dappstate
 import (
 	Atx "github.com/ayachain/go-aya/statepool/tx"
 	"github.com/ipfs/go-ipfs-api"
-	"strings"
 )
 
 type BlockListener struct {
@@ -44,71 +43,43 @@ func (l *BlockListener) Handle(msg *shell.Message) {
 		4.2 如果为接收到正确的Block，或BaseBlock，PandingBlock和新块之间不能衔接，则把新块作为BaseBlock等待广播
 	*/
 
-	if !l.state.ContainMaterPeer(msg.From) {
-		//不是可信任的主节点广播，不处理
-		return
-	}
+	//if !l.state.ContainMaterPeer(msg.From) {
+	//	//不是可信任的主节点广播，不处理
+	//	return
+	//}
 
 	if bcb, err := Atx.ReadBlock(string(msg.Data)); err == nil {
 
 		bcb.PrintIndent()
 
-		if l.state.Pool.BaseBlock == nil {
-			//若本节点交易池没有任何数据，接收到新块直接认为是已确认到块
+		switch bcb.Index {
+		case 0 :
+			//创世块
 			l.state.Pool.BaseBlock = bcb
-			return
-		}
 
-		baseHash, _ := l.state.Pool.BaseBlock.GetHash()
+		case 1 :
+			l.state.Pool.PendingBlock = bcb
 
-		if l.state.Pool.PendingBlock == nil {
+		default:
 
-			//当前节点有确认到Block记录，但是没有正在Pending的记录
-			if strings.EqualFold(bcb.Prev,baseHash) {
-
-				//接收的新块正好是Pending块
-				l.state.Pool.PendingBlock = bcb
-
-				//正确接收Pending块后，通过管道将PandingBlock发送到外部
-				l.RecvBlockChan <- bcb
-
-				return
-
-			} else {
-
-				//若接收的新块不能和Base连接，则把当前新块当做BaseBlock,然后继续等待,Pending块的广播
+			if l.state.Pool.BaseBlock == nil {
 				l.state.Pool.BaseBlock = bcb
-
-				return
-			}
-
-		} else {
-
-			pendingHash, _ := l.state.Pool.PendingBlock.GetHash()
-
-			if strings.EqualFold(bcb.Prev, pendingHash) {
-
-				//接收的新块正好是Pending的下一块，表示出块
+			} else if bcb.Index - l.state.Pool.BaseBlock.Index == 1 && bcb.Prev == l.state.Pool.BaseBlock.Hash {
+				//当收到的新块是BaseBlock的下一块并且在无PengdingBlock 的情况下，当节点认为此块为PandingBlock
+				//因为在缺失BaseBlock和PanedingBlock的时候，节点是不能够处理交易数据的
+				l.state.Pool.PendingBlock = bcb
+			} else if bcb.Index - l.state.Pool.PendingBlock.Index == 1 && bcb.Prev == l.state.Pool.PendingBlock.Hash {
+				//当新块是Pengding当下一块，表示主节点已经决定出块,那么本地节点应该马上放弃PengdingBlock当计算，去计算最新当PangdingBLock
 				l.state.Pool.BaseBlock = l.state.Pool.PendingBlock
 				l.state.Pool.PendingBlock = bcb
-
-				return
-
 			} else {
-
-				//如果无法衔接，则尝试匹配是否又接收到了PendingBlock
-				if strings.EqualFold(bcb.Prev, baseHash) {
-
-					l.state.Pool.PendingBlock = bcb
-					return
-
-				} else {
-
-					l.state.Pool.BaseBlock = bcb
-					l.state.Pool.PendingBlock = nil
-					return
-
-				}
+				//其他情况，有如下可能
+				//1.本节点刚刚启动，还为获取到任何数据，所以BaseBlock和PendingBlock都没有数据
+				//2.网络延迟原因，导致中间丢失了一块都广播，导致和本地交易池无法正确连接
+				//3.收到了错误的Block那么
+				//上述情况会本节点认定为暂时不可以计算交易，则需要重置BaseBlock和PendingBlock，等待主节点至少广播连续的两块后才可以开始计算
+				l.state.Pool.BaseBlock = bcb
+				l.state.Pool.PendingBlock = nil
 			}
 		}
 	}

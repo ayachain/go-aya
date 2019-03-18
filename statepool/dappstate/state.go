@@ -10,6 +10,11 @@ import (
 	"strings"
 )
 
+const (
+	DappPeerType_Master = 0
+	DappPeerType_Worker = 1
+)
+
 //Dapp 状态机
 type DappState struct {
 
@@ -56,7 +61,7 @@ func (dstate *DappState) ContainMaterPeer(id peer.ID) bool {
 1.接受交易，接收到交易后向主节点提交交易，发送Tx
 2.接受主节点广播的交易,接收Block，数据都为IPFSHASH
 */
-func (dstate *DappState) Daemon() error {
+func (dstate *DappState) Daemon(peerType int) error {
 
 	var err error
 
@@ -68,16 +73,18 @@ func (dstate *DappState) Daemon() error {
 
 	}()
 
-	if err = dstate.initListner(); err != nil {
+	if err = dstate.initListner(peerType); err != nil {
 		return err
 	}
 
-	if err = dstate.initBroadcast(); err != nil {
+	if err = dstate.initBroadcast(peerType); err != nil {
 		return err
 	}
 
 	//启动主节点打包
-	dstate.Pool.StartGenBlockDaemon()
+	if peerType == DappPeerType_Master {
+		dstate.Pool.StartGenBlockDaemon()
+	}
 
 	return nil
 }
@@ -95,28 +102,40 @@ func (dstate *DappState) GetBroadcastChannel(btype int) chan interface{} {
 	return nil
 }
 
-func (dstate *DappState) initListner() error {
+func (dstate *DappState) initListner(peerType int) error {
 
 	//接收交易提交
-	if err := dstate.AddListner(CreateListener(DappListner_TxCommit, dstate)); err != nil {
+	if err := dstate.AddListner(CreateListener(PubsubChannel_Tx, dstate)); err != nil {
 		return err
 	}
 
-	if err := dstate.AddListner(CreateListener(DappListner_Broadcast, dstate)); err != nil {
-		return err
+	if peerType == DappPeerType_Worker {
+		//Block的广播属于Worker节点的专属信道
+		if err := dstate.AddListner(CreateListener(PubsubChannel_Block, dstate)); err != nil {
+			return err
+		}
 	}
 
 	return dstate.startingListening()
 }
-func (dstate *DappState) initBroadcast() error {
+func (dstate *DappState) initBroadcast(peerType int) error {
 
 	//打开Block广播频道
-	bbc := CreateBroadcaster(DappBroadcaster_Block, dstate)
-	if err := dstate.AddBroadcaster(bbc); err != nil {
+	if peerType == DappPeerType_Master {
+		//广播Block为主节点专属信道
+		bbc := CreateBroadcaster(PubsubChannel_Block, dstate)
+		if err := dstate.AddBroadcaster(bbc); err != nil {
+			return err
+		} else {
+			//设置广播信道
+			dstate.Pool.BlockBroadcastChan = bbc.Channel()
+		}
+	}
+
+	//打开交易广播频道
+	tbc := CreateBroadcaster(PubsubChannel_Tx, dstate)
+	if err := dstate.AddBroadcaster(tbc); err != nil {
 		return err
-	} else {
-		//设置广播信道
-		dstate.Pool.BlockBroadcastChan = bbc.Channel()
 	}
 
 	return dstate.startingBroadcasting()
