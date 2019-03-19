@@ -1,0 +1,47 @@
+package miner
+
+import (
+	Atx "github.com/ayachain/go-aya/statepool/tx"
+	"github.com/yuin/gopher-lua"
+)
+
+const (
+	AvmState_IDLE = 0
+	AvmState_Buzy = 1
+	AvmState_Dead = 2
+)
+
+type Avm struct {
+
+	l 					*lua.LState
+	//每个虚拟机仅有一个正在工作到矿工,虚拟机与Dapp无关，在需要到时候将Dapp装载到虚拟机中，并且配置好对应矿工则可以开始计算结果
+	miner				MinerInf
+	State				int
+}
+
+//func (vm *Avm) BaseMFSPath() string {
+//	return "/" + vm.DataHash
+//}
+
+func NewAvm() *Avm {
+
+	avm := &Avm{l:lua.NewState(), State:AvmState_IDLE, miner:&MNCMiner{}}
+
+
+
+	return avm
+}
+
+func (vm *Avm) StartSyncMining(pendingBlock *Atx.Block) (r string, err error) {
+
+	vm.State = AvmState_Buzy
+
+	defer func() { vm.State = AvmState_IDLE }()
+
+	//将作业提交给矿工
+	if r, err := vm.miner.MiningBlock(vm, pendingBlock); err != nil {
+		return "", err
+	} else {
+		return r, nil
+	}
+}

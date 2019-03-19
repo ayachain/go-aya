@@ -2,11 +2,9 @@ package dappstate
 
 import (
 	Atx "github.com/ayachain/go-aya/statepool/tx"
-	"context"
 	"github.com/ipfs/go-ipfs-api"
 	"github.com/libp2p/go-libp2p-peer"
 	"github.com/pkg/errors"
-	"io/ioutil"
 	"strings"
 )
 
@@ -18,7 +16,7 @@ const (
 //Dapp 状态机
 type DappState struct {
 
-	IPNSHash		string
+	DappNS		string
 	LatestBDHash 	string
 	Pool*			Atx.TxPool
 	sh*				shell.Shell				`json:"-"`
@@ -29,19 +27,25 @@ type DappState struct {
 
 }
 
-func NewDappState(shash string, bdhash string) (dstate *DappState) {
+func NewDappState(dappns string) (dstate *DappState, err error) {
 
-	dstate = &DappState{
-		IPNSHash:shash,
-		LatestBDHash:bdhash,
+	ipfshash, err := shell.NewLocalShell().Resolve(dappns)
+
+	if err != nil {
+		return nil, err
 	}
 
-	dstate.Pool = Atx.NewTxPool()
+	dstate = &DappState{
+		DappNS:dappns,
+		LatestBDHash:ipfshash,
+	}
+
+	dstate.Pool = Atx.NewTxPool(nil)
 	dstate.sh = shell.NewLocalShell()
 	dstate.listnerMap = make(map[string]Listener)
 	dstate.broadcasterMap = make(map[string]Broadcaster)
 
-	return dstate
+	return dstate, nil
 }
 
 func (dstate *DappState) ContainMaterPeer(id peer.ID) bool {
@@ -102,126 +106,6 @@ func (dstate *DappState) GetBroadcastChannel(btype int) chan interface{} {
 	return nil
 }
 
-func (dstate *DappState) initListner(peerType int) error {
-
-	//接收交易提交
-	if err := dstate.AddListner(CreateListener(PubsubChannel_Tx, dstate)); err != nil {
-		return err
-	}
-
-	if peerType == DappPeerType_Worker {
-		//Block的广播属于Worker节点的专属信道
-		if err := dstate.AddListner(CreateListener(PubsubChannel_Block, dstate)); err != nil {
-			return err
-		}
-	}
-
-	return dstate.startingListening()
-}
-func (dstate *DappState) initBroadcast(peerType int) error {
-
-	//打开Block广播频道
-	if peerType == DappPeerType_Master {
-		//广播Block为主节点专属信道
-		bbc := CreateBroadcaster(PubsubChannel_Block, dstate)
-		if err := dstate.AddBroadcaster(bbc); err != nil {
-			return err
-		} else {
-			//设置广播信道
-			dstate.Pool.BlockBroadcastChan = bbc.Channel()
-		}
-	}
-
-	//打开交易广播频道
-	tbc := CreateBroadcaster(PubsubChannel_Tx, dstate)
-	if err := dstate.AddBroadcaster(tbc); err != nil {
-		return err
-	}
-
-	return dstate.startingBroadcasting()
-}
-
-//装载，卸载Dapp虚拟目录
-func (dstate *DappState) DestoryMFSEnv() error {
-
-	ish := shell.NewLocalShell()
-
-	basePath := "/" + dstate.IPNSHash
-
-	if err := ish.Request("files/rm").
-		Arguments(basePath).
-		Option("r",true).
-		Exec(context.Background(), nil); err != nil {
-		return err
-	}
-
-	return nil
-}
-func (dstate *DappState) InitDappMFSEnv() error {
-
-	ish := shell.NewLocalShell()
-
-	ctx := context.Background()
-
-	basePath := "/" + dstate.IPNSHash
-
-	//1.创建IPFS MFS 文件系统,文件名为dappPath应该为一个IPNS,使用IPFS作为文件夹名称
-	if err := ish.Request("files/mkdir").
-		Arguments(basePath).
-		Exec(ctx, nil); err != nil {
-		return err
-	}
-
-	//2.下载目录_dapp
-	if err := ish.Request("files/cp").
-		Arguments("/ipfs/" + dstate.IPNSHash, basePath + "/_dapp").
-		Exec(ctx, nil); err != nil {
-			return nil
-	}
-
-	//3.下载数据目录
-	if err := ish.Request("files/cp").
-		Arguments("/ipfs/" + dstate.LatestBDHash, basePath + "/_data").
-		Exec(ctx, nil); err != nil {
-			return err
-	}
-
-	//4.加载主节点列表 在根目录的 /_data/_master 文件中
-	if rep, err := ish.Request("files/read").
-		Arguments(basePath + "/_data/_master").
-		Send(ctx); err != nil {
-
-			return err
-
-		} else {
-
-			//正确获取返回值，判断返回值中是否存在文件内容
-			if rep.Error != nil {
-
-				return errors.New( rep.Error.Message )
-
-			} else {
-
-				//正确内容
-				if bs,err := ioutil.ReadAll(rep.Output); err != nil {
-
-					return nil
-
-				} else {
-
-					//此处先简单按照","分割读出，后续应该改为一个Json，主节点列表应该含有签名，确认是Dapp的拥有者授权的主节点
-					dstate.mpids = strings.Split( strings.Trim(string(bs), "\n") , ",")
-
-				}
-
-			}
-		}
-
-
-	return nil
-}
-
-
 func (dstate *DappState) AddListner(l Listener) error {
 
 	if _,exist := dstate.listnerMap[l.GetTopics()]; exist {
@@ -231,6 +115,35 @@ func (dstate *DappState) AddListner(l Listener) error {
 	dstate.listnerMap[l.GetTopics()] = l
 
 	return nil
+}
+func (dstate *DappState) initListner(peerType int) error {
+
+	//Tx
+	if err := dstate.AddListner(CreateListener(PubsubChannel_Tx, dstate)); err != nil {
+		return err
+	}
+
+	//Block
+	if err := dstate.AddListner(CreateListener(PubsubChannel_Block, dstate)); err != nil {
+		return err
+	}
+
+
+
+	if peerType == DappPeerType_Master {
+
+		//Rsp
+		lsn := CreateListener(PubsubChannel_Rsp, dstate)
+
+		if err := dstate.AddListner(lsn); err != nil {
+			return err
+		} else {
+			dstate.Pool.BlockBDHashChan = lsn.(*RspListener).RspActOutChan
+		}
+
+	}
+
+	return dstate.startingListening()
 }
 func (dstate *DappState) shutdownListening() {
 
@@ -274,6 +187,34 @@ func (dstate *DappState) AddBroadcaster(b Broadcaster) error {
 	dstate.broadcasterMap[b.GetTopics()] = b
 
 	return nil
+}
+func (dstate *DappState) initBroadcast(peerType int) error {
+
+	//Tx
+	tbc := CreateBroadcaster(PubsubChannel_Tx, dstate)
+	if err := dstate.AddBroadcaster(tbc); err != nil {
+		return err
+	}
+
+	//Rsp
+	rspbc := CreateBroadcaster(PubsubChannel_Rsp, dstate)
+	if err := dstate.AddBroadcaster(rspbc); err != nil {
+		return err
+	}
+
+	//Block
+	if peerType == DappPeerType_Master {
+		//广播Block为主节点专属信道
+		bbc := CreateBroadcaster(PubsubChannel_Block, dstate)
+		if err := dstate.AddBroadcaster(bbc); err != nil {
+			return err
+		} else {
+			//设置广播信道
+			dstate.Pool.BlockBroadcastChan = bbc.Channel()
+		}
+	}
+
+	return dstate.startingBroadcasting()
 }
 func (dstate *DappState) startingBroadcasting() error {
 

@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"flag"
 	"fmt"
+	"github.com/ayachain/go-aya/avm"
 	DState "github.com/ayachain/go-aya/statepool/dappstate"
 	Atx "github.com/ayachain/go-aya/statepool/tx"
 	Act "github.com/ayachain/go-aya/statepool/tx/act"
@@ -25,7 +26,6 @@ func main() {
 		peerType = DState.DappPeerType_Master
 	}
 
-
 	//模拟发送交易
 	//生成地址和私钥
 	key, err := crypto.GenerateKey()
@@ -41,26 +41,12 @@ func main() {
 	address := crypto.PubkeyToAddress(key.PublicKey).Hex()
 	log.Println("Address : " + address)
 
-
 	//生成一个Dapp状态机
-	fristDemoState := DState.NewDappState("QmP7htLz57Gz6jiCVnWQEYeRxr3V7CzVjnkjtSLWYL8seQ","QmbjTJhV7G1tdSURQGg54MfFtFG89jrWM1EzAwBEUs1wgT")
+	fristDemoState, err := DState.NewDappState("QmVUaqfbeW3qNmrZqAbNrAin5aikYzpVv6GRt82Un28pW8")
 
-	//在Main函数推出时执行，主要是清理虚拟目录
-	defer func() {
-		if err := fristDemoState.DestoryMFSEnv(); err != nil {
-			panic(err)
-		}
-	}()
-
-	//开始时执行，防止目录因为异常结束虚拟目录依然存在，导致InitDappMFSEnv失败
-	//fristDemoState.DestoryMFSEnv()
-
-	//根据设置的SHash和DBHash生成虚拟目录环境
-	if err := fristDemoState.InitDappMFSEnv(); err != nil {
-		//测试时候，忽略这个错误
-		//panic(err)
+	if err != nil {
+		panic(err)
 	}
-
 
 	//启动状态机守护线程，当中有主题的监听
 	if err := fristDemoState.Daemon(peerType); err == nil {
@@ -80,7 +66,7 @@ func main() {
 				//time.Sleep(time.Millisecond * 35)
 				time.Sleep(time.Second * 2)
 
-				act := Act.NewPerfromAct("QmP7htLz57Gz6jiCVnWQEYeRxr3V7CzVjnkjtSLWYL8seQ", "main", []string{"Parmas1", strconv.Itoa(txindex)})
+				act := Act.NewPerfromAct("QmVUaqfbeW3qNmrZqAbNrAin5aikYzpVv6GRt82Un28pW8", "main", []string{"Parmas1", strconv.Itoa(txindex)})
 
 				//签名
 				tx := Atx.NewTx(address, act)
@@ -115,6 +101,7 @@ func main() {
 			}
 		}()
 
+		avm.DaemonWorkstation()
 		//阻塞主线程
 		select {}
 

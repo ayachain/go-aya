@@ -12,7 +12,7 @@ type TxListener struct {
 
 func NewTxListner( ds* DappState ) Listener {
 
-	topics := BroadcasterTopicPrefix + ds.IPNSHash + ".Tx.Broadcast"
+	topics := BroadcasterTopicPrefix + ds.DappNS + ".Tx.Broadcast"
 
 	newListner := &TxListener{}
 	newListner.BaseListner.state = ds

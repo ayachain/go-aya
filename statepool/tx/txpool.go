@@ -4,6 +4,7 @@ import (
 	"container/list"
 	"encoding/json"
 	"fmt"
+	"github.com/ayachain/go-aya/statepool/tx/act"
 	"github.com/pkg/errors"
 	"log"
 	"time"
@@ -20,16 +21,28 @@ type TxPool struct {
 	BaseBlock		*Block
 	PendingBlock	*Block
 	TxQueue			*list.List
+	PendingRetMap	map[string]int
+	ConfirmRetCount int
 
 	//当TxPool决定打包交易时，会通过此通道发送新块当IPFSHash，委托TxPool的拥有者进行交易广播
 	//随后马上会监听此信道，查看结果，如果返回为nil，则表示成功广播
+	// out chan
 	BlockBroadcastChan		chan interface{}
+
+	//矿池提供结果的信道
+	// in chan
+	BlockBDHashChan			chan *act.TxRspAct
 }
 
-func NewTxPool() (txp *TxPool) {
+func NewTxPool(baseBlock *Block) (txp *TxPool) {
 
 	txp = &TxPool{}
+	txp.BaseBlock = baseBlock
 	txp.TxQueue = list.New()
+	//测试,暂时为1
+	txp.ConfirmRetCount = 1
+
+	txp.BlockBDHashChan = make(chan *act.TxRspAct, 16)
 
 	return
 }
@@ -62,14 +75,17 @@ func (txp* TxPool) PrintTxQueue() {
 }
 
 //交易打包线程
-//1.若交易池中无交易则直接休眠100毫秒，为了保证相应的即时性此处的休眠时间可以根据情况跳转，暂时设置在100毫秒
-//2.若交易池中有滞留的交易，并且上一块已经确定，则直接打包Block进行广播
-//3.若交易池中有滞留的交易，但是上一块还为确定，则需要等待上一块确认
 func (txp *TxPool) StartGenBlockDaemon() {
 
 	go func() {
 
 		for {
+
+			//必须在PengdingBlock = nil 到情况下才可以打包新块
+			if txp.PendingBlock != nil {
+				time.Sleep(time.Millisecond * 100)
+				continue
+			}
 
 			if txp.TxQueue.Len() > 0 {
 
@@ -99,21 +115,9 @@ func (txp *TxPool) StartGenBlockDaemon() {
 					txp.TxQueue.Remove(fit)
 				}
 
-				//2.创建Block
-				bestBlock := txp.PendingBlock
-
-				if bestBlock == nil {
-					bestBlock = txp.BaseBlock
-				}
-
-				var pblock *Block
-
-				if bestBlock == nil {
-					//新链,生成创世块
-					pblock = NewBlock(0, "", ptxs, "")
-				} else {
-					pblock = NewBlock( bestBlock.Index + 1, bestBlock.Hash, ptxs, "")
-				}
+				//2.创建Block,由于新块一定是Pending块，所以不会存在结果的BDHash
+				//其他节点收到此块若发现BDHash长度为空，则会开始计算此块的结果
+				pblock := NewBlock( txp.BaseBlock.Index + 1, txp.BaseBlock.Hash, ptxs, "")
 
 				if bhash, err := pblock.GetHash(); err != nil {
 					//若在写入时候出现问题，则交易的备份直接还原到TxQueue中
@@ -128,19 +132,15 @@ func (txp *TxPool) StartGenBlockDaemon() {
 
 					if ret == nil {
 						//广播成功
+						txp.PendingBlock = pblock
+						btxList.Init()
 
-						//改变交易池
-						if txp.BaseBlock == nil {
-							txp.BaseBlock = pblock
-						} else if txp.PendingBlock == nil {
-							txp.PendingBlock = pblock
-						} else {
-							txp.BaseBlock = txp.PendingBlock
-							txp.PendingBlock = pblock
+						//清除之前的所有回执
+						for k, v := range txp.PendingRetMap {
+							log.Println(k, v)
+							delete(txp.PendingRetMap,k)
 						}
 
-						log.Printf( "BlockBBC:%d", pblock.Index )
-						btxList.Init()
 						continue
 
 					} else {
@@ -159,10 +159,46 @@ func (txp *TxPool) StartGenBlockDaemon() {
 				}
 
 			} else {
-				//若无交易休眠500毫秒继续循环
+				//若无交易休眠100毫秒继续循环
 				time.Sleep(time.Millisecond * 100)
 			}
 
+		}
+
+	}()
+
+	//监听网络上广播的计算结果
+	go func() {
+
+		for {
+
+			rsp := <- txp.BlockBDHashChan
+
+			if rsp.BlockHash == txp.PendingBlock.Hash {
+				txp.PendingRetMap[rsp.BlockHash]++
+			}
+
+			//检测哪一个结果到数量高于x
+			for k,v := range txp.PendingRetMap {
+
+				if v > txp.ConfirmRetCount {
+
+					//用v作为正确结果出块
+					txp.PendingBlock.BDHash = k
+					txp.BlockBroadcastChan <- txp.PendingBlock
+					ret := <- txp.BlockBroadcastChan
+
+					if ret == nil {
+						txp.BaseBlock = txp.PendingBlock
+						txp.PendingBlock = nil
+
+					} else {
+						panic(ret)
+					}
+
+				}
+
+			}
 		}
 
 	}()
