@@ -3,13 +3,6 @@
   <component name="ChangeListManager">
     <list default="true" id="d8c2650b-7d7d-4792-a1a0-8aec0607cc91" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/main.go" beforeDir="false" afterPath="$PROJECT_DIR$/main.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/statepool/dappstate/bdcfactory.go" beforeDir="false" afterPath="$PROJECT_DIR$/statepool/dappstate/bdcfactory.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/statepool/dappstate/blklsn.go" beforeDir="false" afterPath="$PROJECT_DIR$/statepool/dappstate/blklsn.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/statepool/dappstate/blockbdc.go" beforeDir="false" afterPath="$PROJECT_DIR$/statepool/dappstate/blockbdc.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/statepool/dappstate/lsnfactory.go" beforeDir="false" afterPath="$PROJECT_DIR$/statepool/dappstate/lsnfactory.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/statepool/dappstate/state.go" beforeDir="false" afterPath="$PROJECT_DIR$/statepool/dappstate/state.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/statepool/dappstate/txlsn.go" beforeDir="false" afterPath="$PROJECT_DIR$/statepool/dappstate/txlsn.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/statepool/tx/txpool.go" beforeDir="false" afterPath="$PROJECT_DIR$/statepool/tx/txpool.go" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
@@ -52,8 +45,8 @@
       <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/statepool/tx/txpool.go">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="160">
-              <caret line="112" column="17" lean-forward="true" selection-start-line="112" selection-start-column="17" selection-end-line="112" selection-end-column="17" />
+            <state relative-caret-position="497">
+              <caret line="149" column="38" lean-forward="true" selection-start-line="149" selection-start-column="38" selection-end-line="149" selection-end-column="38" />
               <folding>
                 <element signature="e#12#104#0" expanded="true" />
               </folding>
@@ -315,7 +308,7 @@
       </list>
     </option>
   </component>
-  <component name="RunManager" selected="Go Build.MasterNode">
+  <component name="RunManager" selected="Go Build.WorkerNode">
     <configuration name="MasterNode" type="GoApplicationRunConfiguration" factoryName="Go Application" temporary="true">
       <module name="go-aya" />
       <working_directory value="$PROJECT_DIR$/" />
@@ -349,8 +342,8 @@
     </list>
     <recent_temporary>
       <list>
-        <item itemvalue="Go Build.MasterNode" />
         <item itemvalue="Go Build.WorkerNode" />
+        <item itemvalue="Go Build.MasterNode" />
       </list>
     </recent_temporary>
   </component>
@@ -372,8 +365,8 @@
       <window_info id="Favorites" order="2" side_tool="true" />
       <window_info anchor="bottom" id="Message" order="0" />
       <window_info anchor="bottom" id="Find" order="1" weight="0.18540145" />
-      <window_info anchor="bottom" id="Run" order="2" sideWeight="0.7712634" weight="0.46131387" />
-      <window_info active="true" anchor="bottom" id="Debug" order="3" visible="true" weight="0.43941605" />
+      <window_info anchor="bottom" id="Run" order="2" sideWeight="0.7712634" weight="0.7065693" />
+      <window_info anchor="bottom" id="Debug" order="3" weight="0.69781023" />
       <window_info anchor="bottom" id="Cvs" order="4" weight="0.25" />
       <window_info anchor="bottom" id="Inspection" order="5" weight="0.4" />
       <window_info anchor="bottom" id="TODO" order="6" weight="0.329927" />
@@ -442,12 +435,6 @@
           <line>64</line>
           <properties />
           <option name="timeStamp" value="77" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="DlvLineBreakpoint">
-          <url>file://$PROJECT_DIR$/statepool/tx/txpool.go</url>
-          <line>102</line>
-          <properties />
-          <option name="timeStamp" value="83" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
@@ -717,8 +704,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/statepool/tx/txpool.go">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="160">
-          <caret line="112" column="17" lean-forward="true" selection-start-line="112" selection-start-column="17" selection-end-line="112" selection-end-column="17" />
+        <state relative-caret-position="497">
+          <caret line="149" column="38" lean-forward="true" selection-start-line="149" selection-start-column="38" selection-end-line="149" selection-end-column="38" />
           <folding>
             <element signature="e#12#104#0" expanded="true" />
           </folding>

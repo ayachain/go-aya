@@ -100,16 +100,10 @@ func (txp *TxPool) StartGenBlockDaemon() {
 				}
 
 				//2.创建Block
-				bestBlock := txp.BaseBlock
+				bestBlock := txp.PendingBlock
 
 				if bestBlock == nil {
-
-					if txp.PendingBlock != nil {
-
-						bestBlock = txp.PendingBlock
-
-					}
-
+					bestBlock = txp.BaseBlock
 				}
 
 				var pblock *Block
@@ -118,7 +112,7 @@ func (txp *TxPool) StartGenBlockDaemon() {
 					//新链,生成创世块
 					pblock = NewBlock(0, "", ptxs, "")
 				} else {
-					pblock = NewBlock( txp.PendingBlock.Index + 1, bestBlock.Hash, ptxs, "")
+					pblock = NewBlock( bestBlock.Index + 1, bestBlock.Hash, ptxs, "")
 				}
 
 				if bhash, err := pblock.GetHash(); err != nil {
