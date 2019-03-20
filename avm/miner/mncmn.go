@@ -43,9 +43,9 @@ func (m* MNCMiner) MiningBlock(vm *Avm, b* Atx.Block) (r string, err error) {
 	dirstat, err := Autils.AFMS_PathStat(pblk.BDHash)
 
 	if err != nil {
-		return dirstat.Hash,err
-	} else {
 		return "",err
+	} else {
+		return dirstat.Hash,err
 	}
 
 }

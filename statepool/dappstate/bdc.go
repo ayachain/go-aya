@@ -66,7 +66,7 @@ func (bb *BaseBroadcaster) OpenChannel() error {
 			v, isopen := <- bb.channel
 
 			if !isopen {
-				log.Println("Broadcaster:" + bb.topics + "Channel Closed.")
+				log.Println("Broadcaster :" + bb.topics + "Channel Closed.")
 				return
 			}
 

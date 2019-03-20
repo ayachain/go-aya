@@ -75,7 +75,7 @@ func (l* BaseListner) StartListening() error {
 
 		if subs, err := shell.NewLocalShell().PubSubSubscribe(l.topics); err == nil {
 
-			log.Println("Listner : " + l.topics + " Start Listening.")
+			log.Println("Listner \t: " + l.topics + " Start Listening.")
 			l.threadstate = ListennerThread_Running
 
 			l.subscription = subs

@@ -2,14 +2,13 @@ package dappstate
 
 import (
 	Atx "github.com/ayachain/go-aya/statepool/tx"
-	"github.com/ayachain/go-aya/statepool/tx/act"
 	"github.com/ipfs/go-ipfs-api"
 	"log"
 )
 
 type RspListener struct {
 	BaseListner
-	RspActOutChan			chan *act.TxRspAct
+	RspActOutChan			chan *Atx.Tx
 }
 
 func NewRspListner( ds* DappState ) Listener {
@@ -20,14 +19,18 @@ func NewRspListner( ds* DappState ) Listener {
 	newListner.BaseListner.state = ds
 	newListner.BaseListner.topics = topics
 	newListner.BaseListner.threadstate = ListennerThread_Stop
-	newListner.handleDelegate = newListner.Handle
+	newListner.handleDelegate = newListner.rspHandleDelegate
 
 	return newListner
 }
 
-func (l *RspListener) Handle(msg *shell.Message) {
+func (l *RspListener) rspHandleDelegate(msg *shell.Message) {
 
-	mtx := Atx.Tx{}
+	if l.RspActOutChan == nil {
+		return
+	}
+
+	mtx := &Atx.Tx{}
 
 	//解码返回Tx对象
 	if err := mtx.DecodeFromHex(string(msg.Data)); err != nil {
@@ -39,11 +42,5 @@ func (l *RspListener) Handle(msg *shell.Message) {
 		return
 	}
 
-	rsp := &act.TxRspAct{}
-
-	if rsp.DecodeFromHex(mtx.ActHex) != nil {
-		return
-	}
-
-	l.RspActOutChan <- rsp
+	l.RspActOutChan <- mtx
 }

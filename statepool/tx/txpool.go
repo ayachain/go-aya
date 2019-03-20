@@ -4,7 +4,7 @@ import (
 	"container/list"
 	"encoding/json"
 	"fmt"
-	"github.com/ayachain/go-aya/statepool/tx/act"
+	Act "github.com/ayachain/go-aya/statepool/tx/act"
 	"github.com/pkg/errors"
 	"log"
 	"time"
@@ -21,7 +21,7 @@ type TxPool struct {
 	BaseBlock		*Block
 	PendingBlock	*Block
 	TxQueue			*list.List
-	PendingRetMap	map[string]int
+	PendingRetMap	map[string]*list.List
 	ConfirmRetCount int
 
 	//当TxPool决定打包交易时，会通过此通道发送新块当IPFSHash，委托TxPool的拥有者进行交易广播
@@ -31,7 +31,7 @@ type TxPool struct {
 
 	//矿池提供结果的信道
 	// in chan
-	BlockBDHashChan			chan *act.TxRspAct
+	BlockBDHashChan			chan *Tx
 }
 
 func NewTxPool(baseBlock *Block) (txp *TxPool) {
@@ -41,8 +41,8 @@ func NewTxPool(baseBlock *Block) (txp *TxPool) {
 	txp.TxQueue = list.New()
 	//测试,暂时为1
 	txp.ConfirmRetCount = 1
-
-	txp.BlockBDHashChan = make(chan *act.TxRspAct, 16)
+	txp.BlockBDHashChan = make(chan *Tx)
+	txp.PendingRetMap = make(map[string]*list.List)
 
 	return
 }
@@ -77,6 +77,7 @@ func (txp* TxPool) PrintTxQueue() {
 //交易打包线程
 func (txp *TxPool) StartGenBlockDaemon() {
 
+	//打包线程
 	go func() {
 
 		for {
@@ -117,30 +118,29 @@ func (txp *TxPool) StartGenBlockDaemon() {
 
 				//2.创建Block,由于新块一定是Pending块，所以不会存在结果的BDHash
 				//其他节点收到此块若发现BDHash长度为空，则会开始计算此块的结果
-				pblock := NewBlock( txp.BaseBlock.Index + 1, txp.BaseBlock.Hash, ptxs, "")
+				nblock := NewBlock( txp.BaseBlock.Index + 1, txp.BaseBlock.GetHash(), ptxs, "")
 
-				if bhash, err := pblock.GetHash(); err != nil {
+				if bhash := nblock.GetHash(); len(bhash) <= 0 {
+
+					log.Println("TxPool: Writing new block to ipfs faild. continue and retry at next loop.")
+
 					//若在写入时候出现问题，则交易的备份直接还原到TxQueue中
 					txp.TxQueue.PushFrontList(btxList)
-					log.Println(err)
+
 					continue
+
 				} else {
+
 					//写入成功先广播Block，广播成功后删除备份继续等待
 					//委托DappState的广播者进行交易广播
 					txp.BlockBroadcastChan <- bhash
 					ret := <-txp.BlockBroadcastChan
 
 					if ret == nil {
+
 						//广播成功
-						txp.PendingBlock = pblock
+						txp.PendingBlock = nblock
 						btxList.Init()
-
-						//清除之前的所有回执
-						for k, v := range txp.PendingRetMap {
-							log.Println(k, v)
-							delete(txp.PendingRetMap,k)
-						}
-
 						continue
 
 					} else {
@@ -168,34 +168,50 @@ func (txp *TxPool) StartGenBlockDaemon() {
 	}()
 
 	//监听网络上广播的计算结果
+	//出块线程
 	go func() {
 
 		for {
 
-			rsp := <- txp.BlockBDHashChan
+			rsptx := <- txp.BlockBDHashChan
+			rsp := &Act.TxRspAct{}
 
-			if rsp.BlockHash == txp.PendingBlock.Hash {
-				txp.PendingRetMap[rsp.BlockHash]++
+			if rsp.DecodeFromHex(rsptx.ActHex) != nil {
+				return
+			}
+
+			if rsp.BlockHash == txp.PendingBlock.GetHash() {
+
+				_,exist := txp.PendingRetMap[rsp.ResultState]
+
+				if !exist {
+					txp.PendingRetMap[rsp.ResultState] = list.New()
+				}
+
+				txp.PendingRetMap[rsp.ResultState].PushBack(rsptx)
 			}
 
 			//检测哪一个结果到数量高于x
 			for k,v := range txp.PendingRetMap {
 
-				if v > txp.ConfirmRetCount {
+				if v.Len() >= txp.ConfirmRetCount {
 
 					//用v作为正确结果出块
 					txp.PendingBlock.BDHash = k
-					txp.BlockBroadcastChan <- txp.PendingBlock
+					txp.BlockBroadcastChan <- txp.PendingBlock.RefreshHash()
 					ret := <- txp.BlockBroadcastChan
 
 					if ret == nil {
+
+						//清除之前的所有回执
+						txp.PendingRetMap = make(map[string]*list.List)
+
 						txp.BaseBlock = txp.PendingBlock
 						txp.PendingBlock = nil
 
 					} else {
 						panic(ret)
 					}
-
 				}
 
 			}

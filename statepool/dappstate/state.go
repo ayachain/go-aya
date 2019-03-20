@@ -1,6 +1,7 @@
 package dappstate
 
 import (
+	"encoding/json"
 	Atx "github.com/ayachain/go-aya/statepool/tx"
 	"github.com/ipfs/go-ipfs-api"
 	"github.com/libp2p/go-libp2p-peer"
@@ -16,10 +17,9 @@ const (
 //Dapp 状态机
 type DappState struct {
 
-	DappNS		string
+	DappNS			string
 	LatestBDHash 	string
 	Pool*			Atx.TxPool
-	sh*				shell.Shell				`json:"-"`
 	//Master Peer IDS 可信任的主节点ID
 	mpids[]			string					`json:"-"`
 	listnerMap 		map[string]Listener 	`json:"-"`
@@ -29,19 +29,26 @@ type DappState struct {
 
 func NewDappState(dappns string) (dstate *DappState, err error) {
 
-	ipfshash, err := shell.NewLocalShell().Resolve(dappns)
+	aappbs, err := shell.NewLocalShell().BlockGet(dappns)
 
 	if err != nil {
 		return nil, err
 	}
 
-	dstate = &DappState{
-		DappNS:dappns,
-		LatestBDHash:ipfshash,
+	app := &Aapp{}
+
+	if json.Unmarshal(aappbs, app) != nil {
+		return nil, err
 	}
 
-	dstate.Pool = Atx.NewTxPool(nil)
-	dstate.sh = shell.NewLocalShell()
+	dstate = &DappState{
+		DappNS:dappns,
+		LatestBDHash:app.BDHash,
+		mpids:app.MasterNode,
+	}
+
+	dstate.Pool = Atx.NewTxPool(Atx.NewBlock(0,"",nil,app.BDHash))
+
 	dstate.listnerMap = make(map[string]Listener)
 	dstate.broadcasterMap = make(map[string]Broadcaster)
 
@@ -129,7 +136,6 @@ func (dstate *DappState) initListner(peerType int) error {
 	}
 
 
-
 	if peerType == DappPeerType_Master {
 
 		//Rsp
@@ -138,7 +144,7 @@ func (dstate *DappState) initListner(peerType int) error {
 		if err := dstate.AddListner(lsn); err != nil {
 			return err
 		} else {
-			dstate.Pool.BlockBDHashChan = lsn.(*RspListener).RspActOutChan
+			lsn.(*RspListener).RspActOutChan = dstate.Pool.BlockBDHashChan
 		}
 
 	}

@@ -1,14 +1,11 @@
 package main
 
 import (
-	"encoding/hex"
 	"flag"
-	"fmt"
 	"github.com/ayachain/go-aya/avm"
+	Aks "github.com/ayachain/go-aya/keystore"
 	DState "github.com/ayachain/go-aya/statepool/dappstate"
-	Atx "github.com/ayachain/go-aya/statepool/tx"
 	Act "github.com/ayachain/go-aya/statepool/tx/act"
-	"github.com/ethereum/go-ethereum/crypto"
 	"log"
 	"strconv"
 	"time"
@@ -26,23 +23,8 @@ func main() {
 		peerType = DState.DappPeerType_Master
 	}
 
-	//模拟发送交易
-	//生成地址和私钥
-	key, err := crypto.GenerateKey()
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	// 私钥:64个字符
-	privateKey := hex.EncodeToString(key.D.Bytes())
-	log.Println("PrivateKey : " + privateKey)
-
-	// 得到地址：42个字符
-	address := crypto.PubkeyToAddress(key.PublicKey).Hex()
-	log.Println("Address : " + address)
-
 	//生成一个Dapp状态机
-	fristDemoState, err := DState.NewDappState("QmVUaqfbeW3qNmrZqAbNrAin5aikYzpVv6GRt82Un28pW8")
+	fristDemoState, err := DState.NewDappState("QmcBx4Ua8WmZPE9At81jRiAnjBYviD7V8noGtG5teEQTnh")
 
 	if err != nil {
 		panic(err)
@@ -66,24 +48,10 @@ func main() {
 				//time.Sleep(time.Millisecond * 35)
 				time.Sleep(time.Second * 2)
 
-				act := Act.NewPerfromAct("QmVUaqfbeW3qNmrZqAbNrAin5aikYzpVv6GRt82Un28pW8", "main", []string{"Parmas1", strconv.Itoa(txindex)})
+				act := Act.NewPerfromAct("QmcBx4Ua8WmZPE9At81jRiAnjBYviD7V8noGtG5teEQTnh", "main", []string{"Parmas1", strconv.Itoa(txindex)})
 
 				//签名
-				tx := Atx.NewTx(address, act)
-
-				sig, err := crypto.Sign(crypto.Keccak256(tx.GetActHash()), key)
-
-				if err != nil {
-					panic(err)
-				}
-
-				tx.Signature = "0x" + hex.EncodeToString(sig)
-
-				//验证
-				if !tx.VerifySign() {
-					log.Println("Verify Faild.")
-					return
-				}
+				tx := Aks.DefaultPeerKS().CreateSignedTx(act)
 
 				if txhex, err := tx.EncodeToHex(); err == nil {
 

@@ -30,8 +30,8 @@ func (as *AFMS_Stat) IsFile() bool {
 
 func AFMS_PathStat(mpath string) (stat *AFMS_Stat, err error) {
 
-	if mpath[0] != '/' {
-		return nil, errors.New("paths must start with a leading slash.")
+	if !strings.HasPrefix(mpath,"/") {
+		mpath = "/" + mpath
 	}
 
 	if r, err := shell.NewLocalShell().Request("files/stat").Arguments(mpath).Send(context.Background()); err != nil {
@@ -91,22 +91,22 @@ func AFMS_DownloadPathToDir(source string, dist string) bool {
 }
 
 //装载Dapp运行文件
-func AFMS_ReloadDapp(nsp string, dpath string) bool {
+func AFMS_ReloadDapp(bdhash string, mfspath string) bool {
 
-	var mfsTpath string
-
-	if nsp[0] == '/' {
-		mfsTpath = nsp
-	} else {
-		mfsTpath = "/" + nsp
+	if !strings.HasPrefix(bdhash,"/ipfs") {
+		bdhash = "/ipfs/" + bdhash
 	}
 
-	if AFMS_IsPathExist(mfsTpath) {
+	if !strings.HasPrefix(mfspath, "/") {
+		mfspath = "/" + mfspath
+	}
+
+	if AFMS_IsPathExist(mfspath) {
 		//文件存在直接删除
-		AFMS_RemovePath(mfsTpath)
+		AFMS_RemovePath(mfspath)
 	}
 
-	return AFMS_DownloadPathToDir(dpath, mfsTpath)
+	return AFMS_DownloadPathToDir(bdhash, mfspath)
 
 }
 
@@ -125,7 +125,7 @@ func AFMS_DestoryDapp(nsp string) bool {
 
 func AFMS_ReadDappCode(path string) (code string, err error) {
 
-	mfsTpath := "/" + path + "_source/main.lua"
+	mfsTpath := "/" + path + "/_dapp/main.lua"
 
 	bs,err := shell.NewLocalShell().Request("files/read").Arguments(mfsTpath).Send(context.Background())
 

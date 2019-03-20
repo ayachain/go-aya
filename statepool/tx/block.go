@@ -12,7 +12,7 @@ type Block struct {
 	Prev	string
 	Txs[]	Tx
 	BDHash	string		//Base Dir Ipfs Hash
-	Hash	string		`json:"-"`
+	hash	string		`json:"-"`
 }
 
 func NewBlock(index uint64, prev string, txs[] Tx, bdhash string) (b* Block){
@@ -22,13 +22,32 @@ func NewBlock(index uint64, prev string, txs[] Tx, bdhash string) (b* Block){
 	return b
 }
 
-func (b *Block) GetHash() (bhash string, err error) {
+func (b *Block) RefreshHash() string {
 
-	if len(b.Hash) > 0 {
-		return b.Hash, nil
+	hash, err := b.WriteBlock()
+
+	if err != nil {
+		return ""
+	} else {
+		b.hash = hash
+		return hash
 	}
 
-	return b.WriteBlock()
+}
+
+func (b *Block) GetHash() (bhash string) {
+
+	if len(b.hash) > 0 {
+		return b.hash
+	}
+
+	hash, err := b.WriteBlock()
+
+	if err != nil {
+		return ""
+	} else {
+		return hash
+	}
 }
 
 func (b *Block) WriteBlock() (bhash string, err error) {
@@ -39,7 +58,7 @@ func (b *Block) WriteBlock() (bhash string, err error) {
 		return "", err
 	}
 
-	b.Hash = bhash
+	b.hash = bhash
 
 	return bhash, nil
 }
@@ -57,7 +76,7 @@ func ReadBlock(hash string) (b *Block, err error) {
 		return nil, err
 	}
 
-	b.Hash = hash
+	b.hash = hash
 
 	return b, nil
 }

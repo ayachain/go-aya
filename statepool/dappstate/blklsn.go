@@ -2,6 +2,7 @@ package dappstate
 
 import (
 	MiningPool "github.com/ayachain/go-aya/avm"
+	Miner "github.com/ayachain/go-aya/avm/miner"
 	Atx "github.com/ayachain/go-aya/statepool/tx"
 	"github.com/ipfs/go-ipfs-api"
 )
@@ -39,16 +40,21 @@ func (l *BlockListener) Handle(msg *shell.Message) {
 
 	if bcb, err := Atx.ReadBlock(string(msg.Data)); err == nil {
 
-		bcb.PrintIndent()
-
 		if len(bcb.BDHash) > 0 {
 			//有Hash一定是出块广播
 			l.state.Pool.BaseBlock = bcb
+			bcb.PrintIndent()
 
 		} else {
 			//否则一定是广播了一个等待计算的Block
 			l.state.Pool.PendingBlock = bcb
-			MiningPool.AvmWorkstation.MinerChannel <- bcb
+
+			//l.state.DappNS
+			MiningPool.AvmWorkstation.MinerChannel <- &Miner.MiningTask{
+				DappNS:l.state.DappNS,
+				PendingBlock:bcb,
+				ResultChannel:l.state.GetBroadcastChannel(PubsubChannel_Rsp),
+			}
 		}
 
 	}

@@ -3,16 +3,19 @@
   <component name="ChangeListManager">
     <list default="true" id="d8c2650b-7d7d-4792-a1a0-8aec0607cc91" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/avm/miner/mncmn.go" beforeDir="false" afterPath="$PROJECT_DIR$/avm/miner/mncmn.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/avm/workstn.go" beforeDir="false" afterPath="$PROJECT_DIR$/avm/workstn.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/main.go" beforeDir="false" afterPath="$PROJECT_DIR$/main.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/statepool/dappstate/bdcfactory.go" beforeDir="false" afterPath="$PROJECT_DIR$/statepool/dappstate/bdcfactory.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/statepool/dappstate/bdc.go" beforeDir="false" afterPath="$PROJECT_DIR$/statepool/dappstate/bdc.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/statepool/dappstate/blklsn.go" beforeDir="false" afterPath="$PROJECT_DIR$/statepool/dappstate/blklsn.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/statepool/dappstate/blockbdc.go" beforeDir="false" afterPath="$PROJECT_DIR$/statepool/dappstate/blockbdc.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/statepool/dappstate/lsnfactory.go" beforeDir="false" afterPath="$PROJECT_DIR$/statepool/dappstate/lsnfactory.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/statepool/dappstate/lsn.go" beforeDir="false" afterPath="$PROJECT_DIR$/statepool/dappstate/lsn.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/statepool/dappstate/rspbdc.go" beforeDir="false" afterPath="$PROJECT_DIR$/statepool/dappstate/rspbdc.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/statepool/dappstate/rsplsn.go" beforeDir="false" afterPath="$PROJECT_DIR$/statepool/dappstate/rsplsn.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/statepool/dappstate/state.go" beforeDir="false" afterPath="$PROJECT_DIR$/statepool/dappstate/state.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/statepool/dappstate/txbdc.go" beforeDir="false" afterPath="$PROJECT_DIR$/statepool/dappstate/txbdc.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/statepool/dappstate/txlsn.go" beforeDir="false" afterPath="$PROJECT_DIR$/statepool/dappstate/txlsn.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/statepool/tx/act/txrsp.go" beforeDir="false" afterPath="$PROJECT_DIR$/statepool/tx/act/txrsp.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/statepool/tx/block.go" beforeDir="false" afterPath="$PROJECT_DIR$/statepool/tx/block.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/statepool/tx/txpool.go" beforeDir="false" afterPath="$PROJECT_DIR$/statepool/tx/txpool.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/utils/amfs.go" beforeDir="false" afterPath="$PROJECT_DIR$/utils/amfs.go" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -23,52 +26,22 @@
   <component name="FileEditorManager">
     <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
       <file pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/statepool/dappstate/state.go">
+        <entry file="file://$PROJECT_DIR$/statepool/dappstate/rspbdc.go">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="255">
-              <caret line="34" column="23" lean-forward="true" selection-start-line="34" selection-start-column="23" selection-end-line="34" selection-end-column="23" />
+            <state relative-caret-position="161">
+              <caret line="35" column="32" selection-start-line="35" selection-start-column="32" selection-end-line="35" selection-end-column="32" />
               <folding>
-                <element signature="e#292#557#0" />
-                <element signature="n#!!block;n#ContainMaterPeer#0" />
-                <element signature="n#!!block;n#Daemon#0" />
-                <element signature="n#!!block;n#GetBroadcastChannel#0" />
-                <element signature="n#!!block;n#AddListner#0" />
-                <element signature="n#!!block;n#initListner#0" />
-                <element signature="n#!!block;n#shutdownListening#0" />
-                <element signature="n#!!block;n#startingListening#0" />
-                <element signature="n#!!block;n#AddBroadcaster#0" />
-                <element signature="n#!!block;n#initBroadcast#0" />
-                <element signature="n#!!block;n#startingBroadcasting#0" />
-                <element signature="n#!!block;n#shutdownBroadcasting#0" />
-                <element signature="n#!!block;n#Clean#0" />
+                <element signature="e#19#110#0" expanded="true" />
               </folding>
             </state>
           </provider>
         </entry>
       </file>
       <file pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/avm/miner/mncmn.go">
+        <entry file="file://$PROJECT_DIR$/statepool/dappstate/blklsn.go">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="548">
-              <caret line="50" column="1" lean-forward="true" selection-start-line="50" selection-start-column="1" selection-end-line="50" selection-end-column="1" />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file pinned="false" current-in-tab="true">
-        <entry file="file://$PROJECT_DIR$/avm/workstn.go">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="345">
-              <caret line="29" column="13" lean-forward="true" selection-start-line="29" selection-start-column="13" selection-end-line="29" selection-end-column="13" />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/statepool/dappstate/bdcfactory.go">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="300">
-              <caret line="20" column="1" lean-forward="true" selection-start-line="20" selection-start-column="1" selection-end-line="20" selection-end-column="1" />
+            <state relative-caret-position="112">
+              <caret line="46" selection-start-line="46" selection-end-line="46" />
             </state>
           </provider>
         </entry>
@@ -76,10 +49,9 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/statepool/tx/txpool.go">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="212">
-              <caret line="33" column="46" lean-forward="true" selection-start-line="33" selection-start-column="28" selection-end-line="33" selection-end-column="46" />
+            <state relative-caret-position="168">
+              <caret line="176" selection-start-line="176" selection-end-line="176" />
               <folding>
-                <element signature="e#12#104#0" expanded="true" />
                 <element signature="n#!!block;n#PushTx#0" />
                 <element signature="n#!!block;n#PrintTxQueue#0" />
               </folding>
@@ -88,49 +60,52 @@
         </entry>
       </file>
       <file pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/statepool/dappstate/blockbdc.go">
+        <entry file="file://$PROJECT_DIR$/avm/miner/mncmn.go">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="225">
-              <caret line="15" column="1" lean-forward="true" selection-start-line="1" selection-end-line="15" selection-end-column="1" />
+            <state relative-caret-position="155">
+              <caret line="47" column="28" lean-forward="true" selection-start-line="47" selection-start-column="28" selection-end-line="47" selection-end-column="28" />
             </state>
           </provider>
         </entry>
       </file>
       <file pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/statepool/dappstate/rspbdc.go">
+        <entry file="file://$PROJECT_DIR$/statepool/dappstate/bdc.go">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="225">
-              <caret line="15" column="1" lean-forward="true" selection-start-line="15" selection-start-column="1" selection-end-line="15" selection-end-column="1" />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/statepool/dappstate/rsplsn.go">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="226">
-              <caret line="16" column="4" selection-start-line="16" selection-start-column="4" selection-end-line="16" selection-end-column="71" />
+            <state relative-caret-position="111">
+              <caret line="76" selection-start-line="76" selection-end-line="76" />
               <folding>
-                <element signature="e#19#67#0" expanded="true" />
+                <element signature="e#19#142#0" expanded="true" />
               </folding>
             </state>
           </provider>
         </entry>
       </file>
       <file pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/statepool/dappstate/txlsn.go">
+        <entry file="file://$PROJECT_DIR$/avm/miner/task.go">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="555">
-              <caret line="41" lean-forward="true" selection-start-line="8" selection-end-line="41" />
+            <state relative-caret-position="270">
+              <caret line="20" column="1" selection-start-line="19" selection-start-column="12" selection-end-line="19" selection-end-column="22" />
             </state>
           </provider>
         </entry>
       </file>
       <file pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/statepool/dappstate/txbdc.go">
+        <entry file="file://$PROJECT_DIR$/avm/workstn.go">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="165">
-              <caret line="11" column="44" selection-start-line="11" selection-start-column="44" selection-end-line="11" selection-end-column="44" />
+            <state relative-caret-position="111">
+              <caret line="64" column="24" selection-start-line="64" selection-start-column="24" selection-end-line="64" selection-end-column="24" />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="true">
+        <entry file="file://$PROJECT_DIR$/statepool/dappstate/rsplsn.go">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="170">
+              <caret line="43" lean-forward="true" selection-start-line="43" selection-end-line="43" />
+              <folding>
+                <element signature="e#19#161#0" expanded="true" />
+              </folding>
             </state>
           </provider>
         </entry>
@@ -146,10 +121,6 @@
   </component>
   <component name="FindInProjectRecents">
     <findStrings>
-      <find>SearchBlockByPrev</find>
-      <find>GetBlock</find>
-      <find>StartListening</find>
-      <find>QmUNLLsPACCz1vLxQVkXqqLX5R1X345qqfHbsf67hvA3Nn</find>
       <find>SourceHash</find>
       <find>d</find>
       <find>func (l* baseListner) Handle(msg *shell.Message) {</find>
@@ -159,10 +130,8 @@
       <find>handleDelegate</find>
       <find>《</find>
       <find>&lt;-</find>
-      <find>BlockBroadcastChan</find>
       <find>Begin Listner Topics</find>
       <find>Block.Broadcast</find>
-      <find>mpids</find>
       <find>TxPool Pushed New Tx</find>
       <find>RecvBoardcastBlock</find>
       <find>DappState Daemoning.</find>
@@ -171,6 +140,17 @@
       <find>DappPerrType_Worker</find>
       <find>NewTxBroadCaseter</find>
       <find>open</find>
+      <find>mpids</find>
+      <find>&quot;Broadcaster</find>
+      <find>&quot;Listner</find>
+      <find>EncodeToHex</find>
+      <find>PendingRetMap</find>
+      <find>BlockBroadcastChan</find>
+      <find>txp.BlockBroadcastChan &lt;-</find>
+      <find>bcHandleDelegate</find>
+      <find>RspActOutChan</find>
+      <find>BlockBDHashChan</find>
+      <find>Response a Rsp.</find>
     </findStrings>
   </component>
   <component name="GOROOT" path="/usr/local/Cellar/go/1.11.2/libexec" />
@@ -180,11 +160,6 @@
   <component name="IdeDocumentHistory">
     <option name="CHANGED_PATHS">
       <list>
-        <option value="$PROJECT_DIR$/ChainStruct/DappState/DappState.go" />
-        <option value="$PROJECT_DIR$/MemoryPool/ChainStruct/DappState/Transaction/TransactionChain.go" />
-        <option value="$PROJECT_DIR$/MemoryPool/ChainStruct/BlockChain/Chain.go" />
-        <option value="$PROJECT_DIR$/MemoryPool/MemoryPool.go" />
-        <option value="$PROJECT_DIR$/MemoryPool/ChainStruct/DappState/Transaction/Transaction.go" />
         <option value="$PROJECT_DIR$/statepool/treansaction/base.go" />
         <option value="$PROJECT_DIR$/statepool/tx/action/actionbase.go" />
         <option value="$PROJECT_DIR$/statepool/tx/act/Act.go" />
@@ -203,34 +178,39 @@
         <option value="$PROJECT_DIR$/statepool/dappstate/blklistener.go" />
         <option value="$PROJECT_DIR$/statepool/dappstate/replistener.go" />
         <option value="$PROJECT_DIR$/utils/dappmfs.go" />
-        <option value="$PROJECT_DIR$/statepool/tx/act/txrsp.go" />
         <option value="$PROJECT_DIR$/utils/hash.go" />
         <option value="$PROJECT_DIR$/statepool/tx/act/link.go" />
         <option value="$PROJECT_DIR$/statepool/tx/act/base.go" />
         <option value="$PROJECT_DIR$/statepool/tx/act/perfrom.go" />
-        <option value="$PROJECT_DIR$/statepool/dappstate/lsn.go" />
-        <option value="$PROJECT_DIR$/statepool/dappstate/bdc.go" />
         <option value="$PROJECT_DIR$/statepool/tx/base.go" />
-        <option value="$PROJECT_DIR$/statepool/tx/block.go" />
         <option value="$PROJECT_DIR$/statepool/tx/chain.go" />
         <option value="$PROJECT_DIR$/utils/merkle.go" />
         <option value="$PROJECT_DIR$/avm/avm.go" />
         <option value="$PROJECT_DIR$/avm/miner/miner.go" />
-        <option value="$PROJECT_DIR$/avm/workstn.go" />
         <option value="$PROJECT_DIR$/avm/miner/avm.go" />
+        <option value="$PROJECT_DIR$/statepool/dappstate/blockbdc.go" />
+        <option value="$PROJECT_DIR$/statepool/dappstate/txlsn.go" />
+        <option value="$PROJECT_DIR$/statepool/dappstate/lsnfactory.go" />
+        <option value="$PROJECT_DIR$/statepool/dappstate/bdcfactory.go" />
+        <option value="$PROJECT_DIR$/statepool/dappstate/aapp.go" />
+        <option value="$PROJECT_DIR$/statepool/dappstate/bdc.go" />
+        <option value="$PROJECT_DIR$/statepool/dappstate/lsn.go" />
         <option value="$PROJECT_DIR$/utils/amfs.go" />
         <option value="$PROJECT_DIR$/avm/miner/mncmn.go" />
-        <option value="$PROJECT_DIR$/statepool/dappstate/blockbdc.go" />
         <option value="$PROJECT_DIR$/statepool/dappstate/txbdc.go" />
-        <option value="$PROJECT_DIR$/statepool/dappstate/txlsn.go" />
+        <option value="$PROJECT_DIR$/avm/miner/mtask.go" />
+        <option value="$PROJECT_DIR$/avm/miner/task.go" />
+        <option value="$PROJECT_DIR$/keystore/keystore.go" />
+        <option value="$PROJECT_DIR$/keystore/ks.go" />
         <option value="$PROJECT_DIR$/main.go" />
-        <option value="$PROJECT_DIR$/statepool/dappstate/blklsn.go" />
-        <option value="$PROJECT_DIR$/statepool/tx/txpool.go" />
-        <option value="$PROJECT_DIR$/statepool/dappstate/rsplsn.go" />
-        <option value="$PROJECT_DIR$/statepool/dappstate/lsnfactory.go" />
         <option value="$PROJECT_DIR$/statepool/dappstate/rspbdc.go" />
-        <option value="$PROJECT_DIR$/statepool/dappstate/bdcfactory.go" />
+        <option value="$PROJECT_DIR$/statepool/tx/act/txrsp.go" />
+        <option value="$PROJECT_DIR$/statepool/tx/block.go" />
+        <option value="$PROJECT_DIR$/statepool/tx/txpool.go" />
         <option value="$PROJECT_DIR$/statepool/dappstate/state.go" />
+        <option value="$PROJECT_DIR$/avm/workstn.go" />
+        <option value="$PROJECT_DIR$/statepool/dappstate/blklsn.go" />
+        <option value="$PROJECT_DIR$/statepool/dappstate/rsplsn.go" />
       </list>
     </option>
   </component>
@@ -269,6 +249,11 @@
             <path>
               <item name="go-aya" type="b2602c69:ProjectViewProjectNode" />
               <item name="go-aya" type="462c0819:PsiDirectoryNode" />
+              <item name="keystore" type="462c0819:PsiDirectoryNode" />
+            </path>
+            <path>
+              <item name="go-aya" type="b2602c69:ProjectViewProjectNode" />
+              <item name="go-aya" type="462c0819:PsiDirectoryNode" />
               <item name="statepool" type="462c0819:PsiDirectoryNode" />
             </path>
             <path>
@@ -289,11 +274,6 @@
               <item name="statepool" type="462c0819:PsiDirectoryNode" />
               <item name="tx" type="462c0819:PsiDirectoryNode" />
               <item name="act" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="go-aya" type="b2602c69:ProjectViewProjectNode" />
-              <item name="go-aya" type="462c0819:PsiDirectoryNode" />
-              <item name="utils" type="462c0819:PsiDirectoryNode" />
             </path>
           </expand>
           <select />
@@ -385,13 +365,13 @@
     <frame x="0" y="23" width="1253" height="777" extended-state="6" />
     <editor active="true" />
     <layout>
-      <window_info active="true" content_ui="combo" id="Project" order="0" visible="true" weight="0.2353427" />
+      <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.2353427" />
       <window_info id="Structure" order="1" side_tool="true" weight="0.25" />
       <window_info id="Favorites" order="2" side_tool="true" />
       <window_info anchor="bottom" id="Message" order="0" />
       <window_info anchor="bottom" id="Find" order="1" weight="0.18540145" />
-      <window_info anchor="bottom" id="Run" order="2" sideWeight="0.7712634" weight="0.3810219" />
-      <window_info anchor="bottom" id="Debug" order="3" weight="0.51386863" />
+      <window_info anchor="bottom" id="Run" order="2" sideWeight="0.7712634" weight="0.44671533" />
+      <window_info active="true" anchor="bottom" id="Debug" order="3" visible="true" weight="0.4861314" />
       <window_info anchor="bottom" id="Cvs" order="4" weight="0.25" />
       <window_info anchor="bottom" id="Inspection" order="5" weight="0.4" />
       <window_info anchor="bottom" id="TODO" order="6" weight="0.329927" />
@@ -432,18 +412,10 @@
           <line>45</line>
           <option name="timeStamp" value="29" />
         </line-breakpoint>
-        <line-breakpoint enabled="true" type="DlvLineBreakpoint">
-          <url>file://$PROJECT_DIR$/statepool/tx/act/base.go</url>
-          <line>24</line>
-          <option name="timeStamp" value="52" />
-        </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
   </component>
   <component name="editorHistoryManager">
-    <entry file="file://$PROJECT_DIR$/MemoryPool/ChainStruct/BlockChain/Chain.go" />
-    <entry file="file://$PROJECT_DIR$/MemoryPool/ChainStruct/DappState/Transaction/TransactionChain.go" />
-    <entry file="file://$PROJECT_DIR$/MemoryPool/ChainStruct/DappState/Transaction/Transaction.go" />
     <entry file="file://$PROJECT_DIR$/MemoryPool/ChainStruct/DappState/DappState.go" />
     <entry file="file://$PROJECT_DIR$/MemoryPool/MemoryPool.go" />
     <entry file="file://$PROJECT_DIR$/MemoryPool/ChainStruct/BlockChain/Block.go" />
@@ -462,24 +434,10 @@
     <entry file="file://$PROJECT_DIR$/statepool/dappstate/listener/base.go" />
     <entry file="file://$PROJECT_DIR$/statepool/dappstate/txcommit.go" />
     <entry file="file://$PROJECT_DIR$/utils/dappmfs.go" />
-    <entry file="file:///usr/local/Cellar/go/1.11.2/libexec/src/runtime/panic.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="57">
-          <caret line="607" selection-start-line="607" selection-end-line="607" />
-        </state>
-      </provider>
-    </entry>
     <entry file="file:///usr/local/Cellar/go/1.11.2/libexec/src/runtime/stack.go">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="65">
           <caret line="1007" selection-start-line="1007" selection-end-line="1007" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file:///usr/local/Cellar/go/1.11.2/libexec/src/runtime/asm_amd64.s">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="65">
-          <caret line="428" selection-start-line="428" selection-end-line="428" />
         </state>
       </provider>
     </entry>
@@ -508,43 +466,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="205">
           <caret line="651" column="15" selection-start-line="651" selection-start-column="4" selection-end-line="651" selection-end-column="15" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/statepool/tx/act/base.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="172">
-          <caret line="12" column="15" lean-forward="true" selection-start-line="12" selection-start-column="15" selection-end-line="12" selection-end-column="15" />
-          <folding>
-            <element signature="e#13#90#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/statepool/tx/act/link.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="105">
-          <caret line="7" column="39" selection-start-line="7" selection-start-column="39" selection-end-line="7" selection-end-column="39" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/statepool/tx/act/perfrom.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="360">
-          <caret line="24" column="12" selection-start-line="24" selection-start-column="12" selection-end-line="24" selection-end-column="12" />
-          <folding>
-            <element signature="e#13#90#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/statepool/tx/block.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="150">
-          <caret line="10" column="18" selection-start-line="10" selection-start-column="18" selection-end-line="10" selection-end-column="18" />
-          <folding>
-            <element signature="e#12#92#0" expanded="true" />
-          </folding>
         </state>
       </provider>
     </entry>
@@ -592,20 +513,38 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/statepool/dappstate/bdc.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="400">
-          <caret line="28" column="4" selection-start-line="28" selection-start-column="4" selection-end-line="28" selection-end-column="44" />
-          <folding>
-            <element signature="e#19#142#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
     <entry file="file:///usr/local/Cellar/go/1.11.2/libexec/src/builtin/builtin.go">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="220">
           <caret line="213" column="5" selection-start-line="213" selection-start-column="5" selection-end-line="213" selection-end-column="5" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/../../yuin/gopher-lua/function.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="210">
+          <caret line="17" column="1" lean-forward="true" selection-start-line="17" selection-start-column="1" selection-end-line="17" selection-end-column="1" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/statepool/dappstate/txlsn.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="555">
+          <caret line="41" lean-forward="true" selection-start-line="8" selection-end-line="41" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/statepool/dappstate/lsnfactory.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="30">
+          <caret line="2" column="5" selection-start-line="2" selection-start-column="5" selection-end-line="2" selection-end-column="5" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/statepool/dappstate/bdcfactory.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="75">
+          <caret line="5" column="21" selection-start-line="5" selection-start-column="4" selection-end-line="5" selection-end-column="21" />
         </state>
       </provider>
     </entry>
@@ -619,137 +558,138 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/../../yuin/gopher-lua/function.go">
+    <entry file="file://$PROJECT_DIR$/statepool/dappstate/aapp.go">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="210">
-          <caret line="17" column="1" lean-forward="true" selection-start-line="17" selection-start-column="1" selection-end-line="17" selection-end-column="1" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/avm/miner/avm.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="203">
-          <caret line="24" lean-forward="true" selection-start-line="24" selection-end-line="24" />
-          <folding>
-            <element signature="e#15#102#0" expanded="true" />
-          </folding>
+        <state relative-caret-position="75">
+          <caret line="5" column="1" selection-start-line="5" selection-start-column="1" selection-end-line="5" selection-end-column="1" />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/utils/amfs.go">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="103">
-          <caret line="19" column="26" lean-forward="true" selection-start-line="19" selection-start-column="26" selection-end-line="19" selection-end-column="26" />
+        <state relative-caret-position="186">
+          <caret line="62" selection-start-line="62" selection-end-line="62" />
           <folding>
             <element signature="n#!!block;n#IsDir#0" />
             <element signature="n#!!block;n#IsFile#0" />
-            <element signature="n#!!block;n#AFMS_PathStat#0" />
-            <element signature="n#!!block;n#AFMS_IsPathExist#0" />
             <element signature="n#!!block;n#AFMS_RemovePath#0" />
             <element signature="n#!!block;n#AFMS_DestoryDapp#0" />
           </folding>
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/main.go">
+    <entry file="file://$PROJECT_DIR$/avm/miner/avm.go">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="525">
-          <caret line="35" column="15" selection-start-line="35" selection-start-column="15" selection-end-line="35" selection-end-column="15" />
+        <state relative-caret-position="279">
+          <caret line="44" selection-start-line="44" selection-end-line="44" />
           <folding>
-            <element signature="e#14#278#0" expanded="true" />
+            <element signature="e#15#102#0" expanded="true" />
           </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/statepool/tx/act/txrsp.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="75">
-          <caret line="5" column="22" selection-start-line="5" selection-start-column="22" selection-end-line="5" selection-end-column="22" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/statepool/dappstate/txlsn.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="555">
-          <caret line="41" lean-forward="true" selection-start-line="8" selection-end-line="41" />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/statepool/dappstate/txbdc.go">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="165">
-          <caret line="11" column="44" selection-start-line="11" selection-start-column="44" selection-end-line="11" selection-end-column="44" />
+        <state relative-caret-position="225">
+          <caret line="15" column="1" selection-start-line="15" selection-start-column="1" selection-end-line="15" selection-end-column="1" />
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/statepool/dappstate/blklsn.go">
+    <entry file="file://$PROJECT_DIR$/keystore/ks.go">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="195">
-          <caret line="29" column="21" lean-forward="true" selection-start-line="29" selection-start-column="21" selection-end-line="29" selection-end-column="21" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/statepool/tx/txpool.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="212">
-          <caret line="33" column="46" lean-forward="true" selection-start-line="33" selection-start-column="28" selection-end-line="33" selection-end-column="46" />
+        <state relative-caret-position="74">
+          <caret line="45" column="49" lean-forward="true" selection-start-line="45" selection-start-column="49" selection-end-line="45" selection-end-column="49" />
           <folding>
-            <element signature="e#12#104#0" expanded="true" />
-            <element signature="n#!!block;n#PushTx#0" />
-            <element signature="n#!!block;n#PrintTxQueue#0" />
+            <element signature="e#18#159#0" expanded="true" />
+            <element signature="n#!!block;n#PrivateKey#0" />
+            <element signature="n#!!block;n#Address#0" />
           </folding>
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/statepool/dappstate/blockbdc.go">
+    <entry file="file://$PROJECT_DIR$/main.go">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="225">
-          <caret line="15" column="1" lean-forward="true" selection-start-line="1" selection-end-line="15" selection-end-column="1" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/statepool/dappstate/rsplsn.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="226">
-          <caret line="16" column="4" selection-start-line="16" selection-start-column="4" selection-end-line="16" selection-end-column="71" />
+        <state relative-caret-position="367">
+          <caret line="57" selection-start-line="57" selection-end-line="57" />
           <folding>
-            <element signature="e#19#67#0" expanded="true" />
+            <element signature="e#14#312#0" expanded="true" />
           </folding>
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/statepool/dappstate/rspbdc.go">
+    <entry file="file:///usr/local/Cellar/go/1.11.2/libexec/src/runtime/asm_amd64.s">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="225">
-          <caret line="15" column="1" lean-forward="true" selection-start-line="15" selection-start-column="1" selection-end-line="15" selection-end-column="1" />
+        <state relative-caret-position="133">
+          <caret line="1333" selection-start-line="1333" selection-end-line="1333" />
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/statepool/dappstate/lsnfactory.go">
+    <entry file="file://$PROJECT_DIR$/statepool/tx/act/perfrom.go">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="30">
-          <caret line="2" column="5" selection-start-line="2" selection-start-column="5" selection-end-line="2" selection-end-column="5" />
+        <state relative-caret-position="103">
+          <caret line="24" column="12" selection-start-line="24" selection-start-column="12" selection-end-line="24" selection-end-column="12" />
+          <folding>
+            <element signature="e#13#90#0" expanded="true" />
+          </folding>
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/statepool/dappstate/bdcfactory.go">
+    <entry file="file://$PROJECT_DIR$/statepool/tx/act/link.go">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="300">
-          <caret line="20" column="1" lean-forward="true" selection-start-line="20" selection-start-column="1" selection-end-line="20" selection-end-column="1" />
+        <state relative-caret-position="120">
+          <caret line="8" column="1" lean-forward="true" selection-start-line="8" selection-start-column="1" selection-end-line="8" selection-end-column="1" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/statepool/tx/block.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="146">
+          <caret line="31" column="21" lean-forward="true" selection-start-line="31" selection-start-column="21" selection-end-line="31" selection-end-column="21" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/statepool/tx/act/txrsp.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="138">
+          <caret line="10" column="22" lean-forward="true" selection-start-line="10" selection-start-column="22" selection-end-line="10" selection-end-column="22" />
+          <folding>
+            <element signature="e#13#90#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/avm/miner/mncmn.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="155">
+          <caret line="47" column="28" lean-forward="true" selection-start-line="47" selection-start-column="28" selection-end-line="47" selection-end-column="28" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file:///usr/local/Cellar/go/1.11.2/libexec/src/runtime/panic.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="153">
+          <caret line="680" selection-start-line="680" selection-end-line="680" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/statepool/tx/act/base.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="229">
+          <caret line="34" lean-forward="true" selection-start-line="34" selection-end-line="34" />
+          <folding>
+            <element signature="e#13#90#0" expanded="true" />
+          </folding>
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/statepool/dappstate/state.go">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="255">
-          <caret line="34" column="23" lean-forward="true" selection-start-line="34" selection-start-column="23" selection-end-line="34" selection-end-column="23" />
+        <state relative-caret-position="233">
+          <caret line="146" column="47" selection-start-line="146" selection-start-column="47" selection-end-line="146" selection-end-column="47" />
           <folding>
-            <element signature="e#292#557#0" />
             <element signature="n#!!block;n#ContainMaterPeer#0" />
-            <element signature="n#!!block;n#Daemon#0" />
             <element signature="n#!!block;n#GetBroadcastChannel#0" />
             <element signature="n#!!block;n#AddListner#0" />
-            <element signature="n#!!block;n#initListner#0" />
             <element signature="n#!!block;n#shutdownListening#0" />
             <element signature="n#!!block;n#startingListening#0" />
             <element signature="n#!!block;n#AddBroadcaster#0" />
@@ -761,17 +701,72 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/avm/miner/mncmn.go">
+    <entry file="file://$PROJECT_DIR$/statepool/dappstate/blockbdc.go">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="548">
-          <caret line="50" column="1" lean-forward="true" selection-start-line="50" selection-start-column="1" selection-end-line="50" selection-end-column="1" />
+        <state relative-caret-position="225">
+          <caret line="15" column="1" lean-forward="true" selection-start-line="15" selection-start-column="1" selection-end-line="15" selection-end-column="1" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/statepool/dappstate/rspbdc.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="161">
+          <caret line="35" column="32" selection-start-line="35" selection-start-column="32" selection-end-line="35" selection-end-column="32" />
+          <folding>
+            <element signature="e#19#110#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/avm/miner/task.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="270">
+          <caret line="20" column="1" selection-start-line="19" selection-start-column="12" selection-end-line="19" selection-end-column="22" />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/avm/workstn.go">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="345">
-          <caret line="29" column="13" lean-forward="true" selection-start-line="29" selection-start-column="13" selection-end-line="29" selection-end-column="13" />
+        <state relative-caret-position="111">
+          <caret line="64" column="24" selection-start-line="64" selection-start-column="24" selection-end-line="64" selection-end-column="24" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/statepool/dappstate/bdc.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="111">
+          <caret line="76" selection-start-line="76" selection-end-line="76" />
+          <folding>
+            <element signature="e#19#142#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/statepool/tx/txpool.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="168">
+          <caret line="176" selection-start-line="176" selection-end-line="176" />
+          <folding>
+            <element signature="n#!!block;n#PushTx#0" />
+            <element signature="n#!!block;n#PrintTxQueue#0" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/statepool/dappstate/blklsn.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="112">
+          <caret line="46" selection-start-line="46" selection-end-line="46" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/statepool/dappstate/rsplsn.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="170">
+          <caret line="43" lean-forward="true" selection-start-line="43" selection-end-line="43" />
+          <folding>
+            <element signature="e#19#161#0" expanded="true" />
+          </folding>
         </state>
       </provider>
     </entry>

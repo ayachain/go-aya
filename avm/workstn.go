@@ -3,7 +3,6 @@ package avm
 import (
 	"container/list"
 	"github.com/ayachain/go-aya/avm/miner"
-	Atx "github.com/ayachain/go-aya/statepool/tx"
 	"log"
 	"time"
 )
@@ -12,13 +11,13 @@ const MinerCountMaxLimit  =  10
 
 type avmWorkstation struct {
 
-	MinerChannel chan *Atx.Block
+	MinerChannel chan *miner.MiningTask
 	vms			*list.List
 	threadLimit	int
 }
 
 var AvmWorkstation = &avmWorkstation{
-	MinerChannel:make(chan *Atx.Block, MinerCountMaxLimit),
+	MinerChannel:make(chan *miner.MiningTask, MinerCountMaxLimit),
 	vms:list.New(),
 	threadLimit:MinerCountMaxLimit,
 }
@@ -51,15 +50,21 @@ func DaemonWorkstation() {
 
 			if nvm != nil {
 
-				bcb := <- AvmWorkstation.MinerChannel
+				task := <- AvmWorkstation.MinerChannel
 
 				//分配到了可以计算的虚拟机
 				go func() {
 
-					if r, err := nvm.StartSyncMining(bcb); err != nil {
+					if r, err := nvm.StartSyncMining(task.PendingBlock); err != nil {
 						log.Println(err)
 					} else {
-						log.Println(r)
+						task.ResultChannel <- task.CreateResult(r)
+						bbcRet := <- task.ResultChannel
+
+						if bbcRet != nil {
+							//未能成功广播结果，丢弃
+							log.Println(bbcRet.(error))
+						}
 					}
 
 				}()
