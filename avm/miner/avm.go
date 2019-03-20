@@ -25,6 +25,10 @@ type Avm struct {
 //	return "/" + vm.DataHash
 //}
 
+func (vm *Avm) GetL() *lua.LState {
+	return vm.l
+}
+
 func NewAvm() *Avm {
 
 	avm := &Avm{l:lua.NewState(), State:AvmState_IDLE, miner:&MNCMiner{}}

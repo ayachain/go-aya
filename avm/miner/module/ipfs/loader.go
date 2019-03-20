@@ -5,7 +5,10 @@ import (
 	"github.com/ipfs/go-ipfs-api"
 	"github.com/ipfs/go-ipfs-files"
 	"github.com/yuin/gopher-lua"
+	"strings"
 )
+
+var BasePathFunc func(l *lua.LState) string
 
 func Loader(L *lua.LState) int {
 
@@ -22,9 +25,16 @@ var exports = map[string]lua.LGFunction{
 
 func ipfs_write(l *lua.LState) int {
 
-	path := l.CheckString(1)
+	path :=  l.CheckString(1)
 	data := l.CheckString(2)
 	parmas := l.CheckTable(3)
+
+	if !strings.HasPrefix(path,"/") {
+		l.Push(lua.LNil)
+		l.Push(lua.LString("Error: paths must start with a leading slash."))
+	}
+
+	path = BasePathFunc(l) + path
 
 	shell := shell.NewLocalShell()
 

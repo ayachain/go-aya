@@ -3,6 +3,7 @@ package avm
 import (
 	"container/list"
 	"github.com/ayachain/go-aya/avm/miner"
+	Avmm "github.com/ayachain/go-aya/avm/miner/module"
 	"log"
 	"time"
 )
@@ -54,6 +55,8 @@ func DaemonWorkstation() {
 
 				//分配到了可以计算的虚拟机
 				go func() {
+
+					Avmm.SetAvmBasePath(nvm.GetL(), "/" + task.PendingBlock.GetHash())
 
 					if r, err := nvm.StartSyncMining(task.PendingBlock); err != nil {
 						log.Println(err)
