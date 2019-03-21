@@ -102,3 +102,13 @@ func (tx* Tx) MarshalJson() string {
 	}
 
 }
+
+func (tx* Tx) GetSha256Hash() string {
+
+	if hex, err := tx.EncodeToHex(); err != nil {
+		return ""
+	} else {
+		return crypto.Keccak256Hash([]byte(hex)).Hex()
+	}
+
+}

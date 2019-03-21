@@ -1,14 +1,20 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
+	"fmt"
 	"github.com/ayachain/go-aya/avm"
 	Aks "github.com/ayachain/go-aya/keystore"
 	DState "github.com/ayachain/go-aya/statepool/dappstate"
 	Act "github.com/ayachain/go-aya/statepool/tx/act"
 	"log"
-	"strconv"
 	"time"
+)
+
+const (
+	AyaChainDemoDapp_1 = "QmP5RqvBkfW6NhA6h3rajd71maWm7pUSbVyk9syxdk856h"
+	AyaChainDemoDapp_2 = "QmcCAXw29EcssMiLvF4WhMDY5nLzqv6AxaZB3wgRqijG8c"
 )
 
 func main() {
@@ -24,7 +30,7 @@ func main() {
 	}
 
 	//生成一个Dapp状态机
-	fristDemoState, err := DState.NewDappState("QmP5RqvBkfW6NhA6h3rajd71maWm7pUSbVyk9syxdk856h")
+	fristDemoState, err := DState.NewDappState(AyaChainDemoDapp_2)
 
 	if err != nil {
 		panic(err)
@@ -48,7 +54,24 @@ func main() {
 				time.Sleep(time.Millisecond * 100)
 				//time.Sleep(time.Second * 2)
 
-				act := Act.NewPerfromAct("QmP5RqvBkfW6NhA6h3rajd71maWm7pUSbVyk9syxdk856h", "main", []string{"Parmas1", strconv.Itoa(txindex)})
+				pmap := make(map[string]string)
+				pmap["name"] = fmt.Sprintf("[VisiterNumber:%d]", txindex)
+				pmapbs, _ := json.Marshal(pmap)
+
+				var act Act.BaseActInf
+
+				switch txindex % 3 {
+				case 0 :
+					act = Act.NewPerfromAct(AyaChainDemoDapp_2, "SayHello", string(pmapbs))
+
+				case 1 :
+					act = Act.NewPerfromAct(AyaChainDemoDapp_2, "GiveMeALTable", "")
+
+				case 2 :
+					act = Act.NewPerfromAct(AyaChainDemoDapp_2, "GiveMeANumber", "")
+				}
+
+
 
 				//签名
 				tx := Aks.DefaultPeerKS().CreateSignedTx(act)

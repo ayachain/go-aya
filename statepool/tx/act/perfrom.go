@@ -8,10 +8,10 @@ import (
 type PerfromAct struct {
 	BaseAct
 	Method		string
-	Parmas[]	string
+	Parmas		string
 }
 
-func NewPerfromAct(dpath string, method string, parmas[] string) BaseActInf {
+func NewPerfromAct(dpath string, method string, parmas string) BaseActInf {
 
 	r := &PerfromAct {
 		BaseAct:BaseAct {

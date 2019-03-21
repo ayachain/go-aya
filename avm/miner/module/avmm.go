@@ -3,6 +3,7 @@ package module
 import (
 	"github.com/ayachain/go-aya/avm/miner/module/ipfs"
 	"github.com/yuin/gopher-lua"
+	LJson "layeh.com/gopher-json"
 )
 
 func InjectionAyaModules(l *lua.LState) {
@@ -10,6 +11,8 @@ func InjectionAyaModules(l *lua.LState) {
 	ipfs.BasePathFunc = GetAvmBasePath
 
 	l.PreloadModule("ipfs", ipfs.Loader)
+	l.PreloadModule("json", LJson.Loader)
+
 }
 
 var avmBasePathMrg map[*lua.LState]string
