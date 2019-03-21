@@ -83,6 +83,11 @@ func AFMS_IsPathExist(mpath string) bool {
 }
 
 func AFMS_RemovePath(mpath string) bool {
+
+	if !strings.HasPrefix(mpath,"/") {
+		mpath = "/" + mpath
+	}
+
 	return shell.NewLocalShell().Request("files/rm").Arguments(mpath).Option("r", true).Exec(context.Background(), nil) == nil
 }
 

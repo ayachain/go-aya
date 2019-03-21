@@ -3,6 +3,7 @@ package miner
 import (
 	Atx "github.com/ayachain/go-aya/statepool/tx"
 	Autils "github.com/ayachain/go-aya/utils"
+	"log"
 )
 
 //Master Node Consensus Miner
@@ -22,15 +23,17 @@ func (m* MNCMiner) MiningBlock(vm *Avm, b* Atx.Block) (r string, err error) {
 		return "", err
 	}
 
-	Autils.AFMS_ReloadDapp(pblk.BDHash, pblk.BDHash)
+	Autils.AFMS_ReloadDapp(pblk.BDHash, b.GetHash())
 
 	defer func() {
 
-		Autils.AFMS_RemovePath(pblk.BDHash)
+		if !Autils.AFMS_RemovePath(b.GetHash()) {
+			log.Println("mncmn.go : Autils.AFMS_RemovePath Faild.")
+		}
 
 	}()
 
-	codestr, err := Autils.AFMS_ReadDappCode(pblk.BDHash)
+	codestr, err := Autils.AFMS_ReadDappCode(b.GetHash())
 
 	if err != nil {
 		return "", err
@@ -40,7 +43,7 @@ func (m* MNCMiner) MiningBlock(vm *Avm, b* Atx.Block) (r string, err error) {
 		return "", err
 	}
 
-	dirstat, err := Autils.AFMS_PathStat(pblk.BDHash)
+	dirstat, err := Autils.AFMS_PathStat(b.GetHash())
 
 	if err != nil {
 		return "",err

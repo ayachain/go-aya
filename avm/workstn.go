@@ -56,7 +56,7 @@ func DaemonWorkstation() {
 				//分配到了可以计算的虚拟机
 				go func() {
 
-					Avmm.SetAvmBasePath(nvm.GetL(), "/" + task.PendingBlock.GetHash())
+					Avmm.SetAvmBasePath(nvm.GetL(), "/" + task.PendingBlock.GetHash() + "/_data")
 
 					if r, err := nvm.StartSyncMining(task.PendingBlock); err != nil {
 						log.Println(err)
