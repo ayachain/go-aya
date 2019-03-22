@@ -4,11 +4,8 @@
     <list default="true" id="d8c2650b-7d7d-4792-a1a0-8aec0607cc91" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/avm/miner/mncmn.go" beforeDir="false" afterPath="$PROJECT_DIR$/avm/miner/mncmn.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/avm/miner/module/avmm.go" beforeDir="false" afterPath="$PROJECT_DIR$/avm/miner/module/avmm.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/avm/workstn.go" beforeDir="false" afterPath="$PROJECT_DIR$/avm/workstn.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/main.go" beforeDir="false" afterPath="$PROJECT_DIR$/main.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/statepool/tx/act/perfrom.go" beforeDir="false" afterPath="$PROJECT_DIR$/statepool/tx/act/perfrom.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/statepool/tx/base.go" beforeDir="false" afterPath="$PROJECT_DIR$/statepool/tx/base.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/utils/amfs.go" beforeDir="false" afterPath="$PROJECT_DIR$/utils/amfs.go" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -18,22 +15,48 @@
   </component>
   <component name="FileEditorManager">
     <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
-      <file pinned="false" current-in-tab="false">
+      <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/main.go">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="98">
-              <caret line="73" lean-forward="true" selection-start-line="73" selection-end-line="73" />
+            <state relative-caret-position="105">
+              <caret line="17" column="72" selection-start-line="17" selection-start-column="72" selection-end-line="17" selection-end-column="72" />
             </state>
           </provider>
         </entry>
       </file>
-      <file pinned="false" current-in-tab="true">
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/avm/workstn.go">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="225">
+              <caret line="21" column="19" lean-forward="true" selection-start-line="21" selection-start-column="19" selection-end-line="21" selection-end-column="19" />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/avm/miner/mncmn.go">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="486">
-              <caret line="189" column="19" lean-forward="true" selection-start-line="189" selection-start-column="19" selection-end-line="189" selection-end-column="19" />
+            <state relative-caret-position="308">
+              <caret line="199" column="27" lean-forward="true" selection-start-line="199" selection-start-column="27" selection-end-line="199" selection-end-column="27" />
               <folding>
                 <element signature="e#15#228#0" expanded="true" />
+              </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/avm/miner/module/ipfs/loader.go">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="-1868">
+              <caret line="248" column="28" lean-forward="true" selection-start-line="248" selection-start-column="28" selection-end-line="248" selection-end-column="28" />
+              <folding>
+                <element signature="n#!!block;n#files_mv#0" />
+                <element signature="n#!!block;n#files_rm#0" />
+                <element signature="n#!!block;n#files_exist#0" />
+                <element signature="n#!!block;n#files_cp#0" />
+                <element signature="n#!!block;n#files_read#0" />
+                <element signature="n#!!block;n#files_stat#0" />
               </folding>
             </state>
           </provider>
@@ -81,22 +104,10 @@
         </entry>
       </file>
       <file pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/avm/workstn.go">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="741">
-              <caret line="60" column="45" selection-start-line="60" selection-start-column="45" selection-end-line="60" selection-end-column="45" />
-              <folding>
-                <element signature="e#13#96#0" expanded="true" />
-              </folding>
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/avm/miner/avm.go">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="225">
-              <caret line="35" column="18" selection-start-line="35" selection-start-column="18" selection-end-line="35" selection-end-column="18" />
+            <state relative-caret-position="296">
+              <caret line="51" column="5" lean-forward="true" selection-start-line="51" selection-start-column="5" selection-end-line="51" selection-end-column="5" />
               <folding>
                 <element signature="e#15#111#0" expanded="true" />
               </folding>
@@ -107,10 +118,9 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/avm/miner/module/avmm.go">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="225">
-              <caret line="15" column="1" selection-start-line="15" selection-start-column="1" selection-end-line="15" selection-end-column="1" />
+            <state relative-caret-position="255">
+              <caret line="29" column="37" selection-start-line="29" selection-start-column="37" selection-end-line="29" selection-end-column="37" />
               <folding>
-                <element signature="e#16#108#0" expanded="true" />
                 <element signature="n#!!block;n#SetAvmBasePath#0" />
                 <element signature="n#!!block;n#GetAvmBasePath#0" />
               </folding>
@@ -129,7 +139,6 @@
   </component>
   <component name="FindInProjectRecents">
     <findStrings>
-      <find>AddListner</find>
       <find>handleDelegate</find>
       <find>《</find>
       <find>&lt;-</find>
@@ -159,6 +168,7 @@
       <find>0x38fb0fea43dd4a76562541c5f1d326001de18fec80f0c29cc401d1a9d0a3ba482bd5833e73ef604510b3d3f927e3bdc4ae045812acad534aa6a10c6e5d5fa15e01</find>
       <find>0x7b2242617365416374496e66223a6e756c6c2c2254537472223a2250657266726f6d416374222c224450617468223a22516d63567a3351683258385a633247356868696a35666a4c51325477527a4e474861594b57586f46737432485063222c224d6574686f64223a2253617948656c6c6f222c225061726d6173223a227b5c226e616d655c223a5c225b566973697465724e756d6265723a3234385d5c227d227d</find>
       <find>Parmas Parser Expection.</find>
+      <find>Autils.AFMS_RemovePath</find>
     </findStrings>
   </component>
   <component name="GOROOT" path="/usr/local/Cellar/go/1.11.2/libexec" />
@@ -168,7 +178,6 @@
   <component name="IdeDocumentHistory">
     <option name="CHANGED_PATHS">
       <list>
-        <option value="$PROJECT_DIR$/statepool/tx/txbase.go" />
         <option value="$PROJECT_DIR$/statepool/tx/interface/hash.go" />
         <option value="$PROJECT_DIR$/statepool/tx/inf/hash.go" />
         <option value="$PROJECT_DIR$/statepool/tx/txrep.go" />
@@ -209,16 +218,17 @@
         <option value="$PROJECT_DIR$/statepool/dappstate/state.go" />
         <option value="$PROJECT_DIR$/statepool/dappstate/blklsn.go" />
         <option value="$PROJECT_DIR$/statepool/dappstate/rsplsn.go" />
-        <option value="$PROJECT_DIR$/avm/miner/avm.go" />
         <option value="$PROJECT_DIR$/avm/miner/module/ipfs/loader.go" />
-        <option value="$PROJECT_DIR$/avm/workstn.go" />
         <option value="$PROJECT_DIR$/statepool/tx/act/perfrom.go" />
         <option value="$PROJECT_DIR$/avm/miner/module/avmm.go" />
         <option value="$PROJECT_DIR$/statepool/tx/base.go" />
         <option value="$PROJECT_DIR$/statepool/tx/receipt.go" />
         <option value="$PROJECT_DIR$/utils/amfs.go" />
-        <option value="$PROJECT_DIR$/main.go" />
+        <option value="$PROJECT_DIR$/avm/miner/module/db/db.go" />
+        <option value="$PROJECT_DIR$/avm/workstn.go" />
+        <option value="$PROJECT_DIR$/avm/miner/avm.go" />
         <option value="$PROJECT_DIR$/avm/miner/mncmn.go" />
+        <option value="$PROJECT_DIR$/main.go" />
       </list>
     </option>
   </component>
@@ -243,66 +253,6 @@
             <path>
               <item name="go-aya" type="b2602c69:ProjectViewProjectNode" />
               <item name="go-aya" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="go-aya" type="b2602c69:ProjectViewProjectNode" />
-              <item name="go-aya" type="462c0819:PsiDirectoryNode" />
-              <item name="avm" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="go-aya" type="b2602c69:ProjectViewProjectNode" />
-              <item name="go-aya" type="462c0819:PsiDirectoryNode" />
-              <item name="avm" type="462c0819:PsiDirectoryNode" />
-              <item name="miner" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="go-aya" type="b2602c69:ProjectViewProjectNode" />
-              <item name="go-aya" type="462c0819:PsiDirectoryNode" />
-              <item name="avm" type="462c0819:PsiDirectoryNode" />
-              <item name="miner" type="462c0819:PsiDirectoryNode" />
-              <item name="module" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="go-aya" type="b2602c69:ProjectViewProjectNode" />
-              <item name="go-aya" type="462c0819:PsiDirectoryNode" />
-              <item name="avm" type="462c0819:PsiDirectoryNode" />
-              <item name="miner" type="462c0819:PsiDirectoryNode" />
-              <item name="module" type="462c0819:PsiDirectoryNode" />
-              <item name="ipfs" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="go-aya" type="b2602c69:ProjectViewProjectNode" />
-              <item name="go-aya" type="462c0819:PsiDirectoryNode" />
-              <item name="keystore" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="go-aya" type="b2602c69:ProjectViewProjectNode" />
-              <item name="go-aya" type="462c0819:PsiDirectoryNode" />
-              <item name="statepool" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="go-aya" type="b2602c69:ProjectViewProjectNode" />
-              <item name="go-aya" type="462c0819:PsiDirectoryNode" />
-              <item name="statepool" type="462c0819:PsiDirectoryNode" />
-              <item name="dappstate" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="go-aya" type="b2602c69:ProjectViewProjectNode" />
-              <item name="go-aya" type="462c0819:PsiDirectoryNode" />
-              <item name="statepool" type="462c0819:PsiDirectoryNode" />
-              <item name="tx" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="go-aya" type="b2602c69:ProjectViewProjectNode" />
-              <item name="go-aya" type="462c0819:PsiDirectoryNode" />
-              <item name="statepool" type="462c0819:PsiDirectoryNode" />
-              <item name="tx" type="462c0819:PsiDirectoryNode" />
-              <item name="act" type="462c0819:PsiDirectoryNode" />
-            </path>
-            <path>
-              <item name="go-aya" type="b2602c69:ProjectViewProjectNode" />
-              <item name="go-aya" type="462c0819:PsiDirectoryNode" />
-              <item name="utils" type="462c0819:PsiDirectoryNode" />
             </path>
           </expand>
           <select />
@@ -399,16 +349,16 @@
       <window_info id="Favorites" order="2" side_tool="true" />
       <window_info anchor="bottom" id="Message" order="0" />
       <window_info anchor="bottom" id="Find" order="1" weight="0.18540145" />
-      <window_info anchor="bottom" id="Run" order="2" sideWeight="0.7712634" weight="0.80875915" />
-      <window_info anchor="bottom" id="Debug" order="3" weight="0.8788321" />
+      <window_info anchor="bottom" id="Run" order="2" sideWeight="0.77043766" weight="0.36642337" />
+      <window_info active="true" anchor="bottom" id="Debug" order="3" visible="true" weight="0.34306568" />
       <window_info anchor="bottom" id="Cvs" order="4" weight="0.25" />
       <window_info anchor="bottom" id="Inspection" order="5" weight="0.4" />
       <window_info anchor="bottom" id="TODO" order="6" weight="0.329927" />
       <window_info anchor="bottom" id="Docker" order="7" show_stripe_button="false" />
       <window_info anchor="bottom" id="Database Changes" order="8" />
       <window_info anchor="bottom" id="Version Control" order="9" />
-      <window_info anchor="bottom" id="Terminal" order="10" weight="0.33430657" />
-      <window_info anchor="bottom" id="Event Log" order="11" sideWeight="0.22873658" side_tool="true" weight="0.4481752" />
+      <window_info anchor="bottom" id="Terminal" order="10" weight="0.6277372" />
+      <window_info anchor="bottom" id="Event Log" order="11" sideWeight="0.22956234" side_tool="true" weight="0.80875915" />
       <window_info anchor="right" id="Commander" internal_type="SLIDING" order="0" type="SLIDING" weight="0.4" />
       <window_info anchor="right" id="Ant Build" order="1" weight="0.25" />
       <window_info anchor="right" content_ui="combo" id="Hierarchy" order="2" weight="0.25" />
@@ -444,15 +394,16 @@
       </breakpoints>
     </breakpoint-manager>
   </component>
+  <component name="debuggerHistoryManager">
+    <expressions id="evaluateExpression">
+      <expression>
+        <expression-string>*(*&quot;string&quot;)(824635246808)</expression-string>
+        <language-id>go</language-id>
+        <evaluation-mode>EXPRESSION</evaluation-mode>
+      </expression>
+    </expressions>
+  </component>
   <component name="editorHistoryManager">
-    <entry file="file://$PROJECT_DIR$/../../ipfs/go-ipfs-api/pubsub.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="90">
-          <caret line="10" column="20" lean-forward="true" selection-start-line="10" selection-start-column="20" selection-end-line="10" selection-end-column="20" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/statepool/dappstate/listener/base.go" />
     <entry file="file://$PROJECT_DIR$/statepool/dappstate/txcommit.go" />
     <entry file="file://$PROJECT_DIR$/utils/dappmfs.go" />
     <entry file="file:///usr/local/Cellar/go/1.11.2/libexec/src/runtime/stack.go">
@@ -720,33 +671,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/avm/miner/module/ipfs/loader.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="473">
-          <caret line="280" column="12" lean-forward="true" selection-start-line="247" selection-start-column="4" selection-end-line="280" selection-end-column="12" />
-          <folding>
-            <element signature="e#14#127#0" expanded="true" />
-            <element signature="n#!!block;n#files_mv#0" />
-            <element signature="e#540#545#0" />
-            <element signature="e#522#527#0" />
-            <element signature="n#!!block;n#files_rm#0" />
-            <element signature="n#!!block;n#files_exist#0" />
-            <element signature="n#!!block;n#files_cp#0" />
-            <element signature="n#!!block;n#files_read#0" />
-            <element signature="n#!!block;n#files_stat#0" />
-            <element signature="n#!!block;n#ipfs_files_request#0" />
-            <element signature="n#!!block;n#ipfs_files_request_PathAdnParmas#1" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/../../yuin/gopher-lua/state.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="250">
-          <caret line="1601" column="19" lean-forward="true" selection-start-line="1601" selection-start-column="19" selection-end-line="1601" selection-end-column="19" />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/statepool/tx/act/perfrom.go">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="264">
@@ -768,38 +692,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="237">
           <caret line="53" column="5" lean-forward="true" selection-start-line="53" selection-start-column="5" selection-end-line="53" selection-end-column="5" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/avm/workstn.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="741">
-          <caret line="60" column="45" selection-start-line="60" selection-start-column="45" selection-end-line="60" selection-end-column="45" />
-          <folding>
-            <element signature="e#13#96#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/avm/miner/avm.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="225">
-          <caret line="35" column="18" selection-start-line="35" selection-start-column="18" selection-end-line="35" selection-end-column="18" />
-          <folding>
-            <element signature="e#15#111#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/avm/miner/module/avmm.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="225">
-          <caret line="15" column="1" selection-start-line="15" selection-start-column="1" selection-end-line="15" selection-end-column="1" />
-          <folding>
-            <element signature="e#16#108#0" expanded="true" />
-            <element signature="n#!!block;n#SetAvmBasePath#0" />
-            <element signature="n#!!block;n#GetAvmBasePath#0" />
-          </folding>
         </state>
       </provider>
     </entry>
@@ -850,20 +742,84 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/main.go">
+    <entry file="file://$PROJECT_DIR$/../../hashicorp/go-memdb/txn.go">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="98">
-          <caret line="73" lean-forward="true" selection-start-line="73" selection-end-line="73" />
+        <state relative-caret-position="198">
+          <caret line="226" column="23" selection-start-line="226" selection-start-column="23" selection-end-line="226" selection-end-column="23" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/../../yuin/gopher-lua/state.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="382">
+          <caret line="38" column="64" lean-forward="true" selection-start-line="38" selection-start-column="64" selection-end-line="38" selection-end-column="64" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/avm/miner/module/db/db.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="60">
+          <caret line="4" column="1" lean-forward="true" selection-start-line="4" selection-start-column="1" selection-end-line="4" selection-end-column="1" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/avm/miner/module/avmm.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="255">
+          <caret line="29" column="37" selection-start-line="29" selection-start-column="37" selection-end-line="29" selection-end-column="37" />
+          <folding>
+            <element signature="n#!!block;n#SetAvmBasePath#0" />
+            <element signature="n#!!block;n#GetAvmBasePath#0" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/avm/workstn.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="225">
+          <caret line="21" column="19" lean-forward="true" selection-start-line="21" selection-start-column="19" selection-end-line="21" selection-end-column="19" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/avm/miner/avm.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="296">
+          <caret line="51" column="5" lean-forward="true" selection-start-line="51" selection-start-column="5" selection-end-line="51" selection-end-column="5" />
+          <folding>
+            <element signature="e#15#111#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/avm/miner/module/ipfs/loader.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="-1868">
+          <caret line="248" column="28" lean-forward="true" selection-start-line="248" selection-start-column="28" selection-end-line="248" selection-end-column="28" />
+          <folding>
+            <element signature="n#!!block;n#files_mv#0" />
+            <element signature="n#!!block;n#files_rm#0" />
+            <element signature="n#!!block;n#files_exist#0" />
+            <element signature="n#!!block;n#files_cp#0" />
+            <element signature="n#!!block;n#files_read#0" />
+            <element signature="n#!!block;n#files_stat#0" />
+          </folding>
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/avm/miner/mncmn.go">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="486">
-          <caret line="189" column="19" lean-forward="true" selection-start-line="189" selection-start-column="19" selection-end-line="189" selection-end-column="19" />
+        <state relative-caret-position="308">
+          <caret line="199" column="27" lean-forward="true" selection-start-line="199" selection-start-column="27" selection-end-line="199" selection-end-column="27" />
           <folding>
             <element signature="e#15#228#0" expanded="true" />
           </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/main.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="105">
+          <caret line="17" column="72" selection-start-line="17" selection-start-column="72" selection-end-line="17" selection-end-column="72" />
         </state>
       </provider>
     </entry>

@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-const MinerCountMaxLimit  =  10
+const MinerCountMaxLimit = 128
 
 type avmWorkstation struct {
 

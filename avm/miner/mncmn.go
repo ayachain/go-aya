@@ -9,6 +9,7 @@ import (
 	"github.com/yuin/gopher-lua"
 	LJson "layeh.com/gopher-json"
 	"log"
+	"time"
 )
 
 //Master Node Consensus Miner
@@ -23,6 +24,8 @@ type MNCMiner struct {
 func (m* MNCMiner) MiningBlock(vm *Avm, b* Atx.Block) (r string, err error) {
 
 	pblk, err := Atx.ReadBlock(b.Prev)
+
+	stime := time.Now().Unix()
 
 	if err != nil {
 		return "", err
@@ -65,7 +68,7 @@ func (m* MNCMiner) MiningBlock(vm *Avm, b* Atx.Block) (r string, err error) {
 
 			if err := pact.DecodeFromHex(tx.ActHex); err != nil {
 
-				if m.writeTxReceipt(b, i, []byte("Error")) != nil {
+				if m.writeTxReceipt(b, i, "Error") != nil {
 					//若发现无法写入，则发生了未知错误，此时没有任何矿工可以正常工作，应当直接放弃为此块计算最终结果
 					return "", errors.New("MNCMiner : Can't write tx receipt content to mfs.")
 				}
@@ -83,7 +86,7 @@ func (m* MNCMiner) MiningBlock(vm *Avm, b* Atx.Block) (r string, err error) {
 
 					if err != nil {
 
-						if m.writeTxReceipt(b, i, []byte("Parmas Parser Expection.")) != nil {
+						if m.writeTxReceipt(b, i, "Parmas Parser Expection.") != nil {
 							//若发现无法写入，则发生了未知错误，此时没有任何矿工可以正常工作，应当直接放弃为此块计算最终结果
 							return "", errors.New("MNCMiner : Can't write tx receipt content to mfs.")
 						} else {
@@ -93,7 +96,7 @@ func (m* MNCMiner) MiningBlock(vm *Avm, b* Atx.Block) (r string, err error) {
 					}
 				}
 
-				if ltbv == lua.LNil {
+				if ltbv != lua.LNil {
 
 					err = vm.l.CallByParam(lua.P {
 						Fn:      vm.l.GetGlobal(method),
@@ -112,7 +115,7 @@ func (m* MNCMiner) MiningBlock(vm *Avm, b* Atx.Block) (r string, err error) {
 
 				if err != nil {
 
-					if m.writeTxReceipt(b, i, []byte(err.Error())) != nil {
+					if m.writeTxReceipt(b, i, err.Error()) != nil {
 						//若发现无法写入，则发生了未知错误，此时没有任何矿工可以正常工作，应当直接放弃为此块计算最终结果
 						return "", err
 					} else {
@@ -121,28 +124,13 @@ func (m* MNCMiner) MiningBlock(vm *Avm, b* Atx.Block) (r string, err error) {
 
 				} else {
 
-					//成功执行
-					if bs,err := LJson.Encode(vm.l.Get(-1)); err != nil {
-
-						vm.l.Pop(1)
-						if m.writeTxReceipt(b, i, []byte("Unsupprot receipt type.")) != nil {
-							//若发现无法写入，则发生了未知错误，此时没有任何矿工可以正常工作，应当直接放弃为此块计算最终结果
-							return "", errors.New("MNCMiner : Can't write tx receipt content to mfs.")
-						} else {
-							continue
-						}
-
+					if err := m.writeTxReceipt(b, i, vm.l.Get(-1)); err != nil {
+						return "", err
 					} else {
-
 						vm.l.Pop(1)
-						if m.writeTxReceipt(b, i, bs) != nil {
-							//若发现无法写入，则发生了未知错误，此时没有任何矿工可以正常工作，应当直接放弃为此块计算最终结果
-							return "", errors.New("MNCMiner : Can't write tx receipt content to mfs.")
-						} else {
-							continue
-						}
-
+						continue
 					}
+
 				}
 
 			}
@@ -156,6 +144,8 @@ func (m* MNCMiner) MiningBlock(vm *Avm, b* Atx.Block) (r string, err error) {
 	}
 
 	dirstat, err := Autils.AFMS_PathStat(b.GetHash())
+
+	log.Printf("BlockIndex:%d Txs:%d Time:%d", b.Index, len(b.Txs), time.Now().Unix() - stime)
 
 	if err != nil {
 		return "",err
@@ -177,15 +167,40 @@ func (m* MNCMiner) writingBlockIndex(b* Atx.Block) error {
 }
 
 //写入交易对应的返回结果
-func (m* MNCMiner) writeTxReceipt(b* Atx.Block, txindex int, receiptbs[] byte) error {
+func (m* MNCMiner) writeTxReceipt( b* Atx.Block, txindex int, data interface{} ) error {
 
 	rep := &Atx.TxReceipt{}
 	rep.BlockIndex = b.Index
 	rep.TxHash = b.Txs[txindex].GetSha256Hash()
-	rep.Response = string(receiptbs)
+
+	t, islvalue := data.(lua.LValue)
+
+	if islvalue {
+
+		switch t.Type() {
+		case lua.LTBool:
+			rep.Response = lua.LVAsBool(t)
+
+		case lua.LTString:
+			rep.Response = lua.LVAsString(t)
+
+		case lua.LTNumber:
+			rep.Response = lua.LVAsNumber(t)
+
+		case lua.LTTable:
+			if bs,err := LJson.Encode(t); err != nil {
+				rep.Response = bs
+			}
+
+		default :
+			rep.Response = nil
+		}
+
+	} else {
+		rep.Response = data
+	}
 
 	bs,err := rep.MarshalJson()
-
 
 	if err != nil {
 		return err
