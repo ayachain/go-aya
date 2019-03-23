@@ -11,7 +11,6 @@ import (
 const MinerCountMaxLimit = 128
 
 type avmWorkstation struct {
-
 	MinerChannel chan *miner.MiningTask
 	vms			*list.List
 	threadLimit	int
@@ -56,7 +55,8 @@ func DaemonWorkstation() {
 				//分配到了可以计算的虚拟机
 				go func() {
 
-					Avmm.SetAvmBasePath(nvm.GetL(), "/" + task.PendingBlock.GetHash() + "/_data")
+					nvm.DappNS = task.DappNS
+					Avmm.SetAvmBasePath(nvm.GetL(), "/" + task.DappNS + "/_data")
 
 					if r, err := nvm.StartSyncMining(task.PendingBlock); err != nil {
 						log.Println(err)

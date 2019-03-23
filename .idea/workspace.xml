@@ -3,9 +3,14 @@
   <component name="ChangeListManager">
     <list default="true" id="d8c2650b-7d7d-4792-a1a0-8aec0607cc91" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/avm/miner/avm.go" beforeDir="false" afterPath="$PROJECT_DIR$/avm/miner/avm.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/avm/miner/mncmn.go" beforeDir="false" afterPath="$PROJECT_DIR$/avm/miner/mncmn.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/avm/workstn.go" beforeDir="false" afterPath="$PROJECT_DIR$/avm/workstn.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/keystore/ks.go" beforeDir="false" afterPath="$PROJECT_DIR$/keystore/ks.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/main.go" beforeDir="false" afterPath="$PROJECT_DIR$/main.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/statepool/dappstate/state.go" beforeDir="false" afterPath="$PROJECT_DIR$/statepool/dappstate/state.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/statepool/tx/txpool.go" beforeDir="false" afterPath="$PROJECT_DIR$/statepool/tx/txpool.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/utils/amfs.go" beforeDir="false" afterPath="$PROJECT_DIR$/utils/amfs.go" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -15,67 +20,35 @@
   </component>
   <component name="FileEditorManager">
     <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
-      <file pinned="false" current-in-tab="true">
+      <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/main.go">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="105">
-              <caret line="17" column="72" selection-start-line="17" selection-start-column="72" selection-end-line="17" selection-end-column="72" />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/avm/workstn.go">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="225">
-              <caret line="21" column="19" lean-forward="true" selection-start-line="21" selection-start-column="19" selection-end-line="21" selection-end-column="19" />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/avm/miner/mncmn.go">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="308">
-              <caret line="199" column="27" lean-forward="true" selection-start-line="199" selection-start-column="27" selection-end-line="199" selection-end-column="27" />
+            <state relative-caret-position="285">
+              <caret line="19" column="72" selection-start-line="19" selection-start-column="26" selection-end-line="19" selection-end-column="72" />
               <folding>
-                <element signature="e#15#228#0" expanded="true" />
+                <element signature="e#14#354#0" expanded="true" />
               </folding>
             </state>
           </provider>
         </entry>
       </file>
       <file pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/avm/miner/module/ipfs/loader.go">
+        <entry file="file://$PROJECT_DIR$/gateway/http.go">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="-1868">
-              <caret line="248" column="28" lean-forward="true" selection-start-line="248" selection-start-column="28" selection-end-line="248" selection-end-column="28" />
+            <state relative-caret-position="150">
+              <caret line="10" column="15" lean-forward="true" selection-start-line="10" selection-start-column="15" selection-end-line="10" selection-end-column="15" />
               <folding>
-                <element signature="n#!!block;n#files_mv#0" />
-                <element signature="n#!!block;n#files_rm#0" />
-                <element signature="n#!!block;n#files_exist#0" />
-                <element signature="n#!!block;n#files_cp#0" />
-                <element signature="n#!!block;n#files_read#0" />
-                <element signature="n#!!block;n#files_stat#0" />
+                <element signature="e#17#46#0" expanded="true" />
               </folding>
             </state>
           </provider>
         </entry>
       </file>
       <file pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/statepool/tx/receipt.go">
+        <entry file="file://$PROJECT_DIR$/gateway/tx/perfrom.go">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="165">
-              <caret line="11" column="57" selection-start-line="11" selection-start-column="46" selection-end-line="11" selection-end-column="57" />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/statepool/tx/base.go">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="236">
-              <caret line="109" column="12" selection-start-line="109" selection-start-column="12" selection-end-line="109" selection-end-column="12" />
+            <state relative-caret-position="-270">
+              <caret line="4" selection-start-line="4" selection-end-line="6" selection-end-column="49" />
             </state>
           </provider>
         </entry>
@@ -83,8 +56,20 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/statepool/tx/block.go">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="162">
-              <caret line="40" selection-start-line="40" selection-end-line="40" />
+            <state relative-caret-position="202">
+              <caret line="21" selection-start-line="21" selection-end-line="21" />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/statepool/tx/txpool.go">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="135">
+              <caret line="257" column="5" lean-forward="true" selection-start-line="257" selection-start-column="5" selection-end-line="257" selection-end-column="5" />
+              <folding>
+                <element signature="n#!!block;n#PrintTxQueue#0" />
+              </folding>
             </state>
           </provider>
         </entry>
@@ -92,8 +77,8 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/utils/amfs.go">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="390">
-              <caret line="206" selection-start-line="206" selection-end-line="206" />
+            <state relative-caret-position="180">
+              <caret line="166" lean-forward="true" selection-start-line="166" selection-end-line="166" />
               <folding>
                 <element signature="n#!!block;n#IsDir#0" />
                 <element signature="n#!!block;n#IsFile#0" />
@@ -104,26 +89,55 @@
         </entry>
       </file>
       <file pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/avm/miner/avm.go">
+        <entry file="file://$PROJECT_DIR$/statepool/dappstate/state.go">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="296">
-              <caret line="51" column="5" lean-forward="true" selection-start-line="51" selection-start-column="5" selection-end-line="51" selection-end-column="5" />
+            <state relative-caret-position="297">
+              <caret line="49" selection-start-line="49" selection-end-line="49" />
               <folding>
-                <element signature="e#15#111#0" expanded="true" />
+                <element signature="n#!!block;n#ContainMaterPeer#0" />
+                <element signature="n#!!block;n#GetBroadcastChannel#0" />
+                <element signature="n#!!block;n#AddListner#0" />
+                <element signature="n#!!block;n#shutdownListening#0" />
+                <element signature="n#!!block;n#startingListening#0" />
+                <element signature="n#!!block;n#initBroadcast#0" />
+                <element signature="n#!!block;n#startingBroadcasting#0" />
+                <element signature="n#!!block;n#shutdownBroadcasting#0" />
+                <element signature="n#!!block;n#Clean#0" />
+              </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="true">
+        <entry file="file://$PROJECT_DIR$/gateway/tx/status.go">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="49">
+              <caret line="50" lean-forward="true" selection-start-line="50" selection-end-line="50" />
+              <folding>
+                <element signature="e#12#134#0" expanded="true" />
               </folding>
             </state>
           </provider>
         </entry>
       </file>
       <file pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/avm/miner/module/avmm.go">
+        <entry file="file://$PROJECT_DIR$/statepool/pool.go">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="255">
-              <caret line="29" column="37" selection-start-line="29" selection-start-column="37" selection-end-line="29" selection-end-column="37" />
+            <state relative-caret-position="240">
+              <caret line="27" column="28" selection-start-line="27" selection-start-column="28" selection-end-line="27" selection-end-column="28" />
               <folding>
-                <element signature="n#!!block;n#SetAvmBasePath#0" />
-                <element signature="n#!!block;n#GetAvmBasePath#0" />
+                <element signature="e#19#227#0" expanded="true" />
+                <element signature="n#!!block;n#PublishTx#0" />
               </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/gateway/response/rspfct.go">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="150">
+              <caret line="46" selection-start-line="46" selection-end-line="46" />
             </state>
           </provider>
         </entry>
@@ -139,11 +153,6 @@
   </component>
   <component name="FindInProjectRecents">
     <findStrings>
-      <find>handleDelegate</find>
-      <find>《</find>
-      <find>&lt;-</find>
-      <find>Begin Listner Topics</find>
-      <find>Block.Broadcast</find>
       <find>TxPool Pushed New Tx</find>
       <find>RecvBoardcastBlock</find>
       <find>DappState Daemoning.</find>
@@ -169,6 +178,11 @@
       <find>0x7b2242617365416374496e66223a6e756c6c2c2254537472223a2250657266726f6d416374222c224450617468223a22516d63567a3351683258385a633247356868696a35666a4c51325477527a4e474861594b57586f46737432485063222c224d6574686f64223a2253617948656c6c6f222c225061726d6173223a227b5c226e616d655c223a5c225b566973697465724e756d6265723a3234385d5c227d227d</find>
       <find>Parmas Parser Expection.</find>
       <find>Autils.AFMS_RemovePath</find>
+      <find>Unkown Error.</find>
+      <find>b.Get</find>
+      <find>getHash</find>
+      <find>NewTxPool</find>
+      <find>Confirming</find>
     </findStrings>
   </component>
   <component name="GOROOT" path="/usr/local/Cellar/go/1.11.2/libexec" />
@@ -178,18 +192,6 @@
   <component name="IdeDocumentHistory">
     <option name="CHANGED_PATHS">
       <list>
-        <option value="$PROJECT_DIR$/statepool/tx/interface/hash.go" />
-        <option value="$PROJECT_DIR$/statepool/tx/inf/hash.go" />
-        <option value="$PROJECT_DIR$/statepool/tx/txrep.go" />
-        <option value="$PROJECT_DIR$/statepool/dappstate/listener/txbroadcast.go" />
-        <option value="$PROJECT_DIR$/statepool/dappstate/listener/base.go" />
-        <option value="$PROJECT_DIR$/statepool/dappstate/listner.go" />
-        <option value="$PROJECT_DIR$/statepool/dappstate/listener.go" />
-        <option value="$PROJECT_DIR$/statepool/dappstate/txcommit.go" />
-        <option value="$PROJECT_DIR$/statepool/dappstate/txbroadcast.go" />
-        <option value="$PROJECT_DIR$/statepool/dappstate/blocklistener.go" />
-        <option value="$PROJECT_DIR$/statepool/dappstate/txlistener.go" />
-        <option value="$PROJECT_DIR$/statepool/dappstate/blklistener.go" />
         <option value="$PROJECT_DIR$/statepool/dappstate/replistener.go" />
         <option value="$PROJECT_DIR$/utils/dappmfs.go" />
         <option value="$PROJECT_DIR$/utils/hash.go" />
@@ -210,25 +212,37 @@
         <option value="$PROJECT_DIR$/avm/miner/mtask.go" />
         <option value="$PROJECT_DIR$/avm/miner/task.go" />
         <option value="$PROJECT_DIR$/keystore/keystore.go" />
-        <option value="$PROJECT_DIR$/keystore/ks.go" />
         <option value="$PROJECT_DIR$/statepool/dappstate/rspbdc.go" />
         <option value="$PROJECT_DIR$/statepool/tx/act/txrsp.go" />
         <option value="$PROJECT_DIR$/statepool/tx/block.go" />
-        <option value="$PROJECT_DIR$/statepool/tx/txpool.go" />
-        <option value="$PROJECT_DIR$/statepool/dappstate/state.go" />
         <option value="$PROJECT_DIR$/statepool/dappstate/blklsn.go" />
         <option value="$PROJECT_DIR$/statepool/dappstate/rsplsn.go" />
         <option value="$PROJECT_DIR$/avm/miner/module/ipfs/loader.go" />
         <option value="$PROJECT_DIR$/statepool/tx/act/perfrom.go" />
-        <option value="$PROJECT_DIR$/avm/miner/module/avmm.go" />
         <option value="$PROJECT_DIR$/statepool/tx/base.go" />
         <option value="$PROJECT_DIR$/statepool/tx/receipt.go" />
-        <option value="$PROJECT_DIR$/utils/amfs.go" />
         <option value="$PROJECT_DIR$/avm/miner/module/db/db.go" />
-        <option value="$PROJECT_DIR$/avm/workstn.go" />
-        <option value="$PROJECT_DIR$/avm/miner/avm.go" />
-        <option value="$PROJECT_DIR$/avm/miner/mncmn.go" />
+        <option value="$PROJECT_DIR$/keystore/ks.go" />
         <option value="$PROJECT_DIR$/main.go" />
+        <option value="$PROJECT_DIR$/gateway/connpool.go" />
+        <option value="$PROJECT_DIR$/gateway/txhandle.go" />
+        <option value="$PROJECT_DIR$/gateway/tx/stat.go" />
+        <option value="$PROJECT_DIR$/gateway/errors/errors.go" />
+        <option value="$PROJECT_DIR$/gateway/errors/error.go" />
+        <option value="$PROJECT_DIR$/gateway/response/baseerror.go" />
+        <option value="$PROJECT_DIR$/gateway/response/base.go" />
+        <option value="$PROJECT_DIR$/gateway/http.go" />
+        <option value="$PROJECT_DIR$/gateway/tx/perfrom.go" />
+        <option value="$PROJECT_DIR$/avm/miner/avm.go" />
+        <option value="$PROJECT_DIR$/avm/workstn.go" />
+        <option value="$PROJECT_DIR$/avm/miner/module/avmm.go" />
+        <option value="$PROJECT_DIR$/avm/miner/mncmn.go" />
+        <option value="$PROJECT_DIR$/utils/amfs.go" />
+        <option value="$PROJECT_DIR$/statepool/dappstate/state.go" />
+        <option value="$PROJECT_DIR$/statepool/pool.go" />
+        <option value="$PROJECT_DIR$/gateway/response/rspfct.go" />
+        <option value="$PROJECT_DIR$/statepool/tx/txpool.go" />
+        <option value="$PROJECT_DIR$/gateway/tx/status.go" />
       </list>
     </option>
   </component>
@@ -254,6 +268,56 @@
               <item name="go-aya" type="b2602c69:ProjectViewProjectNode" />
               <item name="go-aya" type="462c0819:PsiDirectoryNode" />
             </path>
+            <path>
+              <item name="go-aya" type="b2602c69:ProjectViewProjectNode" />
+              <item name="go-aya" type="462c0819:PsiDirectoryNode" />
+              <item name="avm" type="462c0819:PsiDirectoryNode" />
+            </path>
+            <path>
+              <item name="go-aya" type="b2602c69:ProjectViewProjectNode" />
+              <item name="go-aya" type="462c0819:PsiDirectoryNode" />
+              <item name="avm" type="462c0819:PsiDirectoryNode" />
+              <item name="miner" type="462c0819:PsiDirectoryNode" />
+            </path>
+            <path>
+              <item name="go-aya" type="b2602c69:ProjectViewProjectNode" />
+              <item name="go-aya" type="462c0819:PsiDirectoryNode" />
+              <item name="gateway" type="462c0819:PsiDirectoryNode" />
+            </path>
+            <path>
+              <item name="go-aya" type="b2602c69:ProjectViewProjectNode" />
+              <item name="go-aya" type="462c0819:PsiDirectoryNode" />
+              <item name="gateway" type="462c0819:PsiDirectoryNode" />
+              <item name="response" type="462c0819:PsiDirectoryNode" />
+            </path>
+            <path>
+              <item name="go-aya" type="b2602c69:ProjectViewProjectNode" />
+              <item name="go-aya" type="462c0819:PsiDirectoryNode" />
+              <item name="gateway" type="462c0819:PsiDirectoryNode" />
+              <item name="tx" type="462c0819:PsiDirectoryNode" />
+            </path>
+            <path>
+              <item name="go-aya" type="b2602c69:ProjectViewProjectNode" />
+              <item name="go-aya" type="462c0819:PsiDirectoryNode" />
+              <item name="keystore" type="462c0819:PsiDirectoryNode" />
+            </path>
+            <path>
+              <item name="go-aya" type="b2602c69:ProjectViewProjectNode" />
+              <item name="go-aya" type="462c0819:PsiDirectoryNode" />
+              <item name="statepool" type="462c0819:PsiDirectoryNode" />
+            </path>
+            <path>
+              <item name="go-aya" type="b2602c69:ProjectViewProjectNode" />
+              <item name="go-aya" type="462c0819:PsiDirectoryNode" />
+              <item name="statepool" type="462c0819:PsiDirectoryNode" />
+              <item name="dappstate" type="462c0819:PsiDirectoryNode" />
+            </path>
+            <path>
+              <item name="go-aya" type="b2602c69:ProjectViewProjectNode" />
+              <item name="go-aya" type="462c0819:PsiDirectoryNode" />
+              <item name="statepool" type="462c0819:PsiDirectoryNode" />
+              <item name="tx" type="462c0819:PsiDirectoryNode" />
+            </path>
           </expand>
           <select />
         </subPane>
@@ -272,11 +336,11 @@
   </component>
   <component name="RecentsManager">
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/gateway/tx" />
       <recent name="$PROJECT_DIR$/avm/miner" />
       <recent name="$PROJECT_DIR$/statepool/dappstate" />
       <recent name="$PROJECT_DIR$/MemoryPool" />
       <recent name="$PROJECT_DIR$/ChainStruct/DappState" />
-      <recent name="$PROJECT_DIR$/ChainStruct/BlockChain" />
     </key>
   </component>
   <component name="RunDashboard">
@@ -341,16 +405,16 @@
     </todo-panel>
   </component>
   <component name="ToolWindowManager">
-    <frame x="0" y="23" width="1253" height="777" extended-state="6" />
+    <frame x="-1" y="23" width="1253" height="777" extended-state="6" />
     <editor active="true" />
     <layout>
-      <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.2353427" />
+      <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.23121387" />
       <window_info id="Structure" order="1" side_tool="true" weight="0.25" />
       <window_info id="Favorites" order="2" side_tool="true" />
       <window_info anchor="bottom" id="Message" order="0" />
       <window_info anchor="bottom" id="Find" order="1" weight="0.18540145" />
       <window_info anchor="bottom" id="Run" order="2" sideWeight="0.77043766" weight="0.36642337" />
-      <window_info active="true" anchor="bottom" id="Debug" order="3" visible="true" weight="0.34306568" />
+      <window_info active="true" anchor="bottom" id="Debug" order="3" visible="true" weight="0.50948906" />
       <window_info anchor="bottom" id="Cvs" order="4" weight="0.25" />
       <window_info anchor="bottom" id="Inspection" order="5" weight="0.4" />
       <window_info anchor="bottom" id="TODO" order="6" weight="0.329927" />
@@ -391,6 +455,12 @@
           <line>45</line>
           <option name="timeStamp" value="29" />
         </line-breakpoint>
+        <line-breakpoint enabled="true" type="DlvLineBreakpoint">
+          <url>file://$PROJECT_DIR$/utils/amfs.go</url>
+          <line>122</line>
+          <properties />
+          <option name="timeStamp" value="191" />
+        </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
   </component>
@@ -404,80 +474,6 @@
     </expressions>
   </component>
   <component name="editorHistoryManager">
-    <entry file="file://$PROJECT_DIR$/statepool/dappstate/txcommit.go" />
-    <entry file="file://$PROJECT_DIR$/utils/dappmfs.go" />
-    <entry file="file:///usr/local/Cellar/go/1.11.2/libexec/src/runtime/stack.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="65">
-          <caret line="1007" selection-start-line="1007" selection-end-line="1007" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file:///usr/local/Cellar/go/1.11.2/libexec/src/reflect/value.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="15">
-          <caret line="1739" selection-start-line="1739" selection-end-line="1739" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file:///usr/local/Cellar/go/1.11.2/libexec/src/net/http/transport.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="57">
-          <caret line="1337" selection-start-line="1337" selection-end-line="1337" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file:///usr/local/Cellar/go/1.11.2/libexec/src/container/list/list.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="160">
-          <caret line="133" column="36" lean-forward="true" selection-start-line="133" selection-start-column="36" selection-end-line="133" selection-end-column="36" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file:///usr/local/Cellar/go/1.11.2/libexec/src/time/time.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="205">
-          <caret line="651" column="15" selection-start-line="651" selection-start-column="4" selection-end-line="651" selection-end-column="15" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/statepool/tx/chain.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="30">
-          <caret line="2" column="8" selection-start-line="2" selection-start-column="8" selection-end-line="2" selection-end-column="8" />
-          <folding>
-            <element signature="n#!!block;n#AppendBlock#0" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/utils/hash.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="120">
-          <caret line="8" selection-start-line="8" selection-end-line="8" />
-          <folding>
-            <element signature="e#15#73#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/utils/merkle.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="150">
-          <caret line="10" column="1" lean-forward="true" selection-start-line="10" selection-start-column="1" selection-end-line="10" selection-end-column="1" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/statepool/dappstate/lsn.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="255">
-          <caret line="17" selection-start-line="17" selection-end-line="17" />
-          <folding>
-            <element signature="e#19#92#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
     <entry file="file:///usr/local/Cellar/go/1.11.2/libexec/src/builtin/builtin.go">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="220">
@@ -520,18 +516,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/keystore/ks.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="74">
-          <caret line="45" column="49" lean-forward="true" selection-start-line="45" selection-start-column="49" selection-end-line="45" selection-end-column="49" />
-          <folding>
-            <element signature="e#18#159#0" expanded="true" />
-            <element signature="n#!!block;n#PrivateKey#0" />
-            <element signature="n#!!block;n#Address#0" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
     <entry file="file:///usr/local/Cellar/go/1.11.2/libexec/src/runtime/asm_amd64.s">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="133">
@@ -566,25 +550,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/statepool/dappstate/state.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="233">
-          <caret line="146" column="47" selection-start-line="146" selection-start-column="47" selection-end-line="146" selection-end-column="47" />
-          <folding>
-            <element signature="n#!!block;n#ContainMaterPeer#0" />
-            <element signature="n#!!block;n#GetBroadcastChannel#0" />
-            <element signature="n#!!block;n#AddListner#0" />
-            <element signature="n#!!block;n#shutdownListening#0" />
-            <element signature="n#!!block;n#startingListening#0" />
-            <element signature="n#!!block;n#AddBroadcaster#0" />
-            <element signature="n#!!block;n#initBroadcast#0" />
-            <element signature="n#!!block;n#startingBroadcasting#0" />
-            <element signature="n#!!block;n#shutdownBroadcasting#0" />
-            <element signature="n#!!block;n#Clean#0" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/statepool/dappstate/blockbdc.go">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="225">
@@ -612,17 +577,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/statepool/tx/txpool.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="168">
-          <caret line="176" selection-start-line="176" selection-end-line="176" />
-          <folding>
-            <element signature="n#!!block;n#PushTx#0" />
-            <element signature="n#!!block;n#PrintTxQueue#0" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/statepool/dappstate/blklsn.go">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="112">
@@ -644,30 +598,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="190">
           <caret line="322" column="5" lean-forward="true" selection-start-line="322" selection-start-column="5" selection-end-line="322" selection-end-column="5" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file:///usr/local/Cellar/go/1.11.2/libexec/src/runtime/panic.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="153">
-          <caret line="680" selection-start-line="680" selection-end-line="680" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/avm/miner/task.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="270">
-          <caret line="20" column="1" selection-start-line="19" selection-start-column="12" selection-end-line="19" selection-end-column="22" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/avm/miner/miner.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="105">
-          <caret line="7" column="4" selection-start-line="7" selection-start-column="4" selection-end-line="7" selection-end-column="4" />
-          <folding>
-            <element signature="e#15#72#0" expanded="true" />
-          </folding>
         </state>
       </provider>
     </entry>
@@ -723,25 +653,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/statepool/tx/block.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="162">
-          <caret line="40" selection-start-line="40" selection-end-line="40" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/utils/amfs.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="390">
-          <caret line="206" selection-start-line="206" selection-end-line="206" />
-          <folding>
-            <element signature="n#!!block;n#IsDir#0" />
-            <element signature="n#!!block;n#IsFile#0" />
-            <element signature="n#!!block;n#AFMS_DestoryDapp#0" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/../../hashicorp/go-memdb/txn.go">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="198">
@@ -763,38 +674,10 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/avm/miner/module/avmm.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="255">
-          <caret line="29" column="37" selection-start-line="29" selection-start-column="37" selection-end-line="29" selection-end-column="37" />
-          <folding>
-            <element signature="n#!!block;n#SetAvmBasePath#0" />
-            <element signature="n#!!block;n#GetAvmBasePath#0" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/avm/workstn.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="225">
-          <caret line="21" column="19" lean-forward="true" selection-start-line="21" selection-start-column="19" selection-end-line="21" selection-end-column="19" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/avm/miner/avm.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="296">
-          <caret line="51" column="5" lean-forward="true" selection-start-line="51" selection-start-column="5" selection-end-line="51" selection-end-column="5" />
-          <folding>
-            <element signature="e#15#111#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/avm/miner/module/ipfs/loader.go">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="-1868">
-          <caret line="248" column="28" lean-forward="true" selection-start-line="248" selection-start-column="28" selection-end-line="248" selection-end-column="28" />
+          <caret line="248" column="28" selection-start-line="248" selection-start-column="28" selection-end-line="248" selection-end-column="28" />
           <folding>
             <element signature="n#!!block;n#files_mv#0" />
             <element signature="n#!!block;n#files_rm#0" />
@@ -806,20 +689,216 @@
         </state>
       </provider>
     </entry>
+    <entry file="file:///usr/local/Cellar/go/1.11.2/libexec/src/runtime/panic.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="153">
+          <caret line="680" selection-start-line="680" selection-end-line="680" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file:///usr/local/Cellar/go/1.11.2/libexec/src/net/http/server.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="134">
+          <caret line="1848" selection-start-line="1848" selection-end-line="1848" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/keystore/ks.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="548">
+          <caret line="71" selection-start-line="71" selection-end-line="71" />
+          <folding>
+            <element signature="n#!!block;n#PrivateKey#0" />
+            <element signature="n#!!block;n#Address#0" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/gateway/errors/error.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="60">
+          <caret line="4" column="16" selection-start-line="4" selection-start-column="16" selection-end-line="4" selection-end-column="16" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/gateway/response/baseerror.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="60">
+          <caret line="4" column="1" selection-start-line="4" selection-start-column="1" selection-end-line="4" selection-end-column="1" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/gateway/response/base.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="570">
+          <caret line="38" column="1" selection-start-line="38" selection-start-column="1" selection-end-line="38" selection-end-column="1" />
+          <folding>
+            <element signature="e#18#57#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/gateway/connpool.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="300">
+          <caret line="20" column="33" selection-start-line="20" selection-start-column="20" selection-end-line="20" selection-end-column="33" />
+          <folding>
+            <element signature="e#17#57#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file:///usr/local/Cellar/go/1.11.2/libexec/src/net/http/request.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="266">
+          <caret line="112" column="17" selection-start-line="112" selection-start-column="17" selection-end-line="112" selection-end-column="17" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/avm/miner/task.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="180">
+          <caret line="14" column="26" lean-forward="true" selection-start-line="14" selection-start-column="26" selection-end-line="14" selection-end-column="26" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/avm/miner/miner.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="105">
+          <caret line="7" column="4" selection-start-line="7" selection-start-column="4" selection-end-line="7" selection-end-column="4" />
+          <folding>
+            <element signature="e#15#72#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/avm/miner/avm.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="240">
+          <caret line="20" column="10" selection-start-line="20" selection-start-column="4" selection-end-line="20" selection-end-column="10" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/avm/miner/module/avmm.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="375">
+          <caret line="29" column="42" lean-forward="true" selection-start-line="29" selection-start-column="42" selection-end-line="29" selection-end-column="42" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/avm/workstn.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="476">
+          <caret line="67" column="41" lean-forward="true" selection-start-line="67" selection-start-column="41" selection-end-line="67" selection-end-column="41" />
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/avm/miner/mncmn.go">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="308">
-          <caret line="199" column="27" lean-forward="true" selection-start-line="199" selection-start-column="27" selection-end-line="199" selection-end-column="27" />
-          <folding>
-            <element signature="e#15#228#0" expanded="true" />
-          </folding>
+        <state relative-caret-position="-187">
+          <caret line="157" column="1" lean-forward="true" selection-start-line="157" selection-start-column="1" selection-end-line="157" selection-end-column="1" />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/main.go">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="105">
-          <caret line="17" column="72" selection-start-line="17" selection-start-column="72" selection-end-line="17" selection-end-column="72" />
+        <state relative-caret-position="285">
+          <caret line="19" column="72" selection-start-line="19" selection-start-column="26" selection-end-line="19" selection-end-column="72" />
+          <folding>
+            <element signature="e#14#354#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/gateway/response/rspfct.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="150">
+          <caret line="46" selection-start-line="46" selection-end-line="46" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/statepool/pool.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="240">
+          <caret line="27" column="28" selection-start-line="27" selection-start-column="28" selection-end-line="27" selection-end-column="28" />
+          <folding>
+            <element signature="e#19#227#0" expanded="true" />
+            <element signature="n#!!block;n#PublishTx#0" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/utils/amfs.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="180">
+          <caret line="166" lean-forward="true" selection-start-line="166" selection-end-line="166" />
+          <folding>
+            <element signature="n#!!block;n#IsDir#0" />
+            <element signature="n#!!block;n#IsFile#0" />
+            <element signature="n#!!block;n#AFMS_DestoryDapp#0" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/gateway/http.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="150">
+          <caret line="10" column="15" lean-forward="true" selection-start-line="10" selection-start-column="15" selection-end-line="10" selection-end-column="15" />
+          <folding>
+            <element signature="e#17#46#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/gateway/tx/perfrom.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="-270">
+          <caret line="4" selection-start-line="4" selection-end-line="6" selection-end-column="49" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/statepool/tx/block.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="202">
+          <caret line="21" selection-start-line="21" selection-end-line="21" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/statepool/dappstate/state.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="297">
+          <caret line="49" selection-start-line="49" selection-end-line="49" />
+          <folding>
+            <element signature="n#!!block;n#ContainMaterPeer#0" />
+            <element signature="n#!!block;n#GetBroadcastChannel#0" />
+            <element signature="n#!!block;n#AddListner#0" />
+            <element signature="n#!!block;n#shutdownListening#0" />
+            <element signature="n#!!block;n#startingListening#0" />
+            <element signature="n#!!block;n#initBroadcast#0" />
+            <element signature="n#!!block;n#startingBroadcasting#0" />
+            <element signature="n#!!block;n#shutdownBroadcasting#0" />
+            <element signature="n#!!block;n#Clean#0" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/statepool/tx/txpool.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="135">
+          <caret line="257" column="5" lean-forward="true" selection-start-line="257" selection-start-column="5" selection-end-line="257" selection-end-column="5" />
+          <folding>
+            <element signature="n#!!block;n#PrintTxQueue#0" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/gateway/tx/status.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="49">
+          <caret line="50" lean-forward="true" selection-start-line="50" selection-end-line="50" />
+          <folding>
+            <element signature="e#12#134#0" expanded="true" />
+          </folding>
         </state>
       </provider>
     </entry>

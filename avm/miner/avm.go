@@ -18,7 +18,7 @@ type Avm struct {
 	//每个虚拟机仅有一个正在工作到矿工,虚拟机与Dapp无关，在需要到时候将Dapp装载到虚拟机中，并且配置好对应矿工则可以开始计算结果
 	miner				MinerInf
 	State				int
-
+	DappNS				string
 }
 
 //func (vm *Avm) BaseMFSPath() string {

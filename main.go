@@ -4,8 +4,10 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"github.com/ayachain/go-aya/avm"
+	AvmStn "github.com/ayachain/go-aya/avm"
+	AGateway "github.com/ayachain/go-aya/gateway"
 	Aks "github.com/ayachain/go-aya/keystore"
+	DSP "github.com/ayachain/go-aya/statepool"
 	DState "github.com/ayachain/go-aya/statepool/dappstate"
 	Act "github.com/ayachain/go-aya/statepool/tx/act"
 	"log"
@@ -21,106 +23,35 @@ const (
 
 func testDemo3() {
 
-	//生成一个Dapp状态机
-	fristDemoState, err := DState.NewDappState(AyaChainDemoDapp_3)
-
-	if err != nil {
+	if err := DSP.DappStatePool.AddDappStatDaemon(AyaChainDemoDapp_3); err != nil {
 		panic(err)
 	}
-
-	//启动状态机守护线程，当中有主题的监听
-	if err := fristDemoState.Daemon(DState.DappPeerType_Master); err != nil {
-		panic(err)
-	}
-
-	avm.DaemonWorkstation()
 
 	//开始交易
-	//1.申请一些代币
-	parmas := make(map[string]interface{})
-	parmas["address"] = Aks.DefaultPeerKS().Address()
-	parmas["amount"] = 5000
-
-	jbs, _ := json.Marshal(parmas)
-	act := Act.NewPerfromAct(AyaChainDemoDapp_3, "giveMeSomeToken", string(jbs))
-
-	//签名
+	//1.申请代币
+	tx1str := fmt.Sprintf(`{"address":"%s", "amount":5000}`, Aks.DefaultPeerKS().Address())
+	act := Act.NewPerfromAct(AyaChainDemoDapp_3, "giveMeSomeToken", tx1str)
 	tx := Aks.DefaultPeerKS().CreateSignedTx(act)
-
-	//发送交易
-	if txhex, err := tx.EncodeToHex(); err == nil {
-
-		fristDemoState.GetBroadcastChannel(DState.PubsubChannel_Tx) <- txhex
-		//获取结果
-		ret := <- fristDemoState.GetBroadcastChannel(DState.PubsubChannel_Tx)
-
-		if ret != nil {
-			panic(err)
-		}
-
-	} else {
-		panic(err)
-	}
+	txstr, _:= json.Marshal(tx)
+	fmt.Println("giveMeSomeToken: " + string(txstr))
 
 	//2.转账
-	parmas2 := make(map[string]interface{})
-	parmas2["from"] = Aks.DefaultPeerKS().Address()
-	parmas2["to"] = "Address1"
-	parmas2["value"] = 2500
-	jbs2, _ := json.Marshal(parmas2)
-	act = Act.NewPerfromAct(AyaChainDemoDapp_3, "transfer", string(jbs2))
-
-	//签名
+	tx2str := fmt.Sprintf(`{"from":"%s", "to":"0x88FFe3F7b26F0CEd6945BDA4e8621EC107049CE1", "value":100}`, Aks.DefaultPeerKS().Address())
+	act = Act.NewPerfromAct(AyaChainDemoDapp_3, "transfer", tx2str)
 	tx = Aks.DefaultPeerKS().CreateSignedTx(act)
+	txstr, _ = json.Marshal(tx)
+	fmt.Println( "transfer: " + string(txstr))
 
-	//发送交易
-	if txhex, err := tx.EncodeToHex(); err == nil {
-
-		fristDemoState.GetBroadcastChannel(DState.PubsubChannel_Tx) <- txhex
-		//获取结果
-		ret := <- fristDemoState.GetBroadcastChannel(DState.PubsubChannel_Tx)
-
-		if ret != nil {
-			panic(err)
-		}
-
-	} else {
-		panic(err)
-	}
-
-
-
-	//3.查询余额
-	act = Act.NewPerfromAct(AyaChainDemoDapp_3, "balanceOf", string(jbs))
-
-	//签名
+	//3.查询
+	tx3str := `{"from":"0x88FFe3F7b26F0CEd6945BDA4e8621EC107049CE1"}`
+	act = Act.NewPerfromAct(AyaChainDemoDapp_3, "transfer", tx3str)
 	tx = Aks.DefaultPeerKS().CreateSignedTx(act)
+	txstr, _ = json.Marshal(tx)
+	fmt.Println( "balanceof: " + string(txstr))
 
-	//发送交易
-	if txhex, err := tx.EncodeToHex(); err == nil {
-
-		fristDemoState.GetBroadcastChannel(DState.PubsubChannel_Tx) <- txhex
-		//获取结果
-		ret := <- fristDemoState.GetBroadcastChannel(DState.PubsubChannel_Tx)
-
-		if ret != nil {
-			panic(err)
-		}
-
-	} else {
-		panic(err)
-	}
-
-	select {
-
-	}
 }
 
-func main() {
-
-	testDemo3()
-
-	return
+func test2() {
 
 	nodeType := flag.String("t", "worker","")
 
@@ -193,7 +124,7 @@ func main() {
 			}
 		}()
 
-		avm.DaemonWorkstation()
+		AvmStn.DaemonWorkstation()
 		//阻塞主线程
 		select {}
 
@@ -202,4 +133,17 @@ func main() {
 		panic(err)
 
 	}
+}
+
+func main() {
+
+	AvmStn.DaemonWorkstation()
+	AGateway.DaemonHttpGateway()
+
+	testDemo3()
+
+	select {
+
+	}
+	return
 }

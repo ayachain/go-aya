@@ -65,9 +65,11 @@ var peerDefaultKS = &Keystore{}
 func DefaultPeerKS() *Keystore {
 
 	if peerDefaultKS.pkey == nil {
+
 		if err := peerDefaultKS.GenerateKey(); err != nil {
 			return nil
 		}
+
 	}
 
 	return peerDefaultKS

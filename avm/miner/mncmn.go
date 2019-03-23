@@ -32,23 +32,14 @@ func (m* MNCMiner) MiningBlock(vm *Avm, b* Atx.Block) (r string, err error) {
 	}
 
 	//1.载入当前块app的所有数据,默认的flush=false
-	Autils.AFMS_ReloadDapp(pblk.BDHash, b.GetHash())
-
-	//函数完成时，需要卸载目录，否则会导致大量的目录存在于MFS中，而MFS是位于内存的文件系统，可能在大量Dapp运行时，导致节点内存大量占用
-	defer func() {
-
-		if !Autils.AFMS_RemovePath(b.GetHash()) {
-			log.Println("mncmn.go : Autils.AFMS_RemovePath Faild.")
-		}
-
-	}()
+	Autils.AFMS_ReloadDapp(pblk.BDHash, vm.DappNS)
 
 	//1.写入检索, 检索文件位于 对应块数据下的 /_index/_bindex，使用IPFSHash作为间隔直接写入,读取检索使用offset和hashsize
-	if err := m.writingBlockIndex(b); err != nil {
+	if err := m.writingBlockIndex(vm.DappNS, b); err != nil {
 		return "", err
 	}
 
-	codestr, err := Autils.AFMS_ReadDappCode(b.GetHash())
+	codestr, err := Autils.AFMS_ReadDappCode(vm.DappNS)
 
 	if err != nil {
 		return "", err
@@ -68,7 +59,7 @@ func (m* MNCMiner) MiningBlock(vm *Avm, b* Atx.Block) (r string, err error) {
 
 			if err := pact.DecodeFromHex(tx.ActHex); err != nil {
 
-				if m.writeTxReceipt(b, i, "Error") != nil {
+				if m.writeTxReceipt(vm.DappNS, b, i, "Error") != nil {
 					//若发现无法写入，则发生了未知错误，此时没有任何矿工可以正常工作，应当直接放弃为此块计算最终结果
 					return "", errors.New("MNCMiner : Can't write tx receipt content to mfs.")
 				}
@@ -86,7 +77,7 @@ func (m* MNCMiner) MiningBlock(vm *Avm, b* Atx.Block) (r string, err error) {
 
 					if err != nil {
 
-						if m.writeTxReceipt(b, i, "Parmas Parser Expection.") != nil {
+						if m.writeTxReceipt(vm.DappNS, b, i, "Parmas Parser Expection.") != nil {
 							//若发现无法写入，则发生了未知错误，此时没有任何矿工可以正常工作，应当直接放弃为此块计算最终结果
 							return "", errors.New("MNCMiner : Can't write tx receipt content to mfs.")
 						} else {
@@ -115,7 +106,7 @@ func (m* MNCMiner) MiningBlock(vm *Avm, b* Atx.Block) (r string, err error) {
 
 				if err != nil {
 
-					if m.writeTxReceipt(b, i, err.Error()) != nil {
+					if m.writeTxReceipt(vm.DappNS, b, i, err.Error()) != nil {
 						//若发现无法写入，则发生了未知错误，此时没有任何矿工可以正常工作，应当直接放弃为此块计算最终结果
 						return "", err
 					} else {
@@ -124,7 +115,7 @@ func (m* MNCMiner) MiningBlock(vm *Avm, b* Atx.Block) (r string, err error) {
 
 				} else {
 
-					if err := m.writeTxReceipt(b, i, vm.l.Get(-1)); err != nil {
+					if err := m.writeTxReceipt(vm.DappNS, b, i, vm.l.Get(-1)); err != nil {
 						return "", err
 					} else {
 						vm.l.Pop(1)
@@ -139,11 +130,11 @@ func (m* MNCMiner) MiningBlock(vm *Avm, b* Atx.Block) (r string, err error) {
 
 	}
 
-	if err := Autils.AFMS_FlushPath(b.GetHash()); err != nil {
+	if err := Autils.AFMS_FlushPath(vm.DappNS); err != nil {
 		return "", errors.New("MNCMiner : Autils.AFMS_FlushPath Faild.")
 	}
 
-	dirstat, err := Autils.AFMS_PathStat(b.GetHash())
+	dirstat, err := Autils.AFMS_PathStat(vm.DappNS)
 
 	log.Printf("BlockIndex:%d Txs:%d Time:%d", b.Index, len(b.Txs), time.Now().Unix() - stime)
 
@@ -155,19 +146,19 @@ func (m* MNCMiner) MiningBlock(vm *Avm, b* Atx.Block) (r string, err error) {
 
 }
 
-func (m* MNCMiner) writingBlockIndex(b* Atx.Block) error {
+func (m* MNCMiner) writingBlockIndex(dappns string, b* Atx.Block) error {
 
 	if b.Index <= 1 {
 		//在第一块时直接创建块检索文件
-		return Autils.AFMS_CreateFile(b.GetHash() + "/_index", "_bindex", []byte(b.GetHash()))
+		return Autils.AFMS_CreateFile(dappns + "/_index", "_bindex", []byte(b.GetHash()))
 	} else {
 		//后续的则直接追写块的Hash值
-		return Autils.AFMS_FileAppend(b.GetHash() + "/_index", "_bindex", []byte(b.GetHash()))
+		return Autils.AFMS_FileAppend(dappns + "/_index", "_bindex", []byte(b.GetHash()))
 	}
 }
 
 //写入交易对应的返回结果
-func (m* MNCMiner) writeTxReceipt( b* Atx.Block, txindex int, data interface{} ) error {
+func (m* MNCMiner) writeTxReceipt( dappns string, b* Atx.Block, txindex int, data interface{} ) error {
 
 	rep := &Atx.TxReceipt{}
 	rep.BlockIndex = b.Index
@@ -206,7 +197,7 @@ func (m* MNCMiner) writeTxReceipt( b* Atx.Block, txindex int, data interface{} )
 		return err
 	}
 
-	if err := Autils.AFMS_CreateFile(b.GetHash(), "/_receipt/" + rep.TxHash, bs); err != nil {
+	if err := Autils.AFMS_CreateFile(dappns, "/_receipt/" + rep.TxHash, bs); err != nil {
 		return err
 	}
 

@@ -111,13 +111,22 @@ func AFMS_ReloadDapp(bdhash string, mfspath string) bool {
 		mfspath = "/" + mfspath
 	}
 
-	if AFMS_IsPathExist(mfspath) {
-		//文件存在直接删除
-		AFMS_RemovePath(mfspath)
+	originStat,err := AFMS_PathStat(mfspath)
+
+	if err != nil{
+
+		return AFMS_DownloadPathToDir(bdhash, mfspath)
+
+	} else {
+
+		if originStat.Hash == bdhash {
+			return true
+		} else {
+			AFMS_RemovePath(mfspath)
+			return AFMS_DownloadPathToDir(bdhash, mfspath)
+		}
+
 	}
-
-	return AFMS_DownloadPathToDir(bdhash, mfspath)
-
 }
 
 func AFMS_DestoryDapp(nsp string) bool {
@@ -151,6 +160,29 @@ func AFMS_ReadDappCode(path string) (code string, err error) {
 			return "", err
 		} else {
 			return string(codebs), nil
+		}
+	}
+
+}
+
+func AFMS_ReadTxReceipt(bpath string, txhash string) (r []byte, err error) {
+
+	mfsTpath := "/" + bpath + "/_receipt/" + txhash
+
+	bs, err := shell.NewLocalShell().Request("files/read").Arguments(mfsTpath).Option("flush",false).Send(context.Background())
+
+	if err != nil {
+		return nil, err
+	} else {
+
+		if bs.Error != nil {
+			return nil, errors.New( bs.Error.Error() )
+		}
+
+		if content,err := ioutil.ReadAll(bs.Output); err != nil {
+			return nil, err
+		} else {
+			return content, nil
 		}
 	}
 

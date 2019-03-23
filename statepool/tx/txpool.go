@@ -5,9 +5,19 @@ import (
 	"encoding/json"
 	"fmt"
 	Act "github.com/ayachain/go-aya/statepool/tx/act"
+	"github.com/ayachain/go-aya/utils"
 	"github.com/pkg/errors"
 	"log"
 	"time"
+)
+
+const (
+
+	TxState_NotFound = 0
+	TxState_WaitPack = 1
+	TxState_Pending  = 2
+	TxState_Confirm  = 3
+
 )
 
 const (
@@ -18,31 +28,37 @@ const (
 
 type TxPool struct {
 
+	DappNS			string
 	BaseBlock		*Block
 	PendingBlock	*Block
 	TxQueue			*list.List
-	PendingRetMap	map[string]*list.List
+
 	ConfirmRetCount int
 
 	//当TxPool决定打包交易时，会通过此通道发送新块当IPFSHash，委托TxPool的拥有者进行交易广播
 	//随后马上会监听此信道，查看结果，如果返回为nil，则表示成功广播
 	// out chan
-	BlockBroadcastChan		chan interface{}
+	BlockBroadcastChan	chan interface{}
 
 	//矿池提供结果的信道
 	// in chan
-	BlockBDHashChan			chan *Tx
+	BlockBDHashChan		chan *Tx
+
+	pendingRetMap			map[string]*list.List
+
 }
 
-func NewTxPool(baseBlock *Block) (txp *TxPool) {
+func NewTxPool(dappns string, baseBlock *Block) (txp *TxPool) {
 
 	txp = &TxPool{}
 	txp.BaseBlock = baseBlock
 	txp.TxQueue = list.New()
+
 	//测试,暂时为1
 	txp.ConfirmRetCount = 1
 	txp.BlockBDHashChan = make(chan *Tx)
-	txp.PendingRetMap = make(map[string]*list.List)
+	txp.pendingRetMap = make(map[string]*list.List)
+	txp.DappNS = dappns
 
 	return
 }
@@ -54,8 +70,6 @@ func (txp* TxPool) PushTx(mtx Tx) error {
 	}
 
 	txp.TxQueue.PushBack(mtx)
-
-	//log.Println("TxPool Pushed New Tx : " + mtx.MarshalJson())
 
 	return nil
 }
@@ -141,6 +155,7 @@ func (txp *TxPool) StartGenBlockDaemon() {
 						//广播成功
 						txp.PendingBlock = nblock
 						btxList.Init()
+
 						continue
 
 					} else {
@@ -182,17 +197,17 @@ func (txp *TxPool) StartGenBlockDaemon() {
 
 			if rsp.BlockHash == txp.PendingBlock.GetHash() {
 
-				_,exist := txp.PendingRetMap[rsp.ResultState]
+				_,exist := txp.pendingRetMap[rsp.ResultState]
 
 				if !exist {
-					txp.PendingRetMap[rsp.ResultState] = list.New()
+					txp.pendingRetMap[rsp.ResultState] = list.New()
 				}
 
-				txp.PendingRetMap[rsp.ResultState].PushBack(rsptx)
+				txp.pendingRetMap[rsp.ResultState].PushBack(rsptx)
 			}
 
 			//检测哪一个结果到数量高于x
-			for k,v := range txp.PendingRetMap {
+			for k,v := range txp.pendingRetMap {
 
 				if v.Len() >= txp.ConfirmRetCount {
 
@@ -204,8 +219,7 @@ func (txp *TxPool) StartGenBlockDaemon() {
 					if ret == nil {
 
 						//清除之前的所有回执
-						txp.PendingRetMap = make(map[string]*list.List)
-
+						txp.pendingRetMap = make(map[string]*list.List)
 						txp.BaseBlock = txp.PendingBlock
 						txp.PendingBlock = nil
 
@@ -218,5 +232,39 @@ func (txp *TxPool) StartGenBlockDaemon() {
 		}
 
 	}()
+
+}
+
+func (txp *TxPool) SearchTxStatus(txhash string) (tx *Tx, stat int, rep []byte) {
+
+
+	//if in waiting package status
+	for it := txp.TxQueue.Front(); it != nil; it = it.Next() {
+		if it.Value.(*Tx).GetSha256Hash() == txhash {
+			return tx, TxState_WaitPack, nil
+		}
+	}
+
+
+	//if in pending status
+	if txp.PendingBlock != nil {
+
+		for i := 0; i < len(txp.PendingBlock.Txs); i++ {
+			if txp.PendingBlock.Txs[i].GetSha256Hash() == txhash {
+				return tx, TxState_Pending, nil
+			}
+		}
+
+	}
+
+	//if in confirm status
+	rep, err := utils.AFMS_ReadTxReceipt(txp.DappNS, txhash)
+
+	if err != nil {
+		return nil, TxState_NotFound, nil
+	} else {
+
+		return nil,TxState_Confirm, rep
+	}
 
 }

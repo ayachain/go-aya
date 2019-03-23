@@ -47,7 +47,7 @@ func NewDappState(dappns string) (dstate *DappState, err error) {
 		mpids:app.MasterNode,
 	}
 
-	dstate.Pool = Atx.NewTxPool(Atx.NewBlock(0,"",nil,app.BDHash))
+	dstate.Pool = Atx.NewTxPool(dappns, Atx.NewBlock(0,"",nil,app.BDHash))
 
 	dstate.listnerMap = make(map[string]Listener)
 	dstate.broadcasterMap = make(map[string]Broadcaster)
