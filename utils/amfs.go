@@ -76,7 +76,35 @@ func AFMS_PathStat(mpath string) (stat *AFMS_Stat, err error) {
 
 }
 
-//检测文件是否存在
+func AFMS_ReplaceFile(mpath string, data []byte) error {
+
+	if !strings.HasPrefix(mpath,"/") {
+		mpath = "/" + mpath
+	}
+
+	stat, err := AFMS_PathStat(mpath)
+
+	if err != nil {
+		return err
+	} else if stat.Type != AFMS_FILE {
+		return errors.New("AFMS_ReplaceFile : " + mpath + " not a file.")
+	}
+
+	fr := files.NewBytesFile(data)
+	slf := files.NewSliceDirectory([]files.DirEntry{files.FileEntry("", fr)})
+	fileReader := files.NewMultiFileReader(slf, true)
+
+	reqb := shell.NewLocalShell().Request("files/write").Arguments(mpath).Body(fileReader).Option("t",true).Option("flush",false)
+
+	if err := reqb.Exec(context.Background(), nil); err != nil {
+		return err
+	} else {
+		return nil
+	}
+
+
+}
+
 func AFMS_IsPathExist(mpath string) bool {
 
 	if _, err := AFMS_PathStat(mpath); err != nil {
@@ -96,15 +124,23 @@ func AFMS_RemovePath(mpath string) bool {
 	return shell.NewLocalShell().Request("files/rm").Arguments(mpath).Option("flush",false).Option("r", true).Exec(context.Background(), nil) == nil
 }
 
-func AFMS_DownloadPathToDir(source string, dist string) bool {
-	return shell.NewLocalShell().Request("files/cp").Arguments(source, dist).Option("flush",false).Exec(context.Background(), nil) == nil
+func AFMS_DownloadPathToDir(ipfshash string, dist string) bool {
+
+	if !strings.HasPrefix(ipfshash,"/ipfs") {
+		ipfshash = "/ipfs" + ipfshash
+	}
+
+	if !strings.HasPrefix(dist,"/") {
+		dist = "/" + dist
+	}
+
+	return shell.NewLocalShell().Request("files/cp").Arguments(ipfshash, dist).Option("flush",false).Exec(context.Background(), nil) == nil
 }
 
-//装载Dapp运行文件
-func AFMS_ReloadDapp(bdhash string, mfspath string) bool {
+func AFMS_ReloadDapp(ipfshash string, mfspath string) bool {
 
-	if !strings.HasPrefix(bdhash,"/ipfs") {
-		bdhash = "/ipfs/" + bdhash
+	if !strings.HasPrefix(ipfshash,"/ipfs") {
+		ipfshash = "/ipfs/" + ipfshash
 	}
 
 	if !strings.HasPrefix(mfspath, "/") {
@@ -115,36 +151,54 @@ func AFMS_ReloadDapp(bdhash string, mfspath string) bool {
 
 	if err != nil{
 
-		return AFMS_DownloadPathToDir(bdhash, mfspath)
+		return AFMS_DownloadPathToDir(ipfshash, mfspath)
 
 	} else {
 
-		if originStat.Hash == bdhash {
+		if originStat.Hash == ipfshash {
 			return true
 		} else {
 			AFMS_RemovePath(mfspath)
-			return AFMS_DownloadPathToDir(bdhash, mfspath)
+			return AFMS_DownloadPathToDir(ipfshash, mfspath)
 		}
 
 	}
 }
 
-func AFMS_DestoryDapp(nsp string) bool {
+func AFMS_ReadFile(mpath string, offset int, size int) (content []byte, err error) {
 
-	var mfsTpath string
-
-	if nsp[0] == '/' {
-		mfsTpath = nsp
-	} else {
-		mfsTpath = "/" + nsp
+	if !strings.HasPrefix(mpath,"/") {
+		mpath = "/" + mpath
 	}
 
-	return AFMS_RemovePath(mfsTpath)
+	req := shell.NewLocalShell().Request("files/read").Arguments(mpath)
+
+	if size > 0 {
+		req.Option("o", offset).Option("n", size)
+	}
+
+	bs,err := req.Send(context.Background())
+
+	if err != nil {
+		return nil, err
+	} else {
+
+		if bs.Error != nil {
+			return nil, errors.New( bs.Error.Error() )
+		}
+
+		if c,err := ioutil.ReadAll(bs.Output); err != nil {
+			return nil, err
+		} else {
+			return c, nil
+		}
+	}
+
 }
 
-func AFMS_ReadDappCode(path string) (code string, err error) {
+func AFMS_ReadDappCode(dappns string) (code string, err error) {
 
-	mfsTpath := "/" + path + "/_dapp/main.lua"
+	mfsTpath := "/" + dappns + "/_dapp/main.lua"
 
 	bs,err := shell.NewLocalShell().Request("files/read").Arguments(mfsTpath).Option("flush",false).Send(context.Background())
 
@@ -167,15 +221,21 @@ func AFMS_ReadDappCode(path string) (code string, err error) {
 
 func AFMS_RenameFile(bpath string, s string, d string) error {
 
-	source := "/" + bpath + "/" + s
-	dist := "/" + bpath + "/" + d
+	if !strings.HasPrefix(bpath,"/") {
+		bpath = "/" + bpath
+	}
+
+	source := bpath + "/" + s
+	dist := bpath + "/" + d
 
 	return shell.NewLocalShell().Request("files/mv").Arguments(source,dist).Option("flush",false).Exec(context.Background(), nil)
 }
 
-func AFMS_CreateFile(path string, name string, data[] byte) error {
+func AFMS_CreateFile(mpath string, data[] byte) error {
 
-	fpath := "/" + path + "/" + name
+	if !strings.HasPrefix(mpath,"/") {
+		mpath = "/" + mpath
+	}
 
 	shell := shell.NewLocalShell()
 
@@ -183,7 +243,7 @@ func AFMS_CreateFile(path string, name string, data[] byte) error {
 	slf := files.NewSliceDirectory([]files.DirEntry{files.FileEntry("", fr)})
 	fileReader := files.NewMultiFileReader(slf, true)
 
-	reqb := shell.Request("files/write").Arguments(fpath).Body(fileReader).Option("e",true).Option("t",true).Option("flush",false)
+	reqb := shell.Request("files/write").Arguments(mpath).Body(fileReader).Option("e",true).Option("p",true).Option("flush",false)
 
 	if err := reqb.Exec(context.Background(), nil); err != nil {
 		return err
@@ -192,23 +252,25 @@ func AFMS_CreateFile(path string, name string, data[] byte) error {
 	}
 }
 
-func AFMS_FileAppend(bpathstring string, fpath string, data[] byte) error {
+func AFMS_FileAppend(mpath string, data[] byte) error {
 
-	spath := "/" + bpathstring + "/" + fpath
+	if !strings.HasPrefix(mpath,"/") {
+		mpath = "/" + mpath
+	}
 
-	stat, err := AFMS_PathStat(spath)
+	stat, err := AFMS_PathStat(mpath)
 
 	if err != nil {
 		return err
 	} else if stat.Type != AFMS_FILE {
-		return errors.New("AFMS_FileAppend : " + spath + " not a file.")
+		return errors.New("AFMS_FileAppend : " + mpath + " not a file.")
 	}
 
 	fr := files.NewBytesFile(data)
 	slf := files.NewSliceDirectory([]files.DirEntry{files.FileEntry("", fr)})
 	fileReader := files.NewMultiFileReader(slf, true)
 
-	reqb := shell.NewLocalShell().Request("files/write").Arguments(spath).Body(fileReader).Option("o",stat.Size + 1).Option("flush",false)
+	reqb := shell.NewLocalShell().Request("files/write").Arguments(mpath).Body(fileReader).Option("o",stat.Size + 1).Option("flush",false)
 
 	if err := reqb.Exec(context.Background(), nil); err != nil {
 		return err
@@ -219,5 +281,10 @@ func AFMS_FileAppend(bpathstring string, fpath string, data[] byte) error {
 }
 
 func AFMS_FlushPath(mpath string) error {
+
+	if !strings.HasPrefix(mpath,"/") {
+		mpath = "/" + mpath
+	}
+
 	return shell.NewLocalShell().Request("files/flush").Arguments(mpath).Exec(context.Background(),nil)
 }

@@ -151,10 +151,10 @@ func (m* MNCMiner) writingBlockIndex(dappns string, b* Atx.Block) error {
 
 	if b.Index <= 1 {
 		//在第一块时直接创建块检索文件
-		return Autils.AFMS_CreateFile(dappns + "/_index", "_bindex", []byte(b.GetHash()))
+		return Autils.AFMS_CreateFile("/" + dappns + "/_index/_bindex", []byte(b.GetHash()))
 	} else {
 		//后续的则直接追写块的Hash值
-		return Autils.AFMS_FileAppend(dappns + "/_index", "_bindex", []byte(b.GetHash()))
+		return Autils.AFMS_FileAppend("/" + dappns + "/_index/_bindex", []byte(b.GetHash()))
 	}
 }
 
@@ -205,7 +205,7 @@ func (m* MNCMiner) writeTxReceipt( dappns string, b* Atx.Block, txindex int, dat
 		return err
 	}
 
-	if err := Autils.AFMS_CreateFile(dappns, "/_receipt/" + rep.TxHash, bs); err != nil {
+	if err := Autils.AFMS_CreateFile( "/" + dappns + "/_receipt/" + rep.TxHash, bs); err != nil {
 		return err
 	}
 
