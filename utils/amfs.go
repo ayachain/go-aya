@@ -165,29 +165,6 @@ func AFMS_ReadDappCode(path string) (code string, err error) {
 
 }
 
-func AFMS_ReadTxReceipt(bpath string, txhash string) (r []byte, err error) {
-
-	mfsTpath := "/" + bpath + "/_receipt/" + txhash
-
-	bs, err := shell.NewLocalShell().Request("files/read").Arguments(mfsTpath).Option("flush",false).Send(context.Background())
-
-	if err != nil {
-		return nil, err
-	} else {
-
-		if bs.Error != nil {
-			return nil, errors.New( bs.Error.Error() )
-		}
-
-		if content,err := ioutil.ReadAll(bs.Output); err != nil {
-			return nil, err
-		} else {
-			return content, nil
-		}
-	}
-
-}
-
 func AFMS_RenameFile(bpath string, s string, d string) error {
 
 	source := "/" + bpath + "/" + s

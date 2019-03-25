@@ -1,11 +1,15 @@
 package tx
 
-import "encoding/json"
+import (
+	"encoding/json"
+)
 
 type TxReceipt struct {
-	BlockIndex uint64
-	TxHash	string
-	Response interface{}
+	BlockIndex 	uint64
+	Tx			Tx
+	TxHash		string
+	Status		string
+	Response 	interface{}
 }
 
 

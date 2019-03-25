@@ -1,6 +1,7 @@
 package miner
 
 import (
+	"encoding/json"
 	"fmt"
 	Atx "github.com/ayachain/go-aya/statepool/tx"
 	Act "github.com/ayachain/go-aya/statepool/tx/act"
@@ -163,11 +164,12 @@ func (m* MNCMiner) writeTxReceipt( dappns string, b* Atx.Block, txindex int, dat
 	rep := &Atx.TxReceipt{}
 	rep.BlockIndex = b.Index
 	rep.TxHash = b.Txs[txindex].GetSha256Hash()
+	rep.Tx = b.Txs[txindex]
+	rep.Status = "Confirm"
 
 	t, islvalue := data.(lua.LValue)
 
 	if islvalue {
-
 		switch t.Type() {
 		case lua.LTBool:
 			rep.Response = lua.LVAsBool(t)
@@ -179,8 +181,14 @@ func (m* MNCMiner) writeTxReceipt( dappns string, b* Atx.Block, txindex int, dat
 			rep.Response = lua.LVAsNumber(t)
 
 		case lua.LTTable:
+
 			if bs,err := LJson.Encode(t); err != nil {
-				rep.Response = bs
+
+				tbj := make(map[string]string)
+
+				if err := json.Unmarshal(bs, tbj); err == nil {
+					rep.Response = tbj
+				}
 			}
 
 		default :

@@ -2,28 +2,22 @@ package tx
 
 import (
 	"container/list"
+	"context"
 	"encoding/json"
 	"fmt"
 	Act "github.com/ayachain/go-aya/statepool/tx/act"
-	"github.com/ayachain/go-aya/utils"
+	"github.com/ipfs/go-ipfs-api"
 	"github.com/pkg/errors"
+	"io/ioutil"
 	"log"
 	"time"
 )
 
 const (
-
 	TxState_NotFound = 0
 	TxState_WaitPack = 1
 	TxState_Pending  = 2
 	TxState_Confirm  = 3
-
-)
-
-const (
-	TxPool_InChain 	= 0
-	TxPool_Pending 	= 1
-	TxPool_Queue	= 2
 )
 
 type TxPool struct {
@@ -235,13 +229,13 @@ func (txp *TxPool) StartGenBlockDaemon() {
 
 }
 
-func (txp *TxPool) SearchTxStatus(txhash string) (tx *Tx, stat int, rep []byte) {
+func (txp *TxPool) SearchTxStatus(txhash string) (bindex uint64, tx *Tx, stat int, receipt *TxReceipt) {
 
 
 	//if in waiting package status
 	for it := txp.TxQueue.Front(); it != nil; it = it.Next() {
 		if it.Value.(*Tx).GetSha256Hash() == txhash {
-			return tx, TxState_WaitPack, nil
+			return 0, tx, TxState_WaitPack, nil
 		}
 	}
 
@@ -251,20 +245,49 @@ func (txp *TxPool) SearchTxStatus(txhash string) (tx *Tx, stat int, rep []byte) 
 
 		for i := 0; i < len(txp.PendingBlock.Txs); i++ {
 			if txp.PendingBlock.Txs[i].GetSha256Hash() == txhash {
-				return tx, TxState_Pending, nil
+				return txp.PendingBlock.Index, tx, TxState_Pending, nil
 			}
 		}
 
 	}
 
 	//if in confirm status
-	rep, err := utils.AFMS_ReadTxReceipt(txp.DappNS, txhash)
+	r, err := readTxReceipt(txp.DappNS, txhash)
 
 	if err != nil {
-		return nil, TxState_NotFound, nil
+		return 0,nil, TxState_NotFound, nil
 	} else {
 
-		return nil,TxState_Confirm, rep
+		return r.BlockIndex,nil,TxState_Confirm, r
 	}
 
+}
+
+func readTxReceipt(bpath string, txhash string) (receipt *TxReceipt, err error) {
+
+	mfsTpath := "/" + bpath + "/_receipt/" + txhash
+
+	bs, err := shell.NewLocalShell().Request("files/read").Arguments(mfsTpath).Send(context.Background())
+
+	if err != nil {
+		return nil, err
+	} else {
+
+		if bs.Error != nil {
+			return nil, errors.New( bs.Error.Error() )
+		}
+
+		if content,err := ioutil.ReadAll(bs.Output); err != nil {
+			return nil, err
+		} else {
+
+			r := &TxReceipt{}
+
+			if err := json.Unmarshal(content, r); err != nil {
+				return nil, err
+			}
+
+			return r, nil
+		}
+	}
 }

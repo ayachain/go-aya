@@ -18,12 +18,12 @@ type StatePool struct {
 var DappStatePool = &StatePool{dapps:make(map[string]*DState.DappState),txqueue:list.New()}
 
 
-func (sp *StatePool) GetTxStatus(appns string, txhash string) (tx *Atx.Tx, stat int, req []byte) {
+func (sp *StatePool) GetTxStatus(appns string, txhash string) ( bindex uint64, tx *Atx.Tx, stat int, req *Atx.TxReceipt ) {
 
 	ds, inPool := sp.dapps[appns]
 
 	if !inPool {
-		return nil, Atx.TxState_NotFound, nil
+		return 0,nil, Atx.TxState_NotFound, nil
 	} else {
 		return ds.Pool.SearchTxStatus(txhash)
 	}

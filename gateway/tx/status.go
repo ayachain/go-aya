@@ -27,35 +27,43 @@ func TxStatusHandle(w http.ResponseWriter, r *http.Request) {
 		RspFct.CreateError(RspFct.GATEWAY_ERROR_MissParmas_DappNS).WriteToStream(&w);return
 	}
 
-	tx,s,rep := DSP.DappStatePool.GetTxStatus(dappns, txhash)
+	bindex,tx,s,rep := DSP.DappStatePool.GetTxStatus(dappns, txhash)
 
 	switch s {
 	case Atx.TxState_NotFound:
 		RspFct.CreateError(RspFct.GATEWAY_ERROR_Tx_NotFound).WriteToStream(&w);return
 
 	case Atx.TxState_Pending:
-		body := make(map[string]interface{})
-		body["Tx"] = tx
-		body["Status"] = "Pending"
-		body["Response"] = rep
-		RspFct.CreateSuccess(body).WriteToStream(&w)
-		return
 
-	case Atx.TxState_Confirm:
-		body := make(map[string]interface{})
-		body["Tx"] = tx
-		body["Status"] = "Confirm"
-		body["Response"] = rep
-		RspFct.CreateSuccess(body).WriteToStream(&w)
+		r := &Atx.TxReceipt{
+			BlockIndex:bindex,
+			Tx:*tx,
+			TxHash:tx.GetSha256Hash(),
+			Status:"Pending",
+			Response:nil,
+		}
+
+		RspFct.CreateSuccess(r).WriteToStream(&w)
 		return
 
 	case Atx.TxState_WaitPack:
-		body := make(map[string]interface{})
-		body["Tx"] = tx
-		body["Status"] = "WaitingPackage"
-		body["Response"] = rep
-		RspFct.CreateSuccess(body).WriteToStream(&w)
+
+		r := &Atx.TxReceipt{
+			BlockIndex:bindex,
+			Tx:*tx,
+			TxHash:tx.GetSha256Hash(),
+			Status:"WaitingPackage",
+			Response:nil,
+		}
+
+		RspFct.CreateSuccess(r).WriteToStream(&w)
+		return
+
+	case Atx.TxState_Confirm:
+		RspFct.CreateSuccess(rep).WriteToStream(&w)
 		return
 	}
+
+
 
 }
