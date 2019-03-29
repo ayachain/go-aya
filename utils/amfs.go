@@ -19,10 +19,21 @@ const AFMS_DIR  	=	"directory"
 
 type AFMS_Stat struct {
 	Hash			string
-	Size			uint64
-	CumulativeSize 	uint64
-	ChildBlocks		uint64
+	Size			int
+	CumulativeSize 	int
+	ChildBlocks		int
 	Type 			string
+}
+
+type AFMS_Entrie struct {
+	Name string
+	Type int
+	Size int
+	Hash string
+}
+
+type AFMS_ListResponse struct {
+	Entries	[]AFMS_Entrie
 }
 
 func (as *AFMS_Stat) IsDir() bool {
@@ -165,7 +176,7 @@ func AFMS_ReloadDapp(ipfshash string, mfspath string) bool {
 	}
 }
 
-func AFMS_ReadFile(mpath string, offset int, size int) (content []byte, err error) {
+func AFMS_ReadFile(mpath string, offset uint, size uint) (content []byte, err error) {
 
 	if !strings.HasPrefix(mpath,"/") {
 		mpath = "/" + mpath
@@ -270,7 +281,11 @@ func AFMS_FileAppend(mpath string, data[] byte) error {
 	slf := files.NewSliceDirectory([]files.DirEntry{files.FileEntry("", fr)})
 	fileReader := files.NewMultiFileReader(slf, true)
 
-	reqb := shell.NewLocalShell().Request("files/write").Arguments(mpath).Body(fileReader).Option("o",stat.Size + 1).Option("flush",false)
+	reqb := shell.NewLocalShell().Request("files/write").
+		Arguments(mpath).
+		Body(fileReader).
+		Option("o",stat.Size).
+		Option("flush",false)
 
 	if err := reqb.Exec(context.Background(), nil); err != nil {
 		return err
@@ -280,6 +295,15 @@ func AFMS_FileAppend(mpath string, data[] byte) error {
 
 }
 
+func AFMS_Mkdir(mpath string, parent bool) error {
+
+	if !strings.HasPrefix(mpath,"/") {
+		mpath = "/" + mpath
+	}
+
+	return shell.NewLocalShell().Request("files/mkdir").Arguments(mpath).Option("p", parent).Exec(context.Background(), nil);
+}
+
 func AFMS_FlushPath(mpath string) error {
 
 	if !strings.HasPrefix(mpath,"/") {
@@ -287,4 +311,33 @@ func AFMS_FlushPath(mpath string) error {
 	}
 
 	return shell.NewLocalShell().Request("files/flush").Arguments(mpath).Exec(context.Background(),nil)
+}
+
+func AFMS_PathLists(mpath string) (es []AFMS_Entrie, err error) {
+
+	if !strings.HasPrefix(mpath,"/") {
+		mpath = "/" + mpath
+	}
+
+	bs, err := shell.NewLocalShell().Request("files/ls").Arguments(mpath).Option("U", true).Send(context.Background())
+
+	if err != nil {
+		return nil, err
+	} else {
+
+		if bs.Error != nil {
+			return nil, errors.New( bs.Error.Error() )
+		}
+
+		if c,err := ioutil.ReadAll(bs.Output); err != nil {
+			return nil, err
+		} else {
+
+			l := &AFMS_ListResponse{}
+			json.Unmarshal(c, l)
+
+			return l.Entries, nil
+		}
+	}
+
 }

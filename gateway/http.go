@@ -2,6 +2,7 @@ package gateway
 
 import (
 	"fmt"
+	"github.com/ayachain/go-aya/gateway/block"
 	"github.com/ayachain/go-aya/gateway/tx"
 	"net/http"
 )
@@ -12,6 +13,7 @@ func DaemonHttpGateway() {
 
 		http.HandleFunc("/tx/perfrom", tx.TxPerfromHandle)
 		http.HandleFunc("/tx/status", tx.TxStatusHandle)
+		http.HandleFunc("/block/get", block.BlockGetHandle)
 
 		if err := http.ListenAndServe("0.0.0.0:6001", nil); err != nil {
 			panic(err)

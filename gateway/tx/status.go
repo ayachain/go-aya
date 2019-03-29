@@ -15,16 +15,16 @@ func TxStatusHandle(w http.ResponseWriter, r *http.Request) {
 		RspFct.CreateError(RspFct.GATEWAY_ERROR_OnlySupport_Get).WriteToStream(&w);return
 	}
 
+	dappns := r.URL.Query().Get("dappns")
+
+	if len(dappns) <= 0 {
+		RspFct.CreateError(RspFct.GATEWAY_ERROR_MissParmas_DappNS).WriteToStream(&w);return
+	}
+
 	txhash := r.URL.Query().Get("txhash")
 
 	if len(txhash) <= 0 {
 		RspFct.CreateError(RspFct.GATEWAY_ERROR_MissParmas_TxHash).WriteToStream(&w);return
-	}
-
-	dappns := r.URL.Query().Get("dappns")
-
-	if len(txhash) <= 0 {
-		RspFct.CreateError(RspFct.GATEWAY_ERROR_MissParmas_DappNS).WriteToStream(&w);return
 	}
 
 	bindex,tx,s,rep := DSP.DappStatePool.GetTxStatus(dappns, txhash)
