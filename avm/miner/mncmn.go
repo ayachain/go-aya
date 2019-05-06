@@ -107,7 +107,7 @@ func (m* MNCMiner) MiningBlock(vm *Avm, b* Atx.Block) (r string, err error) {
 
 				if err != nil {
 
-					if m.writeTxReceipt(vm.DappNS, b, i, err.Error()) != nil {
+					if m.writeTxReceipt(vm.DappNS, b, i, "AVM I/O Exception") != nil {
 						//若发现无法写入，则发生了未知错误，此时没有任何矿工可以正常工作，应当直接放弃为此块计算最终结果
 						return "", err
 					} else {

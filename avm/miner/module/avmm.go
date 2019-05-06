@@ -8,9 +8,27 @@ import (
 
 func InjectionAyaModules(l *lua.LState) {
 
+	//config avm
+	for _, pair := range []struct {
+		n string
+		f lua.LGFunction
+	}{
+		{lua.LoadLibName, lua.OpenPackage}, // Must be first
+		{lua.BaseLibName, lua.OpenBase},
+		{lua.TabLibName, lua.OpenTable},
+	} {
+		if err := l.CallByParam(lua.P{
+			Fn:      l.NewFunction(pair.f),
+			NRet:    0,
+			Protect: true,
+		}, lua.LString(pair.n)); err != nil {
+			panic(err)
+		}
+	}
+
 	ipfs.BasePathFunc = GetAvmBasePath
 
-	l.PreloadModule("ipfs", ipfs.Loader)
+	l.PreloadModule("io", ipfs.Loader)
 	l.PreloadModule("json", LJson.Loader)
 
 }

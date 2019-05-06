@@ -40,7 +40,8 @@ func BlockGetHandle(w http.ResponseWriter, r *http.Request) {
 
 	switch index {
 	case "latest":
-		blockHash, err = utils.AFMS_ReadFile(ipath, ifstat.Size - 46, 46)
+
+		blockHash, err = utils.AFMS_ReadFile(ipath, uint(ifstat.Size) - 46, 46)
 
 		if err != nil {
 			RspFct.CreateError(RspFct.GATEWAY_ERROR_MFSIO_Expection).WriteToStream(&w);return
@@ -51,7 +52,7 @@ func BlockGetHandle(w http.ResponseWriter, r *http.Request) {
 		if bnub, err := strconv.Atoi(index); err != nil {
 			RspFct.CreateError(RspFct.GATEWAY_ERROR_Conversion_Error).WriteToStream(&w);return
 		} else {
-			blockHash, err = utils.AFMS_ReadFile(ipath, (bnub - 1) * 46, 46)
+			blockHash, err = utils.AFMS_ReadFile(ipath, (uint(bnub) - 1) * 46, 46)
 
 			if err != nil {
 				RspFct.CreateError(RspFct.GATEWAY_ERROR_MFSIO_Expection).WriteToStream(&w);return

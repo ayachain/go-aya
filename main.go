@@ -17,37 +17,44 @@ import (
 const (
 	AyaChainDemoDapp_1 = "QmP5RqvBkfW6NhA6h3rajd71maWm7pUSbVyk9syxdk856h"
 	AyaChainDemoDapp_2 = "QmcCAXw29EcssMiLvF4WhMDY5nLzqv6AxaZB3wgRqijG8c"
-	AyaChainDemoDapp_3 = "QmbLSVGXVJ4dMxBNkxneThhAnXVBWdGp7i2S42bseXh2hS"
+	AyaChainDemoDapp_Token = "QmZT9T38iowCLjSZbmsiy9H7tWPWp5kypzEw1hwmyrKVNm"
 )
 
 
 func testDemo3() {
 
-	if err := DSP.DappStatePool.AddDappStatDaemon(AyaChainDemoDapp_3); err != nil {
+	if err := DSP.DappStatePool.AddDappStatDaemon(AyaChainDemoDapp_Token); err != nil {
 		panic(err)
 	}
 
 	//开始交易
 	//1.申请代币
 	tx1str := fmt.Sprintf(`{"address":"%s", "amount":5000}`, Aks.DefaultPeerKS().Address())
-	act := Act.NewPerfromAct(AyaChainDemoDapp_3, "giveMeSomeToken", tx1str)
+	act := Act.NewPerfromAct(AyaChainDemoDapp_Token, "giveMeSomeToken", tx1str)
 	tx := Aks.DefaultPeerKS().CreateSignedTx(act)
 	txstr, _:= json.Marshal(tx)
 	fmt.Println("giveMeSomeToken: " + string(txstr))
 
 	//2.转账
 	tx2str := fmt.Sprintf(`{"from":"%s", "to":"0x88FFe3F7b26F0CEd6945BDA4e8621EC107049CE1", "value":100}`, Aks.DefaultPeerKS().Address())
-	act = Act.NewPerfromAct(AyaChainDemoDapp_3, "transfer", tx2str)
+	act = Act.NewPerfromAct(AyaChainDemoDapp_Token, "transfer", tx2str)
 	tx = Aks.DefaultPeerKS().CreateSignedTx(act)
 	txstr, _ = json.Marshal(tx)
 	fmt.Println( "transfer: " + string(txstr))
 
 	//3.查询
 	tx3str := `{"from":"0x88FFe3F7b26F0CEd6945BDA4e8621EC107049CE1"}`
-	act = Act.NewPerfromAct(AyaChainDemoDapp_3, "transfer", tx3str)
+	act = Act.NewPerfromAct(AyaChainDemoDapp_Token, "transfer", tx3str)
 	tx = Aks.DefaultPeerKS().CreateSignedTx(act)
 	txstr, _ = json.Marshal(tx)
 	fmt.Println( "balanceof: " + string(txstr))
+
+	//4.info
+	tx4str := `{"from":"0x88FFe3F7b26F0CEd6945BDA4e8621EC107049CE1"}`
+	act = Act.NewPerfromAct(AyaChainDemoDapp_Token,"addressInfo", tx4str)
+	tx = Aks.DefaultPeerKS().CreateSignedTx(act)
+	txstr, _ = json.Marshal(tx)
+	fmt.Println( "addressInfo: " + string(txstr))
 
 }
 
@@ -64,7 +71,7 @@ func test2() {
 	}
 
 	//生成一个Dapp状态机
-	fristDemoState, err := DState.NewDappState(AyaChainDemoDapp_3)
+	fristDemoState, err := DState.NewDappState(AyaChainDemoDapp_Token)
 
 	if err != nil {
 		panic(err)
@@ -96,13 +103,13 @@ func test2() {
 
 				switch txindex % 3 {
 				case 0 :
-					act = Act.NewPerfromAct(AyaChainDemoDapp_3, "SayHello", string(pmapbs))
+					act = Act.NewPerfromAct(AyaChainDemoDapp_Token, "SayHello", string(pmapbs))
 
 				case 1 :
-					act = Act.NewPerfromAct(AyaChainDemoDapp_3, "GiveMeALTable", "")
+					act = Act.NewPerfromAct(AyaChainDemoDapp_Token, "GiveMeALTable", "")
 
 				case 2 :
-					act = Act.NewPerfromAct(AyaChainDemoDapp_3, "GiveMeANumber", "")
+					act = Act.NewPerfromAct(AyaChainDemoDapp_Token, "GiveMeANumber", "")
 				}
 
 				//签名

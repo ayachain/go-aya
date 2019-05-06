@@ -36,7 +36,6 @@ func TxPerfromHandle(w http.ResponseWriter, r *http.Request) {
 			if err := DSP.DappStatePool.PublishTx(ptx); err != nil {
 				RspFct.CreateError(RspFct.GATEWAY_ERROR_Publish_Tx_Faild).WriteToStream(&w);return
 			} else {
-
 				RspFct.CreateSuccess(ptx.GetSha256Hash()).WriteToStream(&w);return
 			}
 		}

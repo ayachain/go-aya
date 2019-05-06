@@ -31,7 +31,11 @@ func (vm *Avm) GetL() *lua.LState {
 
 func NewAvm() *Avm {
 
-	avm := &Avm{l:lua.NewState(), State:AvmState_IDLE, miner:&MNCMiner{}}
+	avm := &Avm{l:lua.NewState(lua.Options{
+		CallStackSize:1024,
+		RegistrySize:4096,
+		SkipOpenLibs:true,
+	}), State:AvmState_IDLE, miner:&MNCMiner{}}
 
 	Avmm.InjectionAyaModules(avm.l)
 
