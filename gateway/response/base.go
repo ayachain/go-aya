@@ -2,12 +2,12 @@ package response
 
 import (
 	"encoding/json"
-	"log"
+	"github.com/labstack/echo"
 	"net/http"
 )
 
 type HttpResponseWriter interface {
-	WriteToStream(w *http.ResponseWriter)
+	WriteToEchoContext(c *echo.Context) error
 }
 
 type HttpResponse struct {
@@ -20,20 +20,19 @@ type HttpResponse struct {
 
 }
 
-func (r *HttpResponse) WriteToStream(w *http.ResponseWriter) {
+func (r *HttpResponse) WriteToEchoContext(c *echo.Context) error {
 
 	if bs, err := json.Marshal(r); err != nil {
 
-		if _, err := (*w).Write([]byte("Unkown Error.")); err != nil {
-			log.Println(err)
-		}
+		return err
 
 	} else {
 
-		if _, err := (*w).Write(bs); err != nil {
-			log.Println(err)
+		if err := (*c).String(http.StatusOK, string(bs)); err != nil {
+			return err
 		}
 
+		return nil
 	}
 
 }

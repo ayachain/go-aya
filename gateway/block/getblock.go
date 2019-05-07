@@ -4,28 +4,22 @@ import (
 	RspFct "github.com/ayachain/go-aya/gateway/response"
 	"github.com/ayachain/go-aya/statepool/tx"
 	"github.com/ayachain/go-aya/utils"
-	"net/http"
+	"github.com/labstack/echo"
 	"strconv"
 )
 
 //http:127.0.0.1:6001/block/get?dappns=QmbLSVGXVJ4dMxBNkxneThhAnXVBWdGp7i2S42bseXh2hS&index=latest
-func BlockGetHandle(w http.ResponseWriter, r *http.Request) {
+func BlockGetHandle(c echo.Context) error {
 
-	if r.Method != http.MethodGet {
-		RspFct.CreateError(RspFct.GATEWAY_ERROR_OnlySupport_Get).WriteToStream(&w);return
-	}
-
-	dappns := r.URL.Query().Get("dappns")
+	dappns := c.QueryParam("dappns")
+	index := c.QueryParam("index")
 
 	if len(dappns) <= 0 {
-		RspFct.CreateError(RspFct.GATEWAY_ERROR_MissParmas_DappNS).WriteToStream(&w);return
+		return RspFct.CreateError(RspFct.GATEWAY_ERROR_MissParmas_DappNS).WriteToEchoContext(&c)
 	}
 
-
-	index := r.URL.Query().Get("index")
-
 	if len(index) <= 0 {
-		RspFct.CreateError(RspFct.GATEWAY_ERROR_MissParmas_Index).WriteToStream(&w);return
+		return RspFct.CreateError(RspFct.GATEWAY_ERROR_MissParmas_Index).WriteToEchoContext(&c)
 	}
 
 	//index files stat
@@ -33,7 +27,7 @@ func BlockGetHandle(w http.ResponseWriter, r *http.Request) {
 	ifstat, err := utils.AFMS_PathStat(ipath)
 
 	if err != nil {
-		RspFct.CreateError(RspFct.GATEWAY_ERROR_MFSPathStat_ERROR).WriteToStream(&w);return
+		return RspFct.CreateError(RspFct.GATEWAY_ERROR_MFSPathStat_ERROR).WriteToEchoContext(&c)
 	}
 
 	var blockHash []byte
@@ -44,26 +38,27 @@ func BlockGetHandle(w http.ResponseWriter, r *http.Request) {
 		blockHash, err = utils.AFMS_ReadFile(ipath, uint(ifstat.Size) - 46, 46)
 
 		if err != nil {
-			RspFct.CreateError(RspFct.GATEWAY_ERROR_MFSIO_Expection).WriteToStream(&w);return
+			return RspFct.CreateError(RspFct.GATEWAY_ERROR_MFSIO_Expection).WriteToEchoContext(&c)
 		}
 
 	default:
 
 		if bnub, err := strconv.Atoi(index); err != nil {
-			RspFct.CreateError(RspFct.GATEWAY_ERROR_Conversion_Error).WriteToStream(&w);return
+			return RspFct.CreateError(RspFct.GATEWAY_ERROR_Conversion_Error).WriteToEchoContext(&c)
 		} else {
+
 			blockHash, err = utils.AFMS_ReadFile(ipath, (uint(bnub) - 1) * 46, 46)
 
 			if err != nil {
-				RspFct.CreateError(RspFct.GATEWAY_ERROR_MFSIO_Expection).WriteToStream(&w);return
+				return RspFct.CreateError(RspFct.GATEWAY_ERROR_MFSIO_Expection).WriteToEchoContext(&c)
 			}
 		}
 	}
 
 	if blk, err := tx.ReadBlock(string(blockHash)); err != nil {
-		RspFct.CreateError(RspFct.GATEWAY_ERROR_BlockRead_Expection).WriteToStream(&w);return
+		return RspFct.CreateError(RspFct.GATEWAY_ERROR_BlockRead_Expection).WriteToEchoContext(&c)
 	} else {
-		RspFct.CreateSuccess(blk).WriteToStream(&w);return
+		return RspFct.CreateSuccess(blk).WriteToEchoContext(&c)
 	}
 
 }

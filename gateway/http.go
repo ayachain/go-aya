@@ -1,26 +1,26 @@
 package gateway
 
 import (
-	"fmt"
 	"github.com/ayachain/go-aya/gateway/block"
 	"github.com/ayachain/go-aya/gateway/tx"
-	"net/http"
+	"github.com/labstack/echo"
+	"github.com/labstack/echo/middleware"
 )
 
 func DaemonHttpGateway() {
 
 	go func() {
 
-		http.HandleFunc("/tx/perfrom", tx.TxPerfromHandle)
-		http.HandleFunc("/tx/status", tx.TxStatusHandle)
-		http.HandleFunc("/block/get", block.BlockGetHandle)
+		echoServer := echo.New()
+		//echoServer.Use(middleware.Logger())
+		echoServer.Use(middleware.Recover())
 
-		if err := http.ListenAndServe("0.0.0.0:6001", nil); err != nil {
-			panic(err)
-		}
+		echoServer.GET("/tx/status", tx.TxStatusHandle)
+		echoServer.GET("/block/get", block.BlockGetHandle)
+		echoServer.POST("/tx/perfrom", tx.TxPerfromHandle)
+
+		echoServer.Logger.Fatal(echoServer.Start("0.0.0.0:6001"))
 
 	}()
-
-	fmt.Println("AyaGateWay API listening at: 0.0.0.0:6001")
 
 }

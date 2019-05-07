@@ -5,38 +5,34 @@ import (
 	RspFct "github.com/ayachain/go-aya/gateway/response"
 	DSP "github.com/ayachain/go-aya/statepool"
 	Atx "github.com/ayachain/go-aya/statepool/tx"
+	"github.com/labstack/echo"
 
 	"io/ioutil"
-	"net/http"
 )
 
 //http:127.0.0.1:6001/tx/perfrom
-func TxPerfromHandle(w http.ResponseWriter, r *http.Request) {
+func TxPerfromHandle(c echo.Context) error {
 
-	if r.Method != http.MethodPost {
-		RspFct.CreateError(RspFct.GATEWAY_ERROR_OnlySupport_Post).WriteToStream(&w);return
-	}
+	if bodybs, err := ioutil.ReadAll(c.Request().Body); err != nil {
 
-	if bodybs, err := ioutil.ReadAll(r.Body); err != nil {
-
-		RspFct.CreateError(RspFct.GATEWAY_ERROR_Request_IO_Faild).WriteToStream(&w);return
+		return RspFct.CreateError(RspFct.GATEWAY_ERROR_Request_IO_Faild).WriteToEchoContext(&c)
 
 	} else {
 
 		ptx := &Atx.Tx{}
 
 		if err := json.Unmarshal(bodybs, ptx); err != nil {
-			RspFct.CreateError(RspFct.GATEWAY_ERROR_Parser_Faild).WriteToStream(&w);return
+			return RspFct.CreateError(RspFct.GATEWAY_ERROR_Parser_Faild).WriteToEchoContext(&c)
 		} else {
 
 			if !ptx.VerifySign() {
-				RspFct.CreateError(RspFct.GATEWAY_ERROR_Verify_Faild).WriteToStream(&w);return
+				return RspFct.CreateError(RspFct.GATEWAY_ERROR_Verify_Faild).WriteToEchoContext(&c)
 			}
 
 			if err := DSP.DappStatePool.PublishTx(ptx); err != nil {
-				RspFct.CreateError(RspFct.GATEWAY_ERROR_Publish_Tx_Faild).WriteToStream(&w);return
+				return RspFct.CreateError(RspFct.GATEWAY_ERROR_Publish_Tx_Faild).WriteToEchoContext(&c)
 			} else {
-				RspFct.CreateSuccess(ptx.GetSha256Hash()).WriteToStream(&w);return
+				return RspFct.CreateSuccess(ptx.GetSha256Hash()).WriteToEchoContext(&c)
 			}
 		}
 	}

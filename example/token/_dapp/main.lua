@@ -2,15 +2,6 @@
 local io = require("io")
 local Json = require("json")
 
-Interface = {
-
-    name = {
-        perfrom = name,
-
-    }
-
-}
-
 _balanceTable = {}
 
 function _loadBalanceTable()
