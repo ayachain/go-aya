@@ -38,14 +38,13 @@ type TxPool struct {
 	// in chan
 	BlockBDHashChan		chan *Tx
 
-	pendingRetMap			map[string]*list.List
+	pendingRetMap		map[string]*list.List
 
 }
 
-func NewTxPool(dappns string, baseBlock *Block) (txp *TxPool) {
+func NewTxPool(dappns string) (txp *TxPool) {
 
 	txp = &TxPool{}
-	txp.BaseBlock = baseBlock
 	txp.TxQueue = list.New()
 
 	//测试,暂时为1
@@ -53,6 +52,49 @@ func NewTxPool(dappns string, baseBlock *Block) (txp *TxPool) {
 	txp.BlockBDHashChan = make(chan *Tx)
 	txp.pendingRetMap = make(map[string]*list.List)
 	txp.DappNS = dappns
+
+	ipfssh := shell.NewLocalShell()
+
+	objstat, err := ipfssh.ObjectStat("/ipns/" + dappns + "/_index/_bindex")
+
+	if err != nil {
+		return nil
+	}
+
+	if objstat.BlockSize < 46 {
+
+		//块检索有数据，说明不是首次运行的Dapp直接读取最后一个记录的Block作为BaseBlock
+		txp.BaseBlock = NewBlock(0,"",nil, dappns)
+
+	} else {
+
+		//读出当前记录完成的最后一块
+		req, err := ipfssh.Request("cat").Option("o", objstat.BlockSize - 46).Option("l",46).Send(context.Background())
+
+		if err != nil {
+			return nil
+		}
+
+		if reqbs, err := ioutil.ReadAll(req.Output); err != nil {
+
+			return nil
+
+		} else {
+
+			baseBlockHash := string(reqbs)
+
+			if blkbs, err := ipfssh.BlockGet(baseBlockHash); err != nil {
+				return nil
+			} else {
+				txp.BaseBlock = &Block{}
+				if json.Unmarshal(blkbs, txp.BaseBlock) != nil {
+					return nil
+				}
+			}
+
+		}
+
+	}
 
 	return
 }
@@ -205,20 +247,22 @@ func (txp *TxPool) StartGenBlockDaemon() {
 
 				if v.Len() >= txp.ConfirmRetCount {
 
-					//用v作为正确结果出块
+					//用k作为正确结果出块
 					txp.PendingBlock.BDHash = k
 					txp.BlockBroadcastChan <- txp.PendingBlock.RefreshHash()
 					ret := <- txp.BlockBroadcastChan
 
 					if ret == nil {
 
-						//清除之前的所有回执
+						//出块广播成功，清除之前的所有回执更新本机对应的IPNS
 						txp.pendingRetMap = make(map[string]*list.List)
 						txp.BaseBlock = txp.PendingBlock
 						txp.PendingBlock = nil
 
 					} else {
+
 						panic(ret)
+
 					}
 				}
 

@@ -21,10 +21,6 @@ type Avm struct {
 	DappNS				string
 }
 
-//func (vm *Avm) BaseMFSPath() string {
-//	return "/" + vm.DataHash
-//}
-
 func (vm *Avm) GetL() *lua.LState {
 	return vm.l
 }

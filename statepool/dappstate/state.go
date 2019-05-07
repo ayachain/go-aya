@@ -6,6 +6,7 @@ import (
 	"github.com/ipfs/go-ipfs-api"
 	"github.com/libp2p/go-libp2p-peer"
 	"github.com/pkg/errors"
+	"io/ioutil"
 	"strings"
 )
 
@@ -20,16 +21,33 @@ type DappState struct {
 	DappNS			string
 	LatestBDHash 	string
 	Pool*			Atx.TxPool
+
 	//Master Peer IDS 可信任的主节点ID
 	mpids[]			string					`json:"-"`
+	//Master IPNS IDS 可信任的状态IPNS KEY
+	mnss[]			string					`json:"-"`
 	listnerMap 		map[string]Listener 	`json:"-"`
 	broadcasterMap  map[string]Broadcaster	`json:"-"`
-
+	//当前节点拥有的可信IPNSKey列表,用于确认出块后写入最新的状态
+	peermnss[]		string					`json:"-"`
 }
 
 func NewDappState(dappns string) (dstate *DappState, err error) {
 
-	aappbs, err := shell.NewLocalShell().BlockGet(dappns)
+	bhash, err := shell.NewLocalShell().Resolve(dappns)
+
+	//如果不是一个IPNS ID 则不允许创建
+	if err != nil {
+		return nil, err
+	}
+
+	aapprd, err := shell.NewLocalShell().Cat( bhash + "/_dapp/bootstrap")
+
+	if err != nil {
+		return nil, err
+	}
+
+	aappbs, err := ioutil.ReadAll(aapprd)
 
 	if err != nil {
 		return nil, err
@@ -42,12 +60,18 @@ func NewDappState(dappns string) (dstate *DappState, err error) {
 	}
 
 	dstate = &DappState{
-		DappNS:dappns,
-		LatestBDHash:app.BDHash,
-		mpids:app.MasterNode,
+		DappNS:bhash[6:],
+		LatestBDHash:bhash,
+		mpids:app.MasterNodes,
+		mnss:app.StateNames,
+		peermnss:app.GetUnionStateNames(),
 	}
 
-	dstate.Pool = Atx.NewTxPool(dappns, Atx.NewBlock(0,"",nil,app.BDHash))
+	dstate.Pool = Atx.NewTxPool(dappns)
+
+	if dstate.Pool == nil {
+		return nil, errors.New("TxPool Create Failed.")
+	}
 
 	dstate.listnerMap = make(map[string]Listener)
 	dstate.broadcasterMap = make(map[string]Broadcaster)

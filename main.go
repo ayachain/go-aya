@@ -17,7 +17,7 @@ import (
 const (
 	AyaChainDemoDapp_1 = "QmP5RqvBkfW6NhA6h3rajd71maWm7pUSbVyk9syxdk856h"
 	AyaChainDemoDapp_2 = "QmcCAXw29EcssMiLvF4WhMDY5nLzqv6AxaZB3wgRqijG8c"
-	AyaChainDemoDapp_Token = "QmZT9T38iowCLjSZbmsiy9H7tWPWp5kypzEw1hwmyrKVNm"
+	AyaChainDemoDapp_Token = "QmVUaqfbeW3qNmrZqAbNrAin5aikYzpVv6GRt82Un28pW8"
 )
 
 
