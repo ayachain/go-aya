@@ -60,7 +60,7 @@ func NewDappState(dappns string) (dstate *DappState, err error) {
 	}
 
 	dstate = &DappState{
-		DappNS:bhash[6:],
+		DappNS:dappns,
 		LatestBDHash:bhash,
 		mpids:app.MasterNodes,
 		mnss:app.StateNames,

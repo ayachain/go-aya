@@ -275,7 +275,6 @@ func (txp *TxPool) StartGenBlockDaemon() {
 
 func (txp *TxPool) SearchTxStatus(txhash string) (bindex uint64, tx *Tx, stat int, receipt *TxReceipt) {
 
-
 	//if in waiting package status
 	for it := txp.TxQueue.Front(); it != nil; it = it.Next() {
 		if it.Value.(*Tx).GetSha256Hash() == txhash {

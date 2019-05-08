@@ -135,47 +135,6 @@ func AFMS_RemovePath(mpath string) bool {
 	return shell.NewLocalShell().Request("files/rm").Arguments(mpath).Option("flush",false).Option("r", true).Exec(context.Background(), nil) == nil
 }
 
-func AFMS_DownloadPathToDir(ipfshash string, dist string) bool {
-
-	if !strings.HasPrefix(ipfshash,"/ipfs") {
-		ipfshash = "/ipfs" + ipfshash
-	}
-
-	if !strings.HasPrefix(dist,"/") {
-		dist = "/" + dist
-	}
-
-	return shell.NewLocalShell().Request("files/cp").Arguments(ipfshash, dist).Option("flush",false).Exec(context.Background(), nil) == nil
-}
-
-func AFMS_ReloadDapp(ipfshash string, mfspath string) bool {
-
-	if !strings.HasPrefix(ipfshash,"/ipfs") {
-		ipfshash = "/ipfs/" + ipfshash
-	}
-
-	if !strings.HasPrefix(mfspath, "/") {
-		mfspath = "/" + mfspath
-	}
-
-	originStat,err := AFMS_PathStat(mfspath)
-
-	if err != nil{
-
-		return AFMS_DownloadPathToDir(ipfshash, mfspath)
-
-	} else {
-
-		if originStat.Hash == ipfshash {
-			return true
-		} else {
-			AFMS_RemovePath(mfspath)
-			return AFMS_DownloadPathToDir(ipfshash, mfspath)
-		}
-
-	}
-}
-
 func AFMS_ReadFile(mpath string, offset uint, size uint) (content []byte, err error) {
 
 	if !strings.HasPrefix(mpath,"/") {
@@ -340,4 +299,90 @@ func AFMS_PathLists(mpath string) (es []AFMS_Entrie, err error) {
 		}
 	}
 
+}
+
+func AFMS_DownloadPathToDir(ipfshash string, dist string) bool {
+
+	ipath, err := resolveIPFSRef(ipfshash)
+
+	if err != nil {
+		return false
+	}
+
+	if !strings.HasPrefix(dist,"/") {
+		dist = "/" + dist
+	}
+
+	return shell.NewLocalShell().Request("files/cp").Arguments(ipath, dist).Option("flush",false).Exec(context.Background(), nil) == nil
+}
+
+func AFMS_ReloadDapp(ipfshash string, mfspath string) bool {
+
+	ipath, err := resolveIPFSRef(ipfshash)
+
+	if err != nil {
+		return false
+	}
+
+	if !strings.HasPrefix(mfspath, "/") {
+		mfspath = "/" + mfspath
+	}
+
+	//查看本地MFS中是否已经存在此DAPP的缓存数据
+	originStat, err := AFMS_PathStat(mfspath)
+
+	if err != nil{
+
+		//不存在则下载
+		return AFMS_DownloadPathToDir(ipath, mfspath)
+
+	} else {
+
+		//存在并且Hash相同则说明不需要修改，负责删除后重新下载
+		if originStat.Hash == ipath[6:] {
+
+			return true
+
+		} else {
+
+			AFMS_RemovePath(mfspath)
+			return AFMS_DownloadPathToDir(ipath, mfspath)
+
+		}
+
+	}
+}
+
+func resolveIPFSRef(ipfshash string) (string, error) {
+
+	var ipath string
+	var err error
+
+	if strings.HasPrefix(ipfshash, "/ipfs") {
+
+		//ipfs路径
+		ipath = ipfshash
+
+	} else if strings.HasPrefix(ipfshash, "/ipns") {
+
+		//ipns路径需要resolve
+		ipath, err = shell.NewLocalShell().ResolvePath(ipfshash)
+
+		if err != nil {
+			return "", err
+		}
+
+	} else {
+
+		//只有路径，先尝试进行resolve，若不成功则当作ipfs路径处理
+		ipath, err = shell.NewLocalShell().ResolvePath( "/ipns/" + ipfshash)
+
+		if err != nil {
+			ipath = "/ipfs/" + ipfshash
+		} else {
+			ipath = "/ipfs/" + ipath
+		}
+	}
+
+	return ipath, nil
 }
