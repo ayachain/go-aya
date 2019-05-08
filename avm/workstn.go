@@ -75,7 +75,7 @@ func DaemonWorkstation() {
 				continue
 
 			} else {
-				//未能成功分配到可以用于计算的虚拟机, 说明所有虚拟机都处于忙碌状态等待
+				//未能成功分配到可以用于计算的虚拟机, 说明所有虚拟机都处于忙碌状态,等待
 				time.Sleep(time.Millisecond * 200)
 			}
 		}

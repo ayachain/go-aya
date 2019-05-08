@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	Act "github.com/ayachain/go-aya/statepool/tx/act"
+	"github.com/ayachain/go-aya/utils"
 	"github.com/ipfs/go-ipfs-api"
 	"github.com/pkg/errors"
 	"io/ioutil"
@@ -39,10 +40,11 @@ type TxPool struct {
 	BlockBDHashChan		chan *Tx
 
 	pendingRetMap		map[string]*list.List
+	blockConfimChannel  chan string
 
 }
 
-func NewTxPool(dappns string) (txp *TxPool) {
+func NewTxPool(dappns string, confimChannel chan string) (txp *TxPool) {
 
 	txp = &TxPool{}
 	txp.TxQueue = list.New()
@@ -55,13 +57,14 @@ func NewTxPool(dappns string) (txp *TxPool) {
 
 	ipfssh := shell.NewLocalShell()
 
-	objstat, err := ipfssh.ObjectStat("/ipns/" + dappns + "/_index/_bindex")
+	bindexpath := "/ipns/" + dappns + "/_index/_bindex"
+	objstat, err := ipfssh.ObjectStat(bindexpath)
 
 	if err != nil {
 		return nil
 	}
 
-	if objstat.BlockSize < 46 {
+	if objstat.NumLinks <= 0 {
 
 		//块检索有数据，说明不是首次运行的Dapp直接读取最后一个记录的Block作为BaseBlock
 		txp.BaseBlock = NewBlock(0,"",nil, dappns)
@@ -69,7 +72,10 @@ func NewTxPool(dappns string) (txp *TxPool) {
 	} else {
 
 		//读出当前记录完成的最后一块
-		req, err := ipfssh.Request("cat").Option("o", objstat.BlockSize - 46).Option("l",46).Send(context.Background())
+		req, err := ipfssh.Request("cat").
+			Arguments(bindexpath).
+			Option("o", (objstat.NumLinks - 1) * 46).
+			Send(context.Background())
 
 		if err != nil {
 			return nil
@@ -95,6 +101,8 @@ func NewTxPool(dappns string) (txp *TxPool) {
 		}
 
 	}
+
+	txp.blockConfimChannel = confimChannel
 
 	return
 }
@@ -166,9 +174,15 @@ func (txp *TxPool) StartGenBlockDaemon() {
 					txp.TxQueue.Remove(fit)
 				}
 
-				//2.创建Block,由于新块一定是Pending块，所以不会存在结果的BDHash
-				//其他节点收到此块若发现BDHash长度为空，则会开始计算此块的结果
-				nblock := NewBlock( txp.BaseBlock.Index + 1, txp.BaseBlock.GetHash(), ptxs, "")
+				//2.创建Block,由于新块一定是Pending块，BaseDBHash应该是当前MFS下对应DAPP目录的Hash值，表示，此块是使用那个状态作为基础数据，并且处理完包含交易
+				stat, err := utils.AFMS_PathStat( "/" + txp.DappNS )
+
+				if err != nil {
+					//一个无法恢复的异常请，在接收到交易后，本地虚拟路径中却没有配置对应的AAPP运行目录，在发生更多的错误之前，应当杀死节点进程
+					panic(err)
+				}
+
+				nblock := NewBlock( txp.BaseBlock.Index + 1, txp.BaseBlock.GetHash(), ptxs, stat.Hash)
 
 				if bhash := nblock.GetHash(); len(bhash) <= 0 {
 
@@ -248,22 +262,25 @@ func (txp *TxPool) StartGenBlockDaemon() {
 				if v.Len() >= txp.ConfirmRetCount {
 
 					//用k作为正确结果出块
-					txp.PendingBlock.BDHash = k
-					txp.BlockBroadcastChan <- txp.PendingBlock.RefreshHash()
-					ret := <- txp.BlockBroadcastChan
+					//txp.PendingBlock.BDHash = k
+					//txp.BlockBroadcastChan <- k
+					//ret := <- txp.BlockBroadcastChan
 
-					if ret == nil {
+					//if ret == nil {
 
 						//出块广播成功，清除之前的所有回执更新本机对应的IPNS
 						txp.pendingRetMap = make(map[string]*list.List)
 						txp.BaseBlock = txp.PendingBlock
 						txp.PendingBlock = nil
 
-					} else {
+						//更新IPNS,更新IPNS对应的BaseDBHash就等同全网出块，所以不需要额外广播出块消息
+						txp.blockConfimChannel <- k
 
-						panic(ret)
+					//} else {
 
-					}
+						//panic(ret)
+
+					//}
 				}
 
 			}

@@ -1,12 +1,15 @@
 package dappstate
 
 import (
+	"context"
 	"encoding/json"
 	Atx "github.com/ayachain/go-aya/statepool/tx"
+	Autils "github.com/ayachain/go-aya/utils"
 	"github.com/ipfs/go-ipfs-api"
 	"github.com/libp2p/go-libp2p-peer"
 	"github.com/pkg/errors"
 	"io/ioutil"
+	"log"
 	"strings"
 )
 
@@ -24,12 +27,19 @@ type DappState struct {
 
 	//Master Peer IDS 可信任的主节点ID
 	mpids[]			string					`json:"-"`
+
 	//Master IPNS IDS 可信任的状态IPNS KEY
 	mnss[]			string					`json:"-"`
-	listnerMap 		map[string]Listener 	`json:"-"`
-	broadcasterMap  map[string]Broadcaster	`json:"-"`
+
 	//当前节点拥有的可信IPNSKey列表,用于确认出块后写入最新的状态
 	peermnss[]		string					`json:"-"`
+
+	//当Txpool确认出库时候会向此信道发送最新的Dapp文件夹Hash值
+	blockConfirmChan chan string			`json:"-"`
+
+	listnerMap 		map[string]Listener 	`json:"-"`
+	broadcasterMap  map[string]Broadcaster	`json:"-"`
+
 }
 
 func NewDappState(dappns string) (dstate *DappState, err error) {
@@ -65,9 +75,10 @@ func NewDappState(dappns string) (dstate *DappState, err error) {
 		mpids:app.MasterNodes,
 		mnss:app.StateNames,
 		peermnss:app.GetUnionStateNames(),
+		blockConfirmChan:make(chan string),
 	}
 
-	dstate.Pool = Atx.NewTxPool(dappns)
+	dstate.Pool = Atx.NewTxPool(dappns, dstate.blockConfirmChan)
 
 	if dstate.Pool == nil {
 		return nil, errors.New("TxPool Create Failed.")
@@ -107,6 +118,9 @@ func (dstate *DappState) Daemon(peerType int) error {
 		}
 
 	}()
+
+	//配置虚拟目录
+	Autils.AFMS_ReloadDapp(dstate.DappNS, dstate.DappNS)
 
 	if err = dstate.initListner(peerType); err != nil {
 		return err
@@ -244,6 +258,10 @@ func (dstate *DappState) initBroadcast(peerType int) error {
 		}
 	}
 
+	//IPNS监听线程,如果运行的节点未包含任何配置的可信任的IPNS状态节点，则线程不处理任何逻辑
+	dstate.updateIPNSKeyDaemon()
+
+
 	return dstate.startingBroadcasting()
 }
 func (dstate *DappState) startingBroadcasting() error {
@@ -281,4 +299,34 @@ func (dstate *DappState) Clean() {
 
 	dstate.shutdownBroadcasting()
 	dstate.broadcasterMap = map[string]Broadcaster{}
+}
+
+func (dstate *DappState) updateIPNSKeyDaemon() {
+
+	go func() {
+
+		for {
+
+			confirmHash := <- dstate.blockConfirmChan
+
+			if len(dstate.mnss) <= 0 {
+				continue
+			}
+
+			sh := shell.NewLocalShell()
+
+			for _, v := range dstate.mnss {
+
+				if err := sh.Request("name/publish").
+					Arguments( "/ipfs/" + confirmHash ).
+					Option("key", v).
+					Exec(context.Background(),nil); err != nil {
+					log.Println(err)
+				}
+			}
+
+		}
+	}()
+
+
 }

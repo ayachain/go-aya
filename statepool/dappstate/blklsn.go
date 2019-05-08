@@ -39,13 +39,13 @@ func (l *BlockListener) Handle(msg *shell.Message) {
 	//}
 
 	if bcb, err := Atx.ReadBlock(string(msg.Data)); err == nil {
-
-		if len(bcb.BDHash) > 0 {
-			//有Hash一定是出块广播
-			l.state.Pool.BaseBlock = bcb
-			bcb.PrintIndent()
-
-		} else {
+		//
+		//if len(bcb.BDHash) > 0 {
+		//	//有Hash一定是出块广播
+		//	l.state.Pool.BaseBlock = bcb
+		//	bcb.PrintIndent()
+		//
+		//} else {
 			//否则一定是广播了一个等待计算的Block
 			l.state.Pool.PendingBlock = bcb
 
@@ -55,7 +55,7 @@ func (l *BlockListener) Handle(msg *shell.Message) {
 				PendingBlock:bcb,
 				ResultChannel:l.state.GetBroadcastChannel(PubsubChannel_Rsp),
 			}
-		}
+		//}
 
 	}
 }

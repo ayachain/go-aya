@@ -2,7 +2,6 @@ package miner
 
 import (
 	"encoding/json"
-	"fmt"
 	Atx "github.com/ayachain/go-aya/statepool/tx"
 	Act "github.com/ayachain/go-aya/statepool/tx/act"
 	Autils "github.com/ayachain/go-aya/utils"
@@ -24,8 +23,6 @@ type MNCMiner struct {
 
 func (m* MNCMiner) MiningBlock(vm *Avm, b* Atx.Block) (r string, err error) {
 
-	pblk, err := Atx.ReadBlock(b.Prev)
-
 	stime := time.Now().Unix()
 
 	if err != nil {
@@ -33,7 +30,7 @@ func (m* MNCMiner) MiningBlock(vm *Avm, b* Atx.Block) (r string, err error) {
 	}
 
 	//1.载入当前块app的所有数据,默认的flush=false
-	Autils.AFMS_ReloadDapp(pblk.BDHash, vm.DappNS)
+	Autils.AFMS_ReloadDapp(b.BDHash, vm.DappNS)
 
 	//1.写入检索, 检索文件位于 对应块数据下的 /_index/_bindex，使用IPFSHash作为间隔直接写入,读取检索使用offset和hashsize
 	if err := m.writingBlockIndex(vm.DappNS, b); err != nil {
@@ -52,7 +49,7 @@ func (m* MNCMiner) MiningBlock(vm *Avm, b* Atx.Block) (r string, err error) {
 
 	} else {
 
-		//虚拟机载入完毕，开始计算交易,必须是单线程，而且严格按照顺序执行，否则不通的顺序，不同的节点计算的结果会不一致导致无法出块
+		//虚拟机载入完毕，开始计算交易,必须是单线程，而且严格按照顺序执行，否则不同的顺序，不同的节点计算的结果会不一致导致无法出块
 		//此处不再次验证签名，因为在主节点广播之前，已经完成了交易来源的签名验证，若工作节点在此强行修改参数，会直接导致计算结果不一致，从而被其他节点丢弃结果
 		for i, tx := range b.Txs {
 
@@ -208,8 +205,6 @@ func (m* MNCMiner) writeTxReceipt( dappns string, b* Atx.Block, txindex int, dat
 	if err := Autils.AFMS_CreateFile( "/" + dappns + "/_receipt/" + rep.TxHash, bs); err != nil {
 		return err
 	}
-
-	fmt.Println(string(bs))
 
 	return nil
 }

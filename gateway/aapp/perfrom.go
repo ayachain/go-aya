@@ -1,4 +1,4 @@
-package tx
+package aapp
 
 import (
 	"encoding/json"
@@ -11,7 +11,7 @@ import (
 )
 
 //http:127.0.0.1:6001/tx/perfrom
-func TxPerfromHandle(c echo.Context) error {
+func PerfromHandle(c echo.Context) error {
 
 	if bodybs, err := ioutil.ReadAll(c.Request().Body); err != nil {
 

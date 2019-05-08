@@ -7,7 +7,6 @@ import (
 	AvmStn "github.com/ayachain/go-aya/avm"
 	AGateway "github.com/ayachain/go-aya/gateway"
 	Aks "github.com/ayachain/go-aya/keystore"
-	DSP "github.com/ayachain/go-aya/statepool"
 	DState "github.com/ayachain/go-aya/statepool/dappstate"
 	Act "github.com/ayachain/go-aya/statepool/tx/act"
 	"log"
@@ -23,9 +22,9 @@ const (
 
 func testDemo3() {
 
-	if err := DSP.DappStatePool.AddDappStatDaemon(AyaChainDemoDapp_Token); err != nil {
-		panic(err)
-	}
+	//if err := DSP.DappStatePool.AddDappStatDaemon(AyaChainDemoDapp_Token); err != nil {
+	//	panic(err)
+	//}
 
 	//开始交易
 	//1.申请代币
