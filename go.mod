@@ -1,7 +1,5 @@
 module github.com/ayachain/go-aya
 
-go 1.12
-
 require (
 	github.com/ayachain/go-aya-alvm v0.0.0-20190527071353-70884e5d8f2f
 	github.com/ayachain/go-aya-alvm-json v0.0.0-20190527072103-ec3203e35c61
@@ -18,3 +16,5 @@ require (
 	github.com/valyala/fasttemplate v1.0.1 // indirect
 	google.golang.org/appengine v1.4.0 // indirect
 )
+
+go 1.12
