@@ -6,6 +6,21 @@ import (
 	LJson "layeh.com/gopher-json"
 )
 
+
+
+/*
+	luaLib{LoadLibName, OpenPackage},
+	luaLib{BaseLibName, OpenBase},
+	luaLib{TabLibName, OpenTable},
+	luaLib{IoLibName, OpenIo},
+	luaLib{OsLibName, OpenOs},
+	luaLib{StringLibName, OpenString},
+	luaLib{MathLibName, OpenMath},
+	luaLib{DebugLibName, OpenDebug},
+	luaLib{ChannelLibName, OpenChannel},
+	luaLib{CoroutineLibName, OpenCoroutine},
+*/
+
 func InjectionAyaModules(l *lua.LState) {
 
 	//config avm
@@ -16,6 +31,10 @@ func InjectionAyaModules(l *lua.LState) {
 		{lua.LoadLibName, lua.OpenPackage}, // Must be first
 		{lua.BaseLibName, lua.OpenBase},
 		{lua.TabLibName, lua.OpenTable},
+		{lua.StringLibName, lua.OpenString},
+		{lua.MathLibName, lua.OpenMath},
+		//{lua.DebugLibName, lua.OpenDebug},
+		//{lua.ChannelLibName, lua.OpenChannel},
 	} {
 		if err := l.CallByParam(lua.P{
 			Fn:      l.NewFunction(pair.f),
@@ -26,33 +45,6 @@ func InjectionAyaModules(l *lua.LState) {
 		}
 	}
 
-	ipfs.BasePathFunc = GetAvmBasePath
-
 	l.PreloadModule("io", ipfs.Loader)
 	l.PreloadModule("json", LJson.Loader)
-
-}
-
-var avmBasePathMrg map[*lua.LState]string
-
-func SetAvmBasePath(l *lua.LState, path string) {
-
-	if avmBasePathMrg == nil {
-		avmBasePathMrg = map[*lua.LState]string{}
-	}
-
-	avmBasePathMrg[l] = path
-
-}
-
-func GetAvmBasePath(l *lua.LState) string {
-
-	p, exist := avmBasePathMrg[l]
-
-	if !exist {
-		return ""
-	} else {
-		return p
-	}
-
 }

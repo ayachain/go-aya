@@ -14,8 +14,6 @@ import (
 )
 
 const (
-	AyaChainDemoDapp_1 = "QmP5RqvBkfW6NhA6h3rajd71maWm7pUSbVyk9syxdk856h"
-	AyaChainDemoDapp_2 = "QmcCAXw29EcssMiLvF4WhMDY5nLzqv6AxaZB3wgRqijG8c"
 	AyaChainDemoDapp_Token = "QmVUaqfbeW3qNmrZqAbNrAin5aikYzpVv6GRt82Un28pW8"
 )
 
@@ -142,6 +140,25 @@ func test2() {
 }
 
 func main() {
+
+	//VM := miner.NewAvm("Demo4")
+	//
+	////if err := VM.GetL().DoFile("/Users/apple/Desktop/AyaDapp/Avm/main.lua"); err != nil {
+	////	log.Panicln(err.Error())
+	////}
+	//
+	//
+	//VM.GetL().DoString(`
+	//
+	//	--m_loadfile()
+	//	--introduce()
+	//
+	//	--local Math = require "Operation"
+	//	--print("Div:" .. Math.Div(21,7))
+	//
+	//`)
+	//
+	//return
 
 	AvmStn.DaemonWorkstation()
 	AGateway.DaemonHttpGateway()

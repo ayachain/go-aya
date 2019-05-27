@@ -6,6 +6,7 @@ import (
 	"github.com/ipfs/go-ipfs-api"
 	"github.com/ipfs/go-ipfs-files"
 	"github.com/pkg/errors"
+	"io"
 	"io/ioutil"
 	"strings"
 )
@@ -116,6 +117,22 @@ func AFMS_ReplaceFile(mpath string, data []byte) error {
 
 }
 
+func AFMS_GetReader(mpath string) (io.ReadCloser, error) {
+
+	if !strings.HasPrefix(mpath,"/") {
+		mpath = "/" + mpath
+	}
+
+	req := shell.NewLocalShell().Request("files/read").Arguments(mpath)
+
+	if bs, err := req.Send(context.Background()); err != nil {
+		return nil, err
+	} else {
+		return bs.Output,nil
+	}
+
+}
+
 func AFMS_IsPathExist(mpath string) bool {
 
 	if _, err := AFMS_PathStat(mpath); err != nil {
@@ -133,6 +150,14 @@ func AFMS_RemovePath(mpath string) bool {
 	}
 
 	return shell.NewLocalShell().Request("files/rm").Arguments(mpath).Option("flush",false).Option("r", true).Exec(context.Background(), nil) == nil
+}
+
+func AFMS_ReadScript(mpath string) (content string, err error) {
+	if bs, err := AFMS_ReadFile(mpath,0,0); err != nil {
+		return "", err
+	} else {
+		return string(bs), nil
+	}
 }
 
 func AFMS_ReadFile(mpath string, offset uint, size uint) (content []byte, err error) {
@@ -220,6 +245,38 @@ func AFMS_CreateFile(mpath string, data[] byte) error {
 	} else {
 		return nil
 	}
+}
+
+func AFMS_WriteFile(mpath string, seek int, data[] byte) error {
+
+	if !strings.HasPrefix(mpath,"/") {
+		mpath = "/" + mpath
+	}
+
+	stat, err := AFMS_PathStat(mpath)
+
+	if err != nil {
+		return err
+	} else if stat.Type != AFMS_FILE {
+		return errors.New("AFMS_FileAppend : " + mpath + " not a file.")
+	}
+
+	fr := files.NewBytesFile(data)
+	slf := files.NewSliceDirectory([]files.DirEntry{files.FileEntry("", fr)})
+	fileReader := files.NewMultiFileReader(slf, true)
+
+	reqb := shell.NewLocalShell().Request("files/write").
+		Arguments(mpath).
+		Body(fileReader).
+		Option("o",seek).
+		Option("flush",false)
+
+	if err := reqb.Exec(context.Background(), nil); err != nil {
+		return err
+	} else {
+		return nil
+	}
+
 }
 
 func AFMS_FileAppend(mpath string, data[] byte) error {

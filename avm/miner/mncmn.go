@@ -30,14 +30,14 @@ func (m* MNCMiner) MiningBlock(vm *Avm, b* Atx.Block) (r string, err error) {
 	}
 
 	//1.载入当前块app的所有数据,默认的flush=false
-	Autils.AFMS_ReloadDapp(b.BDHash, vm.DappNS)
+	Autils.AFMS_ReloadDapp(b.BDHash, vm.AAppns())
 
 	//1.写入检索, 检索文件位于 对应块数据下的 /_index/_bindex，使用IPFSHash作为间隔直接写入,读取检索使用offset和hashsize
-	if err := m.writingBlockIndex(vm.DappNS, b); err != nil {
+	if err := m.writingBlockIndex(vm.AAppns(), b); err != nil {
 		return "", err
 	}
 
-	codestr, err := Autils.AFMS_ReadDappCode(vm.DappNS)
+	codestr, err := Autils.AFMS_ReadDappCode(vm.AAppns())
 
 	if err != nil {
 		return "", err
@@ -57,7 +57,7 @@ func (m* MNCMiner) MiningBlock(vm *Avm, b* Atx.Block) (r string, err error) {
 
 			if err := pact.DecodeFromHex(tx.ActHex); err != nil {
 
-				if m.writeTxReceipt(vm.DappNS, b, i, "Error") != nil {
+				if m.writeTxReceipt(vm.AAppns(), b, i, "Error") != nil {
 					//若发现无法写入，则发生了未知错误，此时没有任何矿工可以正常工作，应当直接放弃为此块计算最终结果
 					return "", errors.New("MNCMiner : Can't write tx receipt content to mfs.")
 				}
@@ -75,7 +75,7 @@ func (m* MNCMiner) MiningBlock(vm *Avm, b* Atx.Block) (r string, err error) {
 
 					if err != nil {
 
-						if m.writeTxReceipt(vm.DappNS, b, i, "Parmas Parser Expection.") != nil {
+						if m.writeTxReceipt(vm.AAppns(), b, i, "Parmas Parser Expection.") != nil {
 							//若发现无法写入，则发生了未知错误，此时没有任何矿工可以正常工作，应当直接放弃为此块计算最终结果
 							return "", errors.New("MNCMiner : Can't write tx receipt content to mfs.")
 						} else {
@@ -104,7 +104,7 @@ func (m* MNCMiner) MiningBlock(vm *Avm, b* Atx.Block) (r string, err error) {
 
 				if err != nil {
 
-					if m.writeTxReceipt(vm.DappNS, b, i, "AVM I/O Exception") != nil {
+					if m.writeTxReceipt(vm.AAppns(), b, i, "AVM I/O Exception") != nil {
 						//若发现无法写入，则发生了未知错误，此时没有任何矿工可以正常工作，应当直接放弃为此块计算最终结果
 						return "", err
 					} else {
@@ -113,7 +113,7 @@ func (m* MNCMiner) MiningBlock(vm *Avm, b* Atx.Block) (r string, err error) {
 
 				} else {
 
-					if err := m.writeTxReceipt(vm.DappNS, b, i, vm.l.Get(-1)); err != nil {
+					if err := m.writeTxReceipt(vm.AAppns(), b, i, vm.l.Get(-1)); err != nil {
 						return "", err
 					} else {
 						vm.l.Pop(1)
@@ -128,11 +128,11 @@ func (m* MNCMiner) MiningBlock(vm *Avm, b* Atx.Block) (r string, err error) {
 
 	}
 
-	if err := Autils.AFMS_FlushPath(vm.DappNS); err != nil {
+	if err := Autils.AFMS_FlushPath(vm.AAppns()); err != nil {
 		return "", errors.New("MNCMiner : Autils.AFMS_FlushPath Faild.")
 	}
 
-	dirstat, err := Autils.AFMS_PathStat(vm.DappNS)
+	dirstat, err := Autils.AFMS_PathStat(vm.AAppns())
 
 	log.Printf("BlockIndex:%d Txs:%d Time:%d", b.Index, len(b.Txs), time.Now().Unix() - stime)
 

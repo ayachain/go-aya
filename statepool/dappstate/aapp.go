@@ -26,6 +26,12 @@ func (a *Aapp) GetUnionStateNames() []string {
 
 	reqb, err := shell.NewLocalShell().Request("key/list").Option("l",true).Send(context.Background())
 
+	_, cancel := context.WithCancel(context.Background())
+
+	defer cancel()
+
+	//iface.Key().Path()
+
 	if err != nil {
 		return nil
 	}

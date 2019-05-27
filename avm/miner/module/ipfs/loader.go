@@ -10,8 +10,6 @@ import (
 	"strings"
 )
 
-var BasePathFunc func(l *lua.LState) string
-
 func Loader(L *lua.LState) int {
 
 	mod := L.SetFuncs(L.NewTable(), exports)
@@ -122,7 +120,7 @@ func files_create(l *lua.LState) int {
 		l.Push(lua.LString("Error: paths must start with a leading slash."))
 	}
 
-	path = BasePathFunc(l) + path
+	path = l.Options.AAppns + "/_data" + path
 
 	shell := shell.NewLocalShell()
 
@@ -155,7 +153,7 @@ func files_exist(l *lua.LState) int {
 		l.Push(lua.LString("Error: paths must start with a leading slash."))
 	}
 
-	path = BasePathFunc(l) + path
+	path = l.Options.AAppns + "/_data" + path
 
 	reqb := shell.NewLocalShell().Request("files/stat").Arguments(path)
 
@@ -254,7 +252,7 @@ func files_write(l *lua.LState) int {
 		l.Push(lua.LString("Error: paths must start with a leading slash."))
 	}
 
-	path = BasePathFunc(l) + path
+	path = l.Options.AAppns + "/_data" + path
 
 	shell := shell.NewLocalShell()
 
@@ -298,7 +296,7 @@ func ipfs_files_request_PathAndParmas(l *lua.LState, comm string) (res string, e
 		l.Push(lua.LString("Error: paths must start with a leading slash."))
 	}
 
-	path = BasePathFunc(l) + path
+	path = l.Options.AAppns + "/_data" + path
 
 	reqb := shell.NewLocalShell().Request(comm).Arguments(path)
 
@@ -370,7 +368,7 @@ func ipfs_files_request_SourceDistParmas(l *lua.LState, comm string) (res string
 		l.Push(lua.LString("Error: paths must start with a leading slash."))
 	}
 
-	dist = BasePathFunc(l) + dist
+	dist = l.Options.AAppns + "/_data"
 
 	reqb := shell.NewLocalShell().Request(comm).Arguments(source,dist)
 
