@@ -2,12 +2,12 @@ package miner
 
 import (
 	"encoding/json"
+	"github.com/ayachain/go-aya-alvm"
+	LJson "github.com/ayachain/go-aya-alvm-json"
 	Atx "github.com/ayachain/go-aya/statepool/tx"
 	Act "github.com/ayachain/go-aya/statepool/tx/act"
 	Autils "github.com/ayachain/go-aya/utils"
 	"github.com/pkg/errors"
-	"github.com/yuin/gopher-lua"
-	LJson "layeh.com/gopher-json"
 	"log"
 	"time"
 )

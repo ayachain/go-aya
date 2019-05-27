@@ -11,6 +11,8 @@ import (
 	Act "github.com/ayachain/go-aya/statepool/tx/act"
 	"log"
 	"time"
+
+	"github.com/ipfs/go-ipfs"
 )
 
 const (
@@ -162,6 +164,8 @@ func main() {
 
 	AvmStn.DaemonWorkstation()
 	AGateway.DaemonHttpGateway()
+
+	fmt.Printf(ipfs.ApiVersion)
 
 	testDemo3()
 

@@ -3,9 +3,9 @@ package ipfs
 import (
 	"context"
 	"errors"
+	"github.com/ayachain/go-aya-alvm"
 	"github.com/ipfs/go-ipfs-api"
 	"github.com/ipfs/go-ipfs-files"
-	"github.com/yuin/gopher-lua"
 	"io/ioutil"
 	"strings"
 )

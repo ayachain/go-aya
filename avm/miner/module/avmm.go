@@ -1,11 +1,10 @@
 package module
 
 import (
+	"github.com/ayachain/go-aya-alvm"
+	LJson "github.com/ayachain/go-aya-alvm-json"
 	"github.com/ayachain/go-aya/avm/miner/module/ipfs"
-	"github.com/yuin/gopher-lua"
-	LJson "layeh.com/gopher-json"
 )
-
 
 
 /*

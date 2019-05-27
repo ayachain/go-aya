@@ -1,9 +1,9 @@
 package miner
 
 import (
+	"github.com/ayachain/go-aya-alvm"
 	Avmm "github.com/ayachain/go-aya/avm/miner/module"
 	Atx "github.com/ayachain/go-aya/statepool/tx"
-	"github.com/yuin/gopher-lua"
 )
 
 const (
