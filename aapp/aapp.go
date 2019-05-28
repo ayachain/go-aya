@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	iCore "github.com/ayachain/go-aya/ipfsapi"
 	iFiles "github.com/ipfs/go-ipfs-files"
+	iface "github.com/ipfs/interface-go-ipfs-core"
 	"io"
 	"io/ioutil"
 	"time"
@@ -38,17 +38,17 @@ type aapp struct {
 	SubDir map[AAppPath] iFiles.Directory
 }
 
-func NewAApp( aappns string ) ( ap *aapp, err error ) {
+func NewAApp( aappns string, api iface.CoreAPI ) ( ap *aapp, err error ) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	path, err := iCore.IAPI.Name().Resolve(ctx, aappns)
+	path, err := api.Name().Resolve(ctx, aappns)
 	if err != nil {
 		return nil, errors.New( fmt.Sprintf(`NewAApp：解析IPNS路径失败,"%v"`, err.Error() ) )
 	}
 
-	if fn, err := iCore.IAPI.Unixfs().Get(ctx, path); err != nil {
+	if fn, err := api.Unixfs().Get(ctx, path); err != nil {
 
 		return nil, errors.New( fmt.Sprintf(`NewAApp：IPFS路径读取失败,"%v"`, err.Error() ) )
 
@@ -68,6 +68,7 @@ func NewAApp( aappns string ) ( ap *aapp, err error ) {
 		ap = &aapp{
 			State:AAppStat_Unkown,
 			CreateTime:time.Now().Unix(),
+			SubDir:map[AAppPath]iFiles.Directory{},
 		}
 
 		ap.SubDir[AAppPath_Script] = findSubDir(aappdir, AAppPath_Script.ToString())
@@ -97,10 +98,9 @@ func NewAApp( aappns string ) ( ap *aapp, err error ) {
 
 		return ap, nil
 	}
-
 }
 
-func findSubFile(  root iFiles.Directory, nodename string ) iFiles.File {
+func findSubFile( root iFiles.Directory, nodename string ) iFiles.File {
 
 	nd := findSubNode(root, nodename)
 	switch nd.(type) {
@@ -111,7 +111,7 @@ func findSubFile(  root iFiles.Directory, nodename string ) iFiles.File {
 	}
 }
 
-func findSubDir(  root iFiles.Directory, nodename string ) iFiles.Directory {
+func findSubDir( root iFiles.Directory, nodename string ) iFiles.Directory {
 	nd := findSubNode(root, nodename)
 	switch nd.(type) {
 	case iFiles.Directory:
