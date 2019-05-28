@@ -47,7 +47,7 @@ func testDemo3() {
 	txstr, _ = json.Marshal(tx)
 	fmt.Println( "balanceof: " + string(txstr))
 
-	//4.info
+	//4.info.json
 	tx4str := `{"from":"0x88FFe3F7b26F0CEd6945BDA4e8621EC107049CE1"}`
 	act = Act.NewPerfromAct(AyaChainDemoDapp_Token,"addressInfo", tx4str)
 	tx = Aks.DefaultPeerKS().CreateSignedTx(act)

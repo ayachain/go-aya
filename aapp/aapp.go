@@ -5,8 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	iFiles "github.com/ipfs/go-ipfs-files"
-	iface "github.com/ipfs/interface-go-ipfs-core"
+	"github.com/ipfs/go-ipfs/core"
+	dag "github.com/ipfs/go-merkledag"
+	"github.com/ipfs/go-mfs"
+	"github.com/ipfs/interface-go-ipfs-core"
 	"io"
 	"io/ioutil"
 	"time"
@@ -35,101 +37,70 @@ type aapp struct {
 	State AAppStat
 	Info info
 	CreateTime int64
-	SubDir map[AAppPath] iFiles.Directory
+	VMFS *mfs.Root
 }
 
-func NewAApp( aappns string, api iface.CoreAPI ) ( ap *aapp, err error ) {
+func NewAApp( aappns string, api iface.CoreAPI, ind *core.IpfsNode ) ( ap *aapp, err error ) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	path, err := api.Name().Resolve(ctx, aappns)
 	if err != nil {
-		return nil, errors.New( fmt.Sprintf(`NewAApp：解析IPNS路径失败,"%v"`, err.Error() ) )
+		return nil, fmt.Errorf("AAppns %v Resolve failed", aappns )
 	}
 
-	if fn, err := api.Unixfs().Get(ctx, path); err != nil {
+	ap = &aapp{
+		State:AAppStat_Unkown,
+		CreateTime:time.Now().Unix(),
+	}
 
-		return nil, errors.New( fmt.Sprintf(`NewAApp：IPFS路径读取失败,"%v"`, err.Error() ) )
+	//Create MFS
+	vroot, err := api.ResolveNode(ctx, path)
+	if err != nil {
+		return nil, err
+	}
 
+	pbnode, ok := vroot.(*dag.ProtoNode)
+	if !ok {
+		return nil, dag.ErrNotProtobuf
+	}
+
+	ap.VMFS, err = mfs.NewRoot(context.Background(), ind.DAG, pbnode, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if fsn, err := mfs.Lookup(ap.VMFS, "/Evn/info.json"); err != nil {
+		return nil, errors.New(`"/Evn/info.json" not search file or directory`)
 	} else {
 
-		var aappdir iFiles.Directory
-		switch f := fn.(type) {
-		case iFiles.File:
-			return nil, errors.New(fmt.Sprintf(`NewAApp：AApps "%v" 对应了一个文件，AAppns应当对应目录。`))
-		case iFiles.Directory:
-			aappdir = f
-			break
-		default:
-			return nil, errors.New(fmt.Sprintf(`NewAApp：AApps "%v" 不是一个正确的路径。`))
+		fi, ok := fsn.(*mfs.File)
+		if !ok {
+			return nil, errors.New(`"/Evn/info.json" was not a file`)
 		}
 
-		ap = &aapp{
-			State:AAppStat_Unkown,
-			CreateTime:time.Now().Unix(),
-			SubDir:map[AAppPath]iFiles.Directory{},
+		rfd, err := fi.Open(mfs.Flags{Read:true, Write:true})
+		if err != nil {
+			return nil, err
+		}
+		defer rfd.Close()
+
+		filen, err := rfd.Size()
+		if err != nil {
+			return nil, err
 		}
 
-		ap.SubDir[AAppPath_Script] = findSubDir(aappdir, AAppPath_Script.ToString())
-		ap.SubDir[AAppPath_Resources] = findSubDir(aappdir, AAppPath_Resources.ToString())
-		ap.SubDir[AAppPath_Index] = findSubDir(aappdir, AAppPath_Index.ToString())
-		ap.SubDir[AAppPath_Evn] = findSubDir(aappdir, AAppPath_Evn.ToString())
-
-		for k, v := range ap.SubDir {
-			if v == nil {
-				return nil, errors.New(fmt.Sprintf(`NewAApp："%v"对应的AApp中，缺少目录"%v"`, aappns, k))
-			}
+		r := io.LimitReader(rfd, filen)
+		bs, err := ioutil.ReadAll(r)
+		if err != nil {
+			return nil, err
 		}
 
-		if sfn := findSubFile( ap.SubDir[AAppPath_Evn], "info" ); sfn == nil {
-			return nil, errors.New(fmt.Sprintf(`NewAApp："%v"目录中未找到info文件`, aappns))
-		} else {
-
-			if bs, err := ioutil.ReadAll(sfn.(io.Reader)); err != nil {
-				return nil, errors.New(`NewAApp：info文件读取失败`)
-			} else {
-				if err := json.Unmarshal(bs, ap.Info); err != nil {
-					return nil, errors.New(`NewAApp：info文件解析失败`)
-				}
-			}
-
-		}
-
-		return ap, nil
-	}
-}
-
-func findSubFile( root iFiles.Directory, nodename string ) iFiles.File {
-
-	nd := findSubNode(root, nodename)
-	switch nd.(type) {
-	case iFiles.File:
-		return nd.(iFiles.File)
-	default:
-		return nil
-	}
-}
-
-func findSubDir( root iFiles.Directory, nodename string ) iFiles.Directory {
-	nd := findSubNode(root, nodename)
-	switch nd.(type) {
-	case iFiles.Directory:
-		return nd.(iFiles.Directory)
-	default:
-		return nil
-	}
-}
-
-func findSubNode( root iFiles.Directory, nodename string ) iFiles.Node {
-
-	it := root.Entries()
-
-	for it.Name() != nodename {
-		if ! it.Next() {
-			return nil
+		if err := json.Unmarshal(bs, &ap.Info); err != nil {
+			return nil, errors.New(`"/Evn/info.json" Unmarshal failed`)
 		}
 	}
 
-	return it.Node()
+	return ap, nil
 }
