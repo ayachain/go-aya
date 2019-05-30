@@ -54,15 +54,13 @@ type aapp struct {
 }
 
 func NewAApp( aappns string, api iface.CoreAPI, ind *core.IpfsNode ) ( ap *aapp, err error ) {
-
+	
 	ctx, cancel := context.WithCancel(context.Background())
 
 	defer func() {
-
 		if ap == nil {
 			cancel()
 		}
-
 	}()
 
 	path, err := api.Name().Resolve(ctx, aappns)
@@ -113,12 +111,18 @@ func NewAApp( aappns string, api iface.CoreAPI, ind *core.IpfsNode ) ( ap *aapp,
 		recvChannel:make(chan iface.PubSubMessage, 128),
 	}
 
-
 	if err := l.MFS_Mkdir("/Data", false); err != nil {
 		log.Print("MFS_Mkdir Failed")
 	}
+	if err := l.MFS_Mkdir("/Data/1", false); err != nil {
+		log.Print("MFS_Mkdir Failed")
+	}
 
-	if cid, err := l.MFS_Flush("/"); err != nil {
+	if err := l.MFS_Mkdir("/Data/2", false); err != nil {
+		log.Print("MFS_Mkdir Failed")
+	}
+
+	if cid, err := l.MFS_Flush("/Data"); err != nil {
 		log.Print(cid.String())
 	}
 
