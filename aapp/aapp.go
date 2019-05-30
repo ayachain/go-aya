@@ -5,12 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	lua "github.com/ayachain/go-aya-alvm"
 	"github.com/ipfs/go-ipfs/core"
 	dag "github.com/ipfs/go-merkledag"
-	"github.com/ipfs/go-mfs"
 	"github.com/ipfs/interface-go-ipfs-core"
+	"github.com/labstack/gommon/log"
 	"io"
-	"io/ioutil"
 	"time"
 )
 
@@ -34,25 +34,40 @@ func (e AAppPath) ToString() string {
 }
 
 type aapp struct {
+
+	//状态
 	State AAppStat
+	//基本信息
 	Info info
+	//创建时间
 	CreateTime int64
-	VMFS *mfs.Root
+	//虚拟机
+	Avm *lua.LState
+
+	ctx context.Context
+	ctxCancel context.CancelFunc
+	api iface.CoreAPI
+	ind *core.IpfsNode
+	recvChannel chan iface.PubSubMessage
+	onListen bool
+
 }
 
 func NewAApp( aappns string, api iface.CoreAPI, ind *core.IpfsNode ) ( ap *aapp, err error ) {
 
 	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+
+	defer func() {
+
+		if ap == nil {
+			cancel()
+		}
+
+	}()
 
 	path, err := api.Name().Resolve(ctx, aappns)
 	if err != nil {
 		return nil, fmt.Errorf("AAppns %v Resolve failed", aappns )
-	}
-
-	ap = &aapp{
-		State:AAppStat_Unkown,
-		CreateTime:time.Now().Unix(),
 	}
 
 	//Create MFS
@@ -66,41 +81,101 @@ func NewAApp( aappns string, api iface.CoreAPI, ind *core.IpfsNode ) ( ap *aapp,
 		return nil, dag.ErrNotProtobuf
 	}
 
-	ap.VMFS, err = mfs.NewRoot(context.Background(), ind.DAG, pbnode, nil)
+	l := lua.NewAVMState(aappns, pbnode, ind)
+	if l == nil {
+		return nil, errors.New("alvm create failed")
+	}
+
+	fir, err := l.MFS_LookupFile("/Evn/info.json")
 	if err != nil {
 		return nil, err
 	}
 
-	if fsn, err := mfs.Lookup(ap.VMFS, "/Evn/info.json"); err != nil {
-		return nil, errors.New(`"/Evn/info.json" not search file or directory`)
-	} else {
-
-		fi, ok := fsn.(*mfs.File)
-		if !ok {
-			return nil, errors.New(`"/Evn/info.json" was not a file`)
-		}
-
-		rfd, err := fi.Open(mfs.Flags{Read:true, Write:true})
-		if err != nil {
-			return nil, err
-		}
-		defer rfd.Close()
-
-		filen, err := rfd.Size()
-		if err != nil {
-			return nil, err
-		}
-
-		r := io.LimitReader(rfd, filen)
-		bs, err := ioutil.ReadAll(r)
-		if err != nil {
-			return nil, err
-		}
-
-		if err := json.Unmarshal(bs, &ap.Info); err != nil {
-			return nil, errors.New(`"/Evn/info.json" Unmarshal failed`)
-		}
+	bs, err := l.MFS_ReadAll(fir, io.SeekStart)
+	if err != nil {
+		return nil, err
 	}
 
+	var inf info
+	if err := json.Unmarshal(bs, &inf); err != nil {
+		return nil, errors.New(`"/Evn/info.json" Unmarshal failed`)
+	}
+
+	ap = &aapp{
+		Avm:l,
+		State:AAppStat_Loaded,
+		CreateTime:time.Now().Unix(),
+		Info:inf,
+		ctx:ctx,
+		ctxCancel:cancel,
+		api:api,
+		ind:ind,
+		recvChannel:make(chan iface.PubSubMessage, 128),
+	}
+
+
+	if err := l.MFS_Mkdir("/Data", false); err != nil {
+		log.Print("MFS_Mkdir Failed")
+	}
+
+	if cid, err := l.MFS_Flush("/"); err != nil {
+		log.Print(cid.String())
+	}
+
+	//if !ap.Listen() {
+	//	ap.State = AAppStat_Stoped
+	//	return nil, fmt.Errorf("AApp is loaded but startlisten faild")
+	//}
+
 	return ap, nil
+}
+
+
+func (a *aapp) Listen() bool {
+
+	var sum int = 0
+	a.onListen = true
+
+	topics := a.Info.GetChannelTopics()
+
+	for _, v := range topics {
+
+		subscribe, err := a.api.PubSub().Subscribe(a.ctx, v)
+		if err != nil {
+			//可能会有某个信道启动失败，但不影响整个AAPP运行，只要有一个成功则可以正常工作
+			log.Warnf("Topic %v subscribe failed error is %v", v, err.Error())
+		}
+
+		sum ++
+		go func() {
+
+			for a.onListen {
+
+				if msg, err := subscribe.Next(a.ctx); err != nil {
+					subscribe.Close()
+				} else {
+					a.recvChannel <- msg
+				}
+
+			}
+
+		}()
+
+	}
+
+	if sum > 0 {
+		a.State = AAppStat_Daemon
+		return true
+	} else {
+		return false
+	}
+
+}
+
+func (a *aapp) Shutdown() {
+
+	a.onListen = false
+	a.ctxCancel()
+	close(a.recvChannel)
+
 }
