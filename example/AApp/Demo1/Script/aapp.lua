@@ -66,6 +66,10 @@ function FullReadTest()
     --"l"*：读取下一个行内容，如果在文件尾部则会返回nil
 
     local fileread = io.open("writetext.txt", "r")
+    if fileread == nil then
+        return "FullReadTest: Open File error"
+    end
+
     print("ReadLine: " .. fileread:read("l") )
     print("ReadNum: " .. fileread:read("n") )
     print("ReadAll: " .. fileread:read("a") )
@@ -73,6 +77,3 @@ function FullReadTest()
     fileread:close()
 
 end
-
-FullWriteTest()
-FullReadTest()

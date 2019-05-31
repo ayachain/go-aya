@@ -82,9 +82,9 @@ func NewAApp( aappns string, api iface.CoreAPI, ind *core.IpfsNode ) ( ap *aapp,
 		return nil, dag.ErrNotProtobuf
 	}
 
-	l := lua.NewAVMState(ctx, aappns, pbnode, ind)
-	if l == nil {
-		return nil, errors.New("alvm create failed")
+	l, err := lua.NewAVMState(ctx, aappns, pbnode, ind)
+	if err != nil {
+		return nil, fmt.Errorf("Alvm create fialed : %v", err.Error())
 	}
 
 	fir, err := l.MFS_LookupFile("/Evn/info.json")

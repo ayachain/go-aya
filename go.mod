@@ -23,18 +23,12 @@ require (
 	github.com/labstack/gommon v0.2.8
 	github.com/libp2p/go-libp2p-loggables v0.1.0
 	github.com/libp2p/go-libp2p-peer v0.2.0
-	github.com/mattn/go-runewidth v0.0.4 // indirect
-	github.com/mgutz/ansi v0.0.0-20170206155736-9520e82c474b // indirect
 	github.com/multiformats/go-multiaddr v0.0.4
 	github.com/multiformats/go-multiaddr-dns v0.0.2
 	github.com/multiformats/go-multiaddr-net v0.0.1
 	github.com/pkg/errors v0.8.1
 	github.com/prometheus/client_golang v0.9.3
 	github.com/valyala/fasttemplate v1.0.1 // indirect
-	go.uber.org/atomic v1.4.0 // indirect
-	go.uber.org/dig v1.7.0 // indirect
-	go.uber.org/goleak v0.10.0 // indirect
-	go.uber.org/multierr v1.1.0 // indirect
 )
 
 replace (
