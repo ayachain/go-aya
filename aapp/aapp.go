@@ -9,26 +9,26 @@ import (
 	"github.com/ipfs/go-ipfs/core"
 	dag "github.com/ipfs/go-merkledag"
 	"github.com/ipfs/interface-go-ipfs-core"
-	"github.com/labstack/gommon/log"
 	"io"
+	"log"
 	"time"
 )
 
 type AAppPath string
 
 const (
-	AAppPath_Script 			AAppPath = "/Script"
+	AAppPath_Script 	AAppPath = "/Script"
 	AAppPath_Resources 	AAppPath = "/Resource"
-	AAppPath_Index 			AAppPath = "/Index"
-	AAppPath_Evn 				AAppPath = "/Evn"
+	AAppPath_Index 		AAppPath = "/Index"
+	AAppPath_Evn 		AAppPath = "/Evn"
 )
 
 func (e AAppPath) ToString() string {
 	switch (e) {
-	case AAppPath_Script			: return "Script"
-	case AAppPath_Resources		: return "Resource"
-	case AAppPath_Index			: return "Index"
-	case AAppPath_Evn				: return "Evn"
+	case AAppPath_Script		: return "/Script"
+	case AAppPath_Resources		: return "/Resource"
+	case AAppPath_Index			: return "/Index"
+	case AAppPath_Evn			: return "/Evn"
 	default: return "UNKNOWN"
 	}
 }
@@ -48,8 +48,11 @@ type aapp struct {
 	ctxCancel context.CancelFunc
 	api iface.CoreAPI
 	ind *core.IpfsNode
-	recvChannel chan iface.PubSubMessage
 	onListen bool
+
+	recvMsgChan chan iface.PubSubMessage
+	shutdownChan chan bool
+	broadcastChan chan []byte
 
 }
 
@@ -79,7 +82,7 @@ func NewAApp( aappns string, api iface.CoreAPI, ind *core.IpfsNode ) ( ap *aapp,
 		return nil, dag.ErrNotProtobuf
 	}
 
-	l := lua.NewAVMState(aappns, pbnode, ind)
+	l := lua.NewAVMState(ctx, aappns, pbnode, ind)
 	if l == nil {
 		return nil, errors.New("alvm create failed")
 	}
@@ -108,78 +111,78 @@ func NewAApp( aappns string, api iface.CoreAPI, ind *core.IpfsNode ) ( ap *aapp,
 		ctxCancel:cancel,
 		api:api,
 		ind:ind,
-		recvChannel:make(chan iface.PubSubMessage, 128),
 	}
 
-	if err := l.MFS_Mkdir("/Data", false); err != nil {
-		log.Print("MFS_Mkdir Failed")
+	if !ap.Daemon() {
+		ap.State = AAppStat_Stoped
+		return nil, fmt.Errorf("AApp is loaded but startlisten faild")
 	}
-	if err := l.MFS_Mkdir("/Data/1", false); err != nil {
-		log.Print("MFS_Mkdir Failed")
-	}
-
-	if err := l.MFS_Mkdir("/Data/2", false); err != nil {
-		log.Print("MFS_Mkdir Failed")
-	}
-
-	if cid, err := l.MFS_Flush("/Data"); err != nil {
-		log.Print(cid.String())
-	}
-
-	//if !ap.Listen() {
-	//	ap.State = AAppStat_Stoped
-	//	return nil, fmt.Errorf("AApp is loaded but startlisten faild")
-	//}
 
 	return ap, nil
 }
 
+func (a *aapp) Daemon() bool {
 
-func (a *aapp) Listen() bool {
+	ctx, cancel := context.WithCancel(context.Background())
 
-	var sum int = 0
-	a.onListen = true
+	a.shutdownChan = make(chan bool)
+	a.broadcastChan = make(chan []byte, 128)
+	a.recvMsgChan = make(chan iface.PubSubMessage, 128)
 
-	topics := a.Info.GetChannelTopics()
+	subscribe, err := a.api.PubSub().Subscribe( a.ctx, a.Info.GetChannelTopic() )
 
-	for _, v := range topics {
-
-		subscribe, err := a.api.PubSub().Subscribe(a.ctx, v)
-		if err != nil {
-			//可能会有某个信道启动失败，但不影响整个AAPP运行，只要有一个成功则可以正常工作
-			log.Warnf("Topic %v subscribe failed error is %v", v, err.Error())
-		}
-
-		sum ++
-		go func() {
-
-			for a.onListen {
-
-				if msg, err := subscribe.Next(a.ctx); err != nil {
-					subscribe.Close()
-				} else {
-					a.recvChannel <- msg
-				}
-
-			}
-
-		}()
-
-	}
-
-	if sum > 0 {
-		a.State = AAppStat_Daemon
-		return true
-	} else {
+	if err != nil {
 		return false
 	}
 
+	go func() {
+
+		select {
+
+		case bsmsg := <- a.broadcastChan:
+
+			if err := a.api.PubSub().Publish(ctx, a.Info.GetChannelTopic(), bsmsg); err != nil {
+				a.shutdownChan <- true
+			}
+
+		case <- a.shutdownChan:
+			cancel()
+
+		case <- ctx.Done():
+			close(a.shutdownChan)
+			close(a.broadcastChan)
+			close(a.recvMsgChan)
+			subscribe.Close()
+			return
+
+		case <- a.ctx.Done():
+			cancel()
+
+		case msg := <- a.recvMsgChan:
+			//处理消息
+			log.Print( string(msg.Data()) )
+		}
+
+	}()
+
+	go func() {
+
+		for {
+
+			if msg, err := subscribe.Next(a.ctx); err != nil {
+				log.Printf("AApp:%v subscribe shutdowned.", a.Info.AAppns)
+				return
+			} else {
+				a.recvMsgChan <- msg
+			}
+
+		}
+
+	}()
+
+	return true
 }
 
 func (a *aapp) Shutdown() {
-
-	a.onListen = false
-	a.ctxCancel()
-	close(a.recvChannel)
-
+	a.shutdownChan <- true
 }

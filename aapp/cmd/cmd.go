@@ -10,8 +10,10 @@ var AAppCMDS = &cmds.Command{
 		Tagline: "AyaChain AApp Commands.",
 	},
 	Subcommands: map[string]*cmds.Command{
-		"daemon" : daemonCmd,
-		"list"	 : listCmd,
+		"daemon" 	: 	daemonCmd,
+		"list"	 	: 	listCmd,
+		"shutdown"	:	shutdownCmd,
+		"perfrom"	:	perfromCmd,
 	},
 
 }

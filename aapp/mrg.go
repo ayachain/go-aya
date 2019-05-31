@@ -2,6 +2,7 @@ package aapp
 
 import (
 	"errors"
+	"fmt"
 	"github.com/ipfs/go-ipfs/core"
 	"github.com/ipfs/interface-go-ipfs-core"
 )
@@ -40,3 +41,28 @@ func ( m *mrg ) Load( aappns string, api iface.CoreAPI, ind *core.IpfsNode ) ( a
 	return ap, nil
 }
 
+func ( m *mrg ) Shutdown( aappns string ) error {
+
+	ap, ok := m.aapps[aappns]
+	if !ok {
+		return fmt.Errorf("not find AApp : %v", aappns)
+	}
+
+	ap.Shutdown()
+
+	delete(m.aapps, aappns)
+
+	return nil
+}
+
+func ( m *mrg ) AAppOf( aappns string ) *aapp {
+
+	v, isexist := m.aapps[aappns]
+
+	if isexist {
+		return v
+	} else {
+		return nil
+	}
+
+}
