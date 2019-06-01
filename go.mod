@@ -6,6 +6,7 @@ require (
 	github.com/Kubuxu/go-os-helper v0.0.1
 	github.com/ayachain/go-aya-alvm v0.0.0-00010101000000-000000000000
 	github.com/hashicorp/go-multierror v1.0.0
+	github.com/ipfs/go-cid v0.0.2
 	github.com/ipfs/go-ipfs v0.4.21
 	github.com/ipfs/go-ipfs-cmds v0.0.8
 	github.com/ipfs/go-ipfs-config v0.0.3

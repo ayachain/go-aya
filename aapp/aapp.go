@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	lua "github.com/ayachain/go-aya-alvm"
+	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-ipfs/core"
 	dag "github.com/ipfs/go-merkledag"
 	"github.com/ipfs/interface-go-ipfs-core"
@@ -119,6 +120,10 @@ func NewAApp( aappns string, api iface.CoreAPI, ind *core.IpfsNode ) ( ap *aapp,
 	}
 
 	return ap, nil
+}
+
+func (a *aapp) FlushMFS() (cid.Cid, error) {
+	return a.Avm.FlushMFS()
 }
 
 func (a *aapp) Daemon() bool {

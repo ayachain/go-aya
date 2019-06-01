@@ -14,6 +14,7 @@ var AAppCMDS = &cmds.Command{
 		"list"	 	: 	listCmd,
 		"shutdown"	:	shutdownCmd,
 		"perfrom"	:	perfromCmd,
+		"flush"		:	flushCmd,
 	},
 
 }

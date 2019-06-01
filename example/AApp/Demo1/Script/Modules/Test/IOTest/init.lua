@@ -83,6 +83,35 @@ exports.BaseByIO = function()
 
 end
 
+
+exports.TestLine = function()
+
+
+    local fi = io.open("IOTest_Onput.txt", "r")
+
+    if fi == nil then
+        print("io.open faild.")
+        return false
+    end
+
+    for ct in fi:lines() do
+        print(ct)
+    end
+    fi:close()
+    print("fi:lines() running.")
+
+
+    it = io.lines("IOTest_Onput.txt")
+
+    print("Count 1 " .. it() )
+    print("Count 2 " .. it() )
+
+    for ct2 in it do
+        print( "It Read :" .. ct2 )
+    end
+
+end
+
 exports.Run = function()
 
     msg = ""
@@ -93,13 +122,15 @@ exports.Run = function()
     if case1 and case2 then
         msg = "All Pass"
     else
-        if ~case1 then msg = msg .. "WriteTest() Failed\n" end
-        if ~case2 then msg = msg .. "ReadTest() Failed\n" end
+        if not case1 then msg = msg .. "WriteTest() Failed\n" end
+        if not case2 then msg = msg .. "ReadTest() Failed\n" end
     end
 
     exports.BaseByIO()
+    exports.TestLine()
 
     return msg
+
 end
 
 return exports
