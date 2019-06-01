@@ -1,4 +1,0 @@
-test io.write
-2016 7 23
-Fri May 31 19:58:11 2019
-file (0x7fff9abef030)
