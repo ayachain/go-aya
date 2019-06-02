@@ -5,6 +5,7 @@ go 1.12
 require (
 	github.com/Kubuxu/go-os-helper v0.0.1
 	github.com/ayachain/go-aya-alvm v0.0.0-00010101000000-000000000000
+	github.com/ayachain/go-aya-alvm-adb v0.0.0-00010101000000-000000000000
 	github.com/hashicorp/go-multierror v1.0.0
 	github.com/ipfs/go-cid v0.0.2
 	github.com/ipfs/go-ipfs v0.4.21
@@ -24,4 +25,7 @@ require (
 	github.com/prometheus/client_golang v0.9.3
 )
 
-replace github.com/ayachain/go-aya-alvm => ../go-aya-alvm
+replace (
+	github.com/ayachain/go-aya-alvm => ../go-aya-alvm
+	github.com/ayachain/go-aya-alvm-adb => ../go-aya-alvm-adb
+)
