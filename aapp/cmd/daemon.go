@@ -1,8 +1,8 @@
 package cmd
 
 import (
-	"fmt"
 	"github.com/ayachain/go-aya/aapp"
+	ARsponse "github.com/ayachain/go-aya/response"
 	"github.com/ipfs/go-ipfs-cmds"
 	"github.com/ipfs/go-ipfs/core/commands/cmdenv"
 )
@@ -19,25 +19,23 @@ var daemonCmd = &cmds.Command {
 
 		api, err := cmdenv.GetApi(env, req)
 		if err != nil {
-			return re.Emit( err.Error() )
+			return ARsponse.EmitErrorResponse(re, err)
 		}
 
 		nd, err := cmdenv.GetNode(env)
 		if err != nil {
-			return re.Emit( err.Error() )
+			return ARsponse.EmitErrorResponse(re, err)
 		}
 
 		_, err = aapp.Manager.Load(req.Arguments[0], api, nd)
 
 		if err != nil {
-			return re.Emit( err.Error() )
+			return ARsponse.EmitErrorResponse(re, err)
 		}
 
-		return re.Emit( fmt.Sprintf("Daemon AAPP : %v Success.", req.Arguments[0]) )
+		return ARsponse.EmitSuccessResponse(
+			re,
+			ARsponse.SimpleSuccessBody,
+			)
 	},
-	//PostRun:cmds.PostRunMap {
-	//	cmds.CLI: func(res cmds.Response, re cmds.ResponseEmitter) error {
-	//		return nil
-	//	},
-	//},
 }

@@ -1,7 +1,9 @@
 package cmd
 
 import (
+	"fmt"
 	AKeyStore "github.com/ayachain/go-aya/keystore"
+	ARsponse "github.com/ayachain/go-aya/response"
 	"github.com/ipfs/go-ipfs-cmds"
 )
 
@@ -18,20 +20,21 @@ var deleteAccountCmd = &cmds.Command {
 
 		aks := AKeyStore.ShareInstance()
 		if aks == nil {
-			return re.Emit("keystore services instance error")
+			return ARsponse.EmitErrorResponse(re, fmt.Errorf("keystore services instance error") )
 		}
 
 		addrHex := req.Arguments[0]
 		acc, err := findAccount(addrHex)
 		if err != nil {
-			return re.Emit(err)
+			return ARsponse.EmitErrorResponse(re, err)
 		}
 
 		pwd := req.Arguments[1]
 		if err := aks.Delete(acc, pwd); err != nil {
-			return re.Emit("delete account success")
+			return ARsponse.EmitErrorResponse(re, err)
 		} else {
-			return re.Emit(err)
+			return ARsponse.EmitSuccessResponse(re, ARsponse.SimpleSuccessBody)
 		}
+
 	},
 }

@@ -1,7 +1,9 @@
 package cmd
 
 import (
+	"fmt"
 	AKeyStore "github.com/ayachain/go-aya/keystore"
+	ARsponse "github.com/ayachain/go-aya/response"
 	"github.com/ipfs/go-ipfs-cmds"
 )
 
@@ -17,15 +19,15 @@ var newAccountCmd = &cmds.Command {
 
 		aks := AKeyStore.ShareInstance()
 		if aks == nil {
-			return re.Emit("keystore services instance error")
+			return ARsponse.EmitErrorResponse(re, fmt.Errorf("keystore services instance error"))
 		}
 
 		pwd := req.Arguments[0]
 		acc, err := aks.NewAccount(pwd)
 		if err != nil {
-			return re.Emit(err)
+			return ARsponse.EmitErrorResponse(re, err)
 		}
 
-		return re.Emit(acc.Address.Hex())
+		return ARsponse.EmitSuccessResponse(re, acc.Address.Hex() )
 	},
 }

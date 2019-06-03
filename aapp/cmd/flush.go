@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"github.com/ayachain/go-aya/aapp"
+	ARsponse "github.com/ayachain/go-aya/response"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 )
 
@@ -19,15 +20,18 @@ var flushCmd = &cmds.Command{
 
 		if ap == nil {
 
-			return re.Emit( fmt.Sprintf("%v is not a daemoned AAppServices", req.Arguments[0]) )
+			return ARsponse.EmitErrorResponse(
+				re,
+				fmt.Errorf("%v is not a daemoned AAppServices", req.Arguments[0]),
+				)
 
 		} else {
 
 			c, err := ap.FlushMFS()
 			if err != nil {
-				return re.Emit(err)
+				return ARsponse.EmitErrorResponse(re, err)
 			} else {
-				return re.Emit(c.String())
+				return ARsponse.EmitSuccessResponse(re, c.String())
 			}
 
 		}

@@ -1,11 +1,13 @@
 package cmd
 
 import (
+	"fmt"
 	AKeyStore "github.com/ayachain/go-aya/keystore"
+	ARsponse "github.com/ayachain/go-aya/response"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 )
 
-var accountsCmd = &cmds.Command {
+var listCmd = &cmds.Command {
 
 	Helptext:cmds.HelpText{
 		Tagline: "Show current keystore account lists.",
@@ -14,7 +16,7 @@ var accountsCmd = &cmds.Command {
 
 		aks := AKeyStore.ShareInstance()
 		if aks == nil {
-			return re.Emit("keystore services instance error")
+			return ARsponse.EmitErrorResponse(re, fmt.Errorf("keystore services instance error"))
 		}
 
 		var adds []string
@@ -22,6 +24,6 @@ var accountsCmd = &cmds.Command {
 			adds = append(adds, acc.Address.Hex())
 		}
 
-		return re.Emit(adds)
+		return ARsponse.EmitSuccessResponse(re, adds)
 	},
 }

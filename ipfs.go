@@ -30,7 +30,6 @@ func init() {
 	// setting here instead of in literal to prevent initialization loop
 	// (some commands make references to Root)
 	commands.Root.Subcommands["aya"] = ayacmd
-
 	Root.Subcommands = localCommands
 
 	for k, v := range commands.Root.Subcommands {

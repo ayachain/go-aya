@@ -2,6 +2,7 @@ package cmd
 
 import (
 	AKeyStore "github.com/ayachain/go-aya/keystore"
+	ARsponse "github.com/ayachain/go-aya/response"
 	"github.com/ipfs/go-ipfs-cmds"
 )
 
@@ -23,13 +24,13 @@ var updateCmd = &cmds.Command {
 
 		acc, err := findAccount(addrHex)
 		if err != nil {
-			return re.Emit(err)
+			return ARsponse.EmitErrorResponse(re, err)
 		}
 
 		if err := AKeyStore.ShareInstance().Update(acc, oldPwd, newPwd); err != nil {
-			return re.Emit(err)
+			return ARsponse.EmitErrorResponse(re, err)
 		}
 
-		return re.Emit("Success.")
+		return ARsponse.EmitSuccessResponse(re, ARsponse.SimpleSuccessBody)
 	},
 }

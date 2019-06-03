@@ -33,15 +33,18 @@ func findAccount( hexAddr string ) (accounts.Account, error) {
 var WalletCMDS = &cmds.Command{
 
 	Helptext:cmds.HelpText{
-		Tagline: "AyaChain Wallet Commands.",
+		Tagline: "AyaChain keystore commands.",
 	},
 	Subcommands: map[string]*cmds.Command{
-		"accounts" 			: 	accountsCmd,
-		"new"					:	newAccountCmd,
-		"delete"				:	deleteAccountCmd,
-		"unlock"				:	unLockCmd,
-		"update"				:	updateCmd,
-		"sign"					:	signCmd,
+		"list"	 			: 	listCmd,
+		"new"				:	newAccountCmd,
+		"delete"			:	deleteAccountCmd,
+		"unlock"			:	unLockCmd,
+		"update"			:	updateCmd,
+		"sign"				:	signCmd,
+		"lock"				:	lockCmd,
+		"import"			:	importCmd,
+		"export"			:	exportCmd,
 	},
 
 }

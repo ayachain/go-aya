@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"github.com/ayachain/go-aya/aapp"
+	ARsponse "github.com/ayachain/go-aya/response"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 )
 
@@ -17,9 +18,12 @@ var shutdownCmd = &cmds.Command {
 	Run:func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 
 		if err := aapp.Manager.Shutdown(req.Arguments[0]); err != nil {
-			return err
+			return ARsponse.EmitErrorResponse(re, err)
 		} else {
-			return re.Emit( fmt.Sprintf("Shutdown AAPP : %v Success.", req.Arguments[0]) )
+			return ARsponse.EmitSuccessResponse(
+				re,
+				fmt.Sprintf("Shutdown AAPP : %v Success.", req.Arguments[0]),
+				)
 		}
 	},
 }

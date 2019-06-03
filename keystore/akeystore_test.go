@@ -10,4 +10,5 @@ func TestNewWallet(t *testing.T) {
 	//ShareInstance().TimedUnlock()
 	//ShareInstance().Accounts()
 	//ShareInstance().Update()
+	//ShareInstance().
 }

@@ -3,6 +3,7 @@ package cmd
 import (
 	"encoding/hex"
 	AKeyStore "github.com/ayachain/go-aya/keystore"
+	ARsponse "github.com/ayachain/go-aya/response"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ipfs/go-ipfs-cmds"
 )
@@ -14,18 +15,22 @@ var signCmd = &cmds.Command {
 	},
 	Arguments: []cmds.Argument {
 		cmds.StringArg("address", true, false, "account address"),
-		cmds.StringArg("content", true, false, "sign content"),
-		cmds.StringArg("passphrase", true, false, "account passphrase"),
+		cmds.StringArg("content", true, true, "sign content"),
+		cmds.StringArg("passphrase", false, false, "account passphrase"),
 	},
 	Run:func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 
+		var pwd = ""
 		addrHex := req.Arguments[0]
 		content := req.Arguments[1]
-		pwd := req.Arguments[2]
+
+		if len(req.Arguments) > 2 {
+			pwd = req.Arguments[2]
+		}
 
 		acc, err := findAccount(addrHex)
 		if err != nil {
-			return re.Emit(err)
+			return ARsponse.EmitErrorResponse(re, err)
 		}
 
 		hash := crypto.Keccak256Hash( []byte(content) )
@@ -34,18 +39,18 @@ var signCmd = &cmds.Command {
 
 			signature, err := AKeyStore.ShareInstance().SignHashWithPassphrase(acc, pwd, hash.Bytes() )
 			if err != nil {
-				return re.Emit(err)
+				return ARsponse.EmitErrorResponse(re, err)
 			} else {
-				return re.Emit(hex.EncodeToString(signature))
+				return ARsponse.EmitSuccessResponse(re, hex.EncodeToString(signature))
 			}
 
 		} else {
 
 			signature, err := AKeyStore.ShareInstance().SignHash(acc, hash.Bytes())
 			if err != nil {
-				return re.Emit(err)
+				return ARsponse.EmitErrorResponse(re, err)
 			} else {
-				return re.Emit(hex.EncodeToString(signature))
+				return ARsponse.EmitSuccessResponse(re, hex.EncodeToString(signature))
 			}
 		}
 	},

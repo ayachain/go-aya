@@ -2,6 +2,7 @@ package main
 
 import (
 	aappcmd "github.com/ayachain/go-aya/aapp/cmd"
+	"github.com/ayachain/go-aya/keystore"
 	walletcmd "github.com/ayachain/go-aya/keystore/cmd"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 )
@@ -13,7 +14,11 @@ var ayacmd = &cmds.Command {
 	},
 	Subcommands: map[string]*cmds.Command{
 		"aapp" 		: 	aappcmd.AAppCMDS,
-		"wallet" 	: 	walletcmd.WalletCMDS,
+		"keystore" 	: 	walletcmd.WalletCMDS,
 	},
 
+}
+
+func DaemonAyaChaine() {
+	keystore.Init("/Users/apple/.aya/keystore")
 }
