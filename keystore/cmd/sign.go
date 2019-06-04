@@ -29,6 +29,7 @@ var signCmd = &cmds.Command {
 		}
 
 		acc, err := findAccount(addrHex)
+
 		if err != nil {
 			return ARsponse.EmitErrorResponse(re, err)
 		}

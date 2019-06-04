@@ -1,9 +1,13 @@
-package cvfs
+package vdb
 
 import (
 	"context"
 	"errors"
-	ABlock "github.com/ayachain/go-aya/block"
+	AAssetses "github.com/ayachain/go-aya/vdb/assets"
+	ABlock "github.com/ayachain/go-aya/vdb/block"
+	AHeader "github.com/ayachain/go-aya/vdb/headers"
+	AReceipts "github.com/ayachain/go-aya/vdb/receipt"
+	ATx "github.com/ayachain/go-aya/vdb/transaction"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-ipfs/core"
 	"github.com/ipfs/go-merkledag"
@@ -14,7 +18,18 @@ var (
 	aVFSDAGNodeConversionError = errors.New("conversion proto node expected")
 )
 
+type CVFS interface {
+
+	Assetses() 		AAssetses.AssetsAPI		/// Asset
+	Headers() 		AHeader.HeadersAPI		/// Indexes
+	Blocks() 		ABlock.BlocksAPI		/// Body
+	Transactions() 	ATx.TransactionAPI		/// Transaction
+	Receipts() 		AReceipts.ReceiptsAPI	/// Receipt
+
+}
+
 type aCVFS struct {
+	CVFS
 	*mfs.Root
 	inode *core.IpfsNode
 	ctx context.Context
@@ -22,7 +37,7 @@ type aCVFS struct {
 }
 
 //ctx context.Context, aappns string, pnode *dag.ProtoNode, ind *core.IpfsNode
-func CreateVFS( baseBlock *ABlock.Block, ind *core.IpfsNode ) (*aCVFS, error) {
+func CreateVFS( baseBlock *ABlock.Block, ind *core.IpfsNode ) (CVFS, error) {
 
 	vcid, err := cid.Cast( []byte(baseBlock.ExtraData) )
 	if err != nil {

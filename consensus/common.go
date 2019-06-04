@@ -1,4 +1,4 @@
-package common
+package consensus
 
 const (
 	ConsensusRuleKey_SuperMasterPos = "SPOS 1.0.0"

@@ -3,7 +3,10 @@ package block
 type Block struct {
 
 	/// block index
-	Index int64 `json:"index"`
+	Index uint64 `json:"index"`
+
+	/// chain id
+	ChainID string `json:"chainid"`
 
 	/// prev block hash is a ipfs block CID
 	Parent  string `json:"parent"`
@@ -12,10 +15,10 @@ type Block struct {
 	ExtraData string `json:"extradata"`
 
 	/// broadcasting time super master node package this block times.
-	Timestamp int	`json:"timestamp"`
+	Timestamp uint64 `json:"timestamp"`
 
-	/// chain id
-	ChainID string `json:"chainid"`
+	/// append data
+	AppendData []byte `json:"append"`
 
 }
 
