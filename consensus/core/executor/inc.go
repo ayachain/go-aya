@@ -1,6 +1,7 @@
 package executor
 
 import (
+	ACStep "github.com/ayachain/go-aya/consensus/core/step"
 	"github.com/ayachain/go-aya/consensus/core/worker"
 	"github.com/ethereum/go-ethereum/common"
 )
@@ -12,9 +13,9 @@ import (
 // in unexpected circumstances.
 //
 type Executor interface {
+	ACStep.ConsensusOver
 
 	Exec( group *worker.TaskBatchGroup ) (error, func( hash common.Hash ))
 
 	ResolverLogs( ) error
-
 }

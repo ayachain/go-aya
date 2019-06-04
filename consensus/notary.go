@@ -23,8 +23,6 @@ import (
 
 type Notary interface {
 
-
-
 	VerifyBlock( vfs vdb.CVFS, block *ABlock.Block ) bool
 
 	OnReceiveBlock( vfs vdb.CVFS, block *ABlock.Block )

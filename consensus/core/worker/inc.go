@@ -16,6 +16,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"encoding/json"
+	ACStep "github.com/ayachain/go-aya/consensus/core/step"
 	ADog "github.com/ayachain/go-aya/consensus/core/watchdog"
 	AvdbComm "github.com/ayachain/go-aya/vdb/common"
 	"github.com/syndtr/goleveldb/leveldb"
@@ -25,11 +26,9 @@ import (
 // target of each database should have as many as one task. The same task cannot
 // be included in the group, and if so, it needs to be merged.
 type TaskBatchGroup struct {
-
 	AvdbComm.RawDBCoder
 
 	batchs map[string]*leveldb.Batch
-
 }
 
 func (tbg *TaskBatchGroup) GetBatchs() map[string]*leveldb.Batch{
@@ -124,8 +123,9 @@ type TaskBatchGroupBinder interface {
 
 }
 
-
 type TaskWorker interface {
+
+	ACStep.ConsensusStep
 
 	Processing( dogs *ADog.MsgFromDogs ) (*TaskBatchGroup, error)
 
