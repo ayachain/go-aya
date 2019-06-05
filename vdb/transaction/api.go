@@ -9,6 +9,8 @@ const DBPath = "/db/header"
 
 type TransactionAPI interface {
 
+	DBKey()	string
+
 	GetTxByHash( hash EComm.Hash ) (*Transaction, error)
 
 	GetTxByHashBs( hsbs []byte ) (*Transaction, error)

@@ -15,6 +15,7 @@ const (
 )
 
 type AssetsAPI interface {
+	DBKey()	string
 	AssetsOf( key []byte ) ( *Assets, error )
 	AvailBalanceMove( from, to []byte, v uint64 ) ( aftf, aftt *Assets, err error )
 }

@@ -2,27 +2,11 @@ package step
 
 import (
 	"fmt"
-	ADog "github.com/ayachain/go-aya/consensus/core/watchdog"
 )
 
 type ConsensusChain struct {
-	ConsensusStep
 	identifier string
 	steps []ConsensusStep
-}
-
-func (cc *ConsensusChain) Identifier( ) string {
-	return "Root"
-}
-
-func (cc *ConsensusChain) SetNextStep( s ConsensusStep ) {}
-
-func (cc *ConsensusChain) NextChannelAccept(  ) <- chan *ADog.MsgFromDogs {
-	return cc.steps[0].ChannelAccept()
-}
-
-func (cc *ConsensusChain) Consensued( *ADog.MsgFromDogs ) interface{} {
-	return nil
 }
 
 func NewConsensusChain( idstr string, steps... ConsensusStep ) *ConsensusChain {
@@ -46,6 +30,10 @@ func NewConsensusChain( idstr string, steps... ConsensusStep ) *ConsensusChain {
 		steps:steps,
 	}
 
+}
+
+func (cc *ConsensusChain) GetStepRoot() ConsensusStep {
+	return cc.steps[0]
 }
 
 func (cc *ConsensusChain) AppendSteps( step... ConsensusStep ) {

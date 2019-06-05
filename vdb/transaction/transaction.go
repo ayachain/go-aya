@@ -21,6 +21,7 @@ type Transaction struct {
 	Steps			uint32			`json:"steps"`
 	Price			uint32			`json:"price"`
 	Tid				uint64			`json:"tid"`
+	Sig				[]byte			`json:"sig"`
 }
 
 func ( trsn *Transaction ) Encode() []byte {
@@ -33,14 +34,43 @@ func ( trsn *Transaction ) Encode() []byte {
 	return bs
 }
 
-
 func ( trsn *Transaction ) Decode( bs []byte ) error {
 	return json.Unmarshal(bs, trsn)
 }
 
+
 func ( trsn *Transaction ) GetHash256( ) EComm.Hash {
-	bs := trsn.Encode()
-	return crypto.Keccak256Hash(bs)
+
+	buff := bytes.NewBuffer([]byte("AyaTransactionPrefix"))
+
+	buff.Write( AvdbComm.BigEndianBytes(trsn.BlockIndex) )
+	buff.Write( trsn.From.Bytes() )
+	buff.Write( trsn.To.Bytes() )
+	buff.Write( AvdbComm.BigEndianBytes(trsn.Value) )
+
+	for _, hs := range trsn.Children {
+		buff.Write(hs.Bytes())
+	}
+	buff.Write(trsn.Data)
+	buff.Write( AvdbComm.BigEndianBytesUint32(trsn.Steps) )
+	buff.Write( AvdbComm.BigEndianBytesUint32(trsn.Price) )
+	buff.Write( AvdbComm.BigEndianBytes(trsn.Tid) )
+	//buff.Write( trsn.Sig )
+
+	return crypto.Keccak256Hash(buff.Bytes())
+}
+
+func ( trsn *Transaction ) Verify() bool {
+
+	hs := trsn.GetHash256()
+
+	pubkey, err := crypto.Ecrecover( hs.Bytes(), trsn.Sig )
+	if err != nil {
+		return false
+	}
+
+	return bytes.Equal(pubkey, trsn.From.Bytes())
+
 }
 
 ///// key = Transaction.Bytes + BlockIndex(LittleEndian)

@@ -14,7 +14,7 @@
 // only participate in supervision and unified logic when new data is written to
 // block chain database, such as when receiving a new block of data.
 //
-package consensus
+package core
 
 import (
 	"github.com/ayachain/go-aya/vdb"

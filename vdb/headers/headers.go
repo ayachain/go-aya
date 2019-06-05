@@ -2,12 +2,10 @@ package headers
 
 import (
 	"encoding/binary"
-	ABlock "github.com/ayachain/go-aya/vdb/block"
 	"github.com/ayachain/go-aya/vdb/common"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-ipfs/core"
 	"github.com/ipfs/go-mfs"
-	"github.com/pkg/errors"
 	"github.com/syndtr/goleveldb/leveldb"
 )
 
@@ -45,30 +43,9 @@ func (hds *aHeaders) HeaderOf( index uint64 ) (*Header, error) {
 	return &Header{Cid:c}, nil
 }
 
-func (hds *aHeaders) AppendHeaders( verify bool, header... *Header ) error {
+func (hds *aHeaders) AppendHeaders( header... *Header ) error {
 
 	lindex := hds.LatestHeaderIndex()
-
-	if verify {
-
-		cids := HeadersToCids(header)
-		blocks, err := ABlock.GetBlocks(hds.ind, cids...)
-		if err != nil {
-			return err
-		}
-
-		sindex := lindex
-		for _, b := range blocks {
-
-			if b.Index-sindex == 1 {
-				sindex = b.Index
-			} else {
-				return errors.New("verify headers expected")
-			}
-
-		}
-
-	}
 
 	wbc := &leveldb.Batch{}
 	for _, v := range header {

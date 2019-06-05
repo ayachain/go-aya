@@ -1,7 +1,7 @@
 package chain
 
 import (
-	ABlock "github.com/ayachain/go-aya/block"
+	ABlock "github.com/ayachain/go-aya/vdb/block"
 	"github.com/ipfs/go-cid"
 )
 
@@ -24,7 +24,7 @@ type AyaChain interface {
 	GetCurBlock() (*ABlock.Block, error)
 
 	/// use block create a ipfs-mfs
-	GetVFS( block *ABlock.Block )
+	GetMainVFS( block *ABlock.Block )
 
 	/// verify chain of block index range start to end
 	VerifyBlock( start, end int ) bool
@@ -34,6 +34,8 @@ type AyaChain interface {
 
 }
 
-type aChain struct {
+type aChainServices struct {
+
+
 
 }

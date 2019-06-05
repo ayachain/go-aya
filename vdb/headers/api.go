@@ -9,9 +9,11 @@ const (
 
 type HeadersAPI interface {
 
+	DBKey()	string
+
 	HeaderOf( index uint64 ) (*Header, error)
 
 	LatestHeaderIndex() uint64
 
-	AppendHeaders( verify bool, header... *Header) error
+	AppendHeaders( header... *Header) error
 }

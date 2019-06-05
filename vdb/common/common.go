@@ -3,6 +3,7 @@ package common
 import (
 	"encoding/binary"
 	ADB "github.com/ayachain/go-aya-alvm-adb"
+	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ipfs/go-mfs"
 	"github.com/syndtr/goleveldb/leveldb"
 )
@@ -12,6 +13,12 @@ type RawDBCoder interface {
 	Decode([]byte) error
 }
 
+
+type RawSigner interface {
+	RawSignEncode( account accounts.Account ) ([]byte, error)
+	RawVerifyDecode( bs []byte ) error
+}
+
 func LittleEndianBytes (number uint64) []byte {
 	enc := make([]byte, 8)
 	binary.LittleEndian.PutUint64(enc, number)
@@ -19,11 +26,21 @@ func LittleEndianBytes (number uint64) []byte {
 }
 
 func BigEndianBytes (number uint64) []byte {
-
 	enc := make([]byte, 8)
 	binary.BigEndian.PutUint64(enc, number)
 	return enc
+}
 
+func BigEndianBytesUint32 (n uint32 ) []byte {
+	enc := make([]byte, 4)
+	binary.BigEndian.PutUint32(enc, n)
+	return enc
+}
+
+func BigEndianBytesUint16 ( n uint16 ) []byte {
+	enc := make([]byte, 2)
+	binary.BigEndian.PutUint16(enc, n)
+	return enc
 }
 
 func OpenStandardDB( root *mfs.Root, path string ) *leveldb.DB {

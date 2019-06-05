@@ -3,6 +3,7 @@ package vdb
 import (
 	"context"
 	"errors"
+	AWrok "github.com/ayachain/go-aya/consensus/core/worker"
 	AAssetses "github.com/ayachain/go-aya/vdb/assets"
 	ABlock "github.com/ayachain/go-aya/vdb/block"
 	AHeader "github.com/ayachain/go-aya/vdb/headers"
@@ -20,11 +21,13 @@ var (
 
 type CVFS interface {
 
-	Assetses() 		AAssetses.AssetsAPI		/// Asset
-	Headers() 		AHeader.HeadersAPI		/// Indexes
-	Blocks() 		ABlock.BlocksAPI		/// Body
-	Transactions() 	ATx.TransactionAPI		/// Transaction
-	Receipts() 		AReceipts.ReceiptsAPI	/// Receipt
+	Assetses() 					AAssetses.AssetsAPI		/// Asset
+	Headers() 					AHeader.HeadersAPI		/// Indexes
+	Blocks() 					ABlock.BlocksAPI		/// Body
+	Transactions() 				ATx.TransactionAPI		/// Transaction
+	Receipts() 					AReceipts.ReceiptsAPI	/// Receipt
+	WriteBatchGroup( group *AWrok.TaskBatchGroup) error
+	Close()
 
 }
 

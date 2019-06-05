@@ -54,13 +54,17 @@
 //
 package watchdog
 
-import pubsub "github.com/libp2p/go-libp2p-pubsub"
+import (
+	ASign "github.com/ayachain/go-aya/consensus/core/signaturer"
+	pubsub "github.com/libp2p/go-libp2p-pubsub"
+)
 
 type FinalResult int
 
 const (
 	FinalResult_Trust_Evey	FinalResult = 128
 	FinalResult_Success		FinalResult = 1
+	FinalResult_ELV0		FinalResult = 0
 	FinalResult_ELV1		FinalResult = -1
 	FinalResult_ELV2		FinalResult = -2
 	FinalResult_ELV3		FinalResult = -3
@@ -82,7 +86,7 @@ type WatchDog interface {
 	// Whether the door can be opened for the designated node, if the familiar
 	// person (white list) opens the door directly, the stranger (black list) closes
 	// the door.
-	TakeMessage( msg pubsub.Message ) *MsgFromDogs
+	TakeBlock( msg pubsub.Message ) error
 
 	// We provide a reference logic. When the score is higher than 0, we can pass it.
 	// When the score is lower than 0, we should give up processing the message and

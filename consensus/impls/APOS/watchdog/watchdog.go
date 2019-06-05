@@ -1,38 +1,70 @@
 package watchdog
 
 import (
+	"context"
+	"errors"
+	"fmt"
 	ACStep "github.com/ayachain/go-aya/consensus/core/step"
 	ADog "github.com/ayachain/go-aya/consensus/core/watchdog"
-
+	APos "github.com/ayachain/go-aya/consensus/impls/APOS"
+	"github.com/ayachain/go-aya/vdb/block"
 	"github.com/libp2p/go-libp2p-pubsub"
+	"time"
 )
 
 type Dog struct {
+
 	ADog.WatchDog
 	cc *ACStep.ConsensusChain
-	nextStepChan chan *ADog.MsgFromDogs
+
+	rules map[byte]*ACStep.ConsensusChain
+	recvChan chan *ADog.MsgFromDogs
 }
 
-func NewDog( cc *ACStep.ConsensusChain ) *Dog {
+func NewDog( ) *Dog {
+
 	return &Dog{
-		nextStepChan:cc.ChannelAccept(),
+		rules		: make(map[byte]*ACStep.ConsensusChain),
+		recvChan	: make(chan *ADog.MsgFromDogs, APos.StepWatchDogChanSize),
 	}
+
 }
 
-func (d *Dog) TakeMessage( msg pubsub.Message ) *ADog.MsgFromDogs {
+
+func (d *Dog) SetRule( msgtype byte, cc *ACStep.ConsensusChain ) {
+	d.rules[msgtype] = cc
+}
+
+
+func (d *Dog) TakeMessage( msg pubsub.Message ) error {
 
 	rfunc := func( ADog.FinalResult )  {
 		//Waiting dev
 	}
 
-	dmsg := &ADog.MsgFromDogs{
-		Message:msg,
-		ResultDefer:rfunc,
+	switch msg.Data[0] {
+	case 'b' :
+
+		blk := &block.Block{}
+
+		if err := blk.Decode(msg.Data[1:]); err != nil {
+			return err
+		}
+
+		d.recvChan <- &ADog.MsgFromDogs{
+			Message:msg,
+			ExtraData:blk,
+			ResultDefer:rfunc,
+		}
+
+		return nil
+
+
+	default:
+		fmt.Println("unkown message type")
 	}
 
-	d.nextStepChan <- dmsg
-
-	return nil
+	return errors.New("unkown message type")
 }
 
 func (d *Dog) CreditScoring( peeridOrAddress string ) int8 {
@@ -40,5 +72,35 @@ func (d *Dog) CreditScoring( peeridOrAddress string ) int8 {
 }
 
 func (d *Dog) Close() {
+
+}
+
+
+func (d *Dog) StartListenAccept( ctx context.Context ) {
+
+	go func() {
+
+		select {
+
+		// AI Handle
+		// Wait dev
+		case msg := <- d.recvChan : {
+			cc, exist := d.rules[msg.Data[0]]
+			if !exist {
+				break
+			}
+
+			cc.GetStepRoot().ChannelAccept() <- msg
+		}
+
+		case <- ctx.Done(): {
+			return
+		}
+
+		default:
+			time.Sleep( time.Microsecond  * 100 )
+		}
+
+	}()
 
 }

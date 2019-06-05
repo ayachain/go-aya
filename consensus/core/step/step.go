@@ -13,7 +13,7 @@ type ConsensusStep interface {
 
 	ChannelAccept() chan *ADog.MsgFromDogs
 
-	NextStep() *ConsensusStep
+	NextStep() ConsensusStep
 
 	Consensued( *ADog.MsgFromDogs ) interface{}
 

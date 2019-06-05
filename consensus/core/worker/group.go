@@ -1,14 +1,3 @@
-//
-// When the watchdog passes down trusted messages, the notary coordinates his
-// staff to process them, and eventually generates one or more "Batch" objects
-// for the database, and finally writes one-time constraints by the next link,
-// that is, either all writes, or all discards.
-//
-//
-// We recommend implementing one or more workers to handle different things,
-// and then distributing these messages through a simple factory model.
-//
-
 package worker
 
 import (
@@ -16,8 +5,6 @@ import (
 	"bytes"
 	"encoding/binary"
 	"encoding/json"
-	ACStep "github.com/ayachain/go-aya/consensus/core/step"
-	ADog "github.com/ayachain/go-aya/consensus/core/watchdog"
 	AvdbComm "github.com/ayachain/go-aya/vdb/common"
 	"github.com/syndtr/goleveldb/leveldb"
 )
@@ -27,13 +14,17 @@ import (
 // be included in the group, and if so, it needs to be merged.
 type TaskBatchGroup struct {
 	AvdbComm.RawDBCoder
-
 	batchs map[string]*leveldb.Batch
 }
 
-func (tbg *TaskBatchGroup) GetBatchs() map[string]*leveldb.Batch{
-	return tbg.batchs
+func NewGroup() *TaskBatchGroup {
+	return &TaskBatchGroup{
 
+	}
+}
+
+func (tbg *TaskBatchGroup) GetBatchMap() map[string]*leveldb.Batch{
+	return tbg.batchs
 }
 
 // Byte 0 - 7 : Header json bytes content len
@@ -66,7 +57,6 @@ func (tbg *TaskBatchGroup) Encode() []byte {
 
 	return logbuf.Bytes()
 }
-
 
 func (tgb *TaskBatchGroup) Decode( bs []byte ) error {
 
@@ -108,25 +98,24 @@ func (tgb *TaskBatchGroup) Decode( bs []byte ) error {
 	return nil
 }
 
+func (tgb *TaskBatchGroup) Put( dbkey string, k []byte, v []byte ) {
 
-type TaskBatchGroupBinder interface {
+	batch, exist := tgb.batchs[dbkey]
+	if !exist {
+		batch := &leveldb.Batch{}
+		tgb.batchs[dbkey] = batch
+	}
 
-	Put ( dbkey string, k []byte, v []byte )
-
-	Del ( dbkey string, k []byte, v []byte )
-
-	GetTask( dbkey string ) *leveldb.Batch
-
-	AppendTask( dbkey string, batch *leveldb.Batch )
-
-	AppendGroup( group *TaskBatchGroup )
-
+	batch.Put(k, v)
 }
 
-type TaskWorker interface {
+func (tgb *TaskBatchGroup) Del( dbkey string, k []byte ) {
 
-	ACStep.ConsensusStep
+	batch, exist := tgb.batchs[dbkey]
+	if !exist {
+		batch := &leveldb.Batch{}
+		tgb.batchs[dbkey] = batch
+	}
 
-	Processing( dogs *ADog.MsgFromDogs ) (*TaskBatchGroup, error)
-
+	batch.Delete(k)
 }
