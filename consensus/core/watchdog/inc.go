@@ -55,7 +55,6 @@
 package watchdog
 
 import (
-	ASign "github.com/ayachain/go-aya/consensus/core/signaturer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 )
 

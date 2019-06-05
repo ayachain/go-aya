@@ -5,7 +5,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"encoding/json"
-	AvdbComm "github.com/ayachain/go-aya/vdb/common"
+	AVdbComm "github.com/ayachain/go-aya/vdb/common"
 	"github.com/syndtr/goleveldb/leveldb"
 )
 
@@ -13,7 +13,7 @@ import (
 // target of each database should have as many as one task. The same task cannot
 // be included in the group, and if so, it needs to be merged.
 type TaskBatchGroup struct {
-	AvdbComm.RawDBCoder
+	AVdbComm.RawDBCoder
 	batchs map[string]*leveldb.Batch
 }
 
@@ -47,7 +47,7 @@ func (tbg *TaskBatchGroup) Encode() []byte {
 		return nil
 	}
 
-	logbuf := bytes.NewBuffer( AvdbComm.BigEndianBytes( uint64(len(headBs))) )
+	logbuf := bytes.NewBuffer( AVdbComm.BigEndianBytes( uint64(len(headBs))) )
 	logbuf.Write( headBs )
 
 	_, err = batchBuff.WriteTo(logbuf)

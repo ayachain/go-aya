@@ -9,6 +9,7 @@ import (
 	AHeader "github.com/ayachain/go-aya/vdb/headers"
 	AReceipts "github.com/ayachain/go-aya/vdb/receipt"
 	ATx "github.com/ayachain/go-aya/vdb/transaction"
+	AVdbComm "github.com/ayachain/go-aya/vdb/common"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-ipfs/core"
 	"github.com/ipfs/go-merkledag"
@@ -20,7 +21,6 @@ var (
 )
 
 type CVFS interface {
-
 	Assetses() 					AAssetses.AssetsAPI		/// Asset
 	Headers() 					AHeader.HeadersAPI		/// Indexes
 	Blocks() 					ABlock.BlocksAPI		/// Body
@@ -28,7 +28,6 @@ type CVFS interface {
 	Receipts() 					AReceipts.ReceiptsAPI	/// Receipt
 	WriteBatchGroup( group *AWrok.TaskBatchGroup) error
 	Close()
-
 }
 
 type aCVFS struct {
@@ -37,6 +36,12 @@ type aCVFS struct {
 	inode *core.IpfsNode
 	ctx context.Context
 	ctxCancel context.CancelFunc
+
+	assetsServices AAssetses.AssetsAPI
+	headerServices AHeader.HeadersAPI
+	blockServices ABlock.BlocksAPI
+	txServices ATx.TransactionAPI
+	receiptServices AReceipts.ReceiptsAPI
 }
 
 //ctx context.Context, aappns string, pnode *dag.ProtoNode, ind *core.IpfsNode
@@ -47,16 +52,56 @@ func CreateVFS( baseBlock *ABlock.Block, ind *core.IpfsNode ) (CVFS, error) {
 		return nil, err
 	}
 
-	vfs := &aCVFS{ inode:ind }
-
-	vfs.ctx, vfs.ctxCancel = context.WithCancel( context.Background() )
-
-	root, err := newMFSRoot(vfs.ctx, vcid, ind)
+	ctx, cancel := context.WithCancel( context.Background() )
+	root, err := newMFSRoot( ctx, vcid, ind )
 	if err != nil {
 		return nil, err
 	}
 
-	vfs.Root = root
+	headerDir, err := AVdbComm.LookupDBPath( root,  AHeader.DBPATH )
+	if err != nil {
+		return nil, err
+	}
+
+	assetDir, err := AVdbComm.LookupDBPath(root, AAssetses.DBPATH)
+	if err != nil {
+		return nil, err
+	}
+
+	blockDir, err := AVdbComm.LookupDBPath(root, ABlock.DBPath)
+	if err != nil {
+		return nil, err
+	}
+
+	txsDir, err := AVdbComm.LookupDBPath(root, ATx.DBPath)
+	if err != nil {
+		return nil, err
+	}
+
+	receiptDir, err := AVdbComm.LookupDBPath(root, AReceipts.DBPath)
+	if err != nil {
+		return nil, err
+	}
+
+	var (
+			headerServices	= AHeader.CreateServices( headerDir )
+			assetsServices 	= AAssetses.CreateServices( assetDir )
+			blockServices	= ABlock.CreateServices( blockDir, headerServices )
+			txServices			= ATx.CreateServices( txsDir )
+			receiptServices	= AReceipts.CreateServices(receiptDir)
+	)
+
+	vfs := &aCVFS{
+		ctx:ctx,
+		ctxCancel:cancel,
+		Root:root,
+		inode:ind,
+		assetsServices 	: assetsServices,
+		headerServices : headerServices,
+		blockServices	: blockServices,
+		txServices			: txServices,
+		receiptServices : receiptServices,
+	}
 
 	return vfs, nil
 }
@@ -105,5 +150,33 @@ func ( vfs *aCVFS ) changeBlock( c cid.Cid ) error {
 
 	}()
 
+	return nil
+}
+
+func ( vfs *aCVFS ) Close() {
+
+}
+
+func ( vfs *aCVFS ) Assetses() AAssetses.AssetsAPI {
+	return vfs.assetsServices
+}
+
+func ( vfs *aCVFS ) Headers() AHeader.HeadersAPI {
+	return vfs.headerServices
+}
+
+func ( vfs *aCVFS ) Blocks() ABlock.BlocksAPI {
+	return vfs.Blocks()
+}
+
+func ( vfs *aCVFS ) Transactions() ATx.TransactionAPI {
+	return vfs.txServices
+}
+
+func ( vfs *aCVFS ) Receipts() AReceipts.ReceiptsAPI {
+	return vfs.receiptServices
+}
+
+func ( vfs *aCVFS ) WriteBatchGroup( group *AWrok.TaskBatchGroup) error {
 	return nil
 }

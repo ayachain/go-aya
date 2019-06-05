@@ -10,7 +10,7 @@ import (
 	"github.com/ayachain/go-aya/vdb"
 	ABlock "github.com/ayachain/go-aya/vdb/block"
 	ATx "github.com/ayachain/go-aya/vdb/transaction"
-	blocks "github.com/ipfs/go-block-format"
+	iBlock "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-ipfs/core"
 	"time"
 )
@@ -59,7 +59,7 @@ func (s *Worker) StartListenAccept( ctx context.Context )() {
 					break
 				}
 
-				txsBlock, ok := emap[blk.Txs].(blocks.Block)
+				txsBlock, ok := emap[blk.Txs].(iBlock.Block)
 				if !ok {
 					dmsg.ResultDefer(ADog.FinalResult_ELV0)
 					break
@@ -86,8 +86,7 @@ func (s *Worker) StartListenAccept( ctx context.Context )() {
 
 }
 
-
-func doWorking( ind *core.IpfsNode, txsBlock blocks.Block, block *ABlock.Block ) *AWork.TaskBatchGroup {
+func doWorking( ind *core.IpfsNode, txsBlock iBlock.Block, block *ABlock.Block ) *AWork.TaskBatchGroup {
 
 	txs := make([]*ATx.Transaction, block.Txc)
 	if err := json.Unmarshal(txsBlock.RawData(), txs); err != nil {

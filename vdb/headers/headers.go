@@ -12,7 +12,7 @@ import (
 
 type aHeaders struct {
 	HeadersAPI
-	*mfs.Root
+	*mfs.Directory
 	rawdb *leveldb.DB
 	ind *core.IpfsNode
 }
@@ -58,14 +58,17 @@ func (hds *aHeaders) AppendHeaders( header... *Header ) error {
 	return hds.rawdb.Write(wbc, nil)
 }
 
+func (txs *aHeaders) DBKey()	string {
+	return DBPATH
+}
 
-func CreateHeadersAPI( rootref *mfs.Root ) HeadersAPI {
+func CreateServices( mdir *mfs.Directory ) HeadersAPI {
 
 	api := &aHeaders{
-		Root:rootref,
+		Directory:mdir,
 	}
 
-	api.rawdb = common.OpenStandardDB(rootref, headersDBPath)
+	api.rawdb = common.OpenExistedDB(mdir, DBPATH)
 
 	return api
 }

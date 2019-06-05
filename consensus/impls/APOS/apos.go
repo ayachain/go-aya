@@ -12,14 +12,6 @@ import (
 	"github.com/ipfs/go-ipfs/core"
 )
 
-const (
-	StepWatchDogChanSize 		= 	256
-	StepSignatureChanSize 		= 	64
-	StepDataLoaderChanSize		= 	8
-	StepWorkerChanSize			= 	6
-	StepExecutorChanSize		= 	1
-)
-
 type APOSConsensusNotary struct {
 
 	mainCVFS vdb.CVFS

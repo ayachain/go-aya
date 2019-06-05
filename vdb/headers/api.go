@@ -1,15 +1,18 @@
 package headers
 
+import	 (
+	AVdbComm "github.com/ayachain/go-aya/vdb/common"
+)
 
 const (
-	headersDBPath = "/db/header"
+	DBPATH = "/db/header"
 	latestHeaderNumKey = "LATESTHeader"
 )
 
 
 type HeadersAPI interface {
 
-	DBKey()	string
+	AVdbComm.VDBSerices
 
 	HeaderOf( index uint64 ) (*Header, error)
 

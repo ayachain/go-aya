@@ -5,7 +5,7 @@ import (
 	"fmt"
 	ACStep "github.com/ayachain/go-aya/consensus/core/step"
 	ADog "github.com/ayachain/go-aya/consensus/core/watchdog"
-	APos "github.com/ayachain/go-aya/consensus/impls/APOS"
+	APosComm "github.com/ayachain/go-aya/consensus/impls/APOS/common"
 	"time"
 )
 
@@ -25,7 +25,7 @@ func NewSignturer() ACStep.ConsensusStep {
 
 	stp := &Signturer{
 		identifier : "APOS-Step-1-Signature",
-		acceptChan : make(chan *ADog.MsgFromDogs, APos.StepSignatureChanSize),
+		acceptChan : make(chan *ADog.MsgFromDogs, APosComm.StepSignatureChanSize),
 	}
 
 	return stp

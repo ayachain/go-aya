@@ -6,7 +6,7 @@ import (
 	"fmt"
 	ACStep "github.com/ayachain/go-aya/consensus/core/step"
 	ADog "github.com/ayachain/go-aya/consensus/core/watchdog"
-	APos "github.com/ayachain/go-aya/consensus/impls/APOS"
+	APosComm "github.com/ayachain/go-aya/consensus/impls/APOS/common"
 	"github.com/ayachain/go-aya/vdb/block"
 	"github.com/libp2p/go-libp2p-pubsub"
 	"time"
@@ -25,7 +25,7 @@ func NewDog( ) *Dog {
 
 	return &Dog{
 		rules		: make(map[byte]*ACStep.ConsensusChain),
-		recvChan	: make(chan *ADog.MsgFromDogs, APos.StepWatchDogChanSize),
+		recvChan	: make(chan *ADog.MsgFromDogs, APosComm.StepWatchDogChanSize),
 	}
 
 }

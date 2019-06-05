@@ -3,14 +3,14 @@ package transaction
 import (
 	"bytes"
 	"encoding/json"
-	AvdbComm "github.com/ayachain/go-aya/vdb/common"
+	AVdbComm "github.com/ayachain/go-aya/vdb/common"
 	EComm "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
 type Transaction struct {
 
-	AvdbComm.RawDBCoder
+	AVdbComm.RawDBCoder
 
 	BlockIndex		uint64			`json:"index"`
 	From 			EComm.Address	`json:"from"`
@@ -43,18 +43,18 @@ func ( trsn *Transaction ) GetHash256( ) EComm.Hash {
 
 	buff := bytes.NewBuffer([]byte("AyaTransactionPrefix"))
 
-	buff.Write( AvdbComm.BigEndianBytes(trsn.BlockIndex) )
+	buff.Write( AVdbComm.BigEndianBytes(trsn.BlockIndex) )
 	buff.Write( trsn.From.Bytes() )
 	buff.Write( trsn.To.Bytes() )
-	buff.Write( AvdbComm.BigEndianBytes(trsn.Value) )
+	buff.Write( AVdbComm.BigEndianBytes(trsn.Value) )
 
 	for _, hs := range trsn.Children {
 		buff.Write(hs.Bytes())
 	}
 	buff.Write(trsn.Data)
-	buff.Write( AvdbComm.BigEndianBytesUint32(trsn.Steps) )
-	buff.Write( AvdbComm.BigEndianBytesUint32(trsn.Price) )
-	buff.Write( AvdbComm.BigEndianBytes(trsn.Tid) )
+	buff.Write( AVdbComm.BigEndianBytesUint32(trsn.Steps) )
+	buff.Write( AVdbComm.BigEndianBytesUint32(trsn.Price) )
+	buff.Write( AVdbComm.BigEndianBytes(trsn.Tid) )
 	//buff.Write( trsn.Sig )
 
 	return crypto.Keccak256Hash(buff.Bytes())
@@ -76,7 +76,7 @@ func ( trsn *Transaction ) Verify() bool {
 ///// key = Transaction.Bytes + BlockIndex(LittleEndian)
 func ( trsn *Transaction ) EncodeRawKey() []byte {
 
-	ibs := AvdbComm.BigEndianBytes( trsn.BlockIndex )
+	ibs := AVdbComm.BigEndianBytes( trsn.BlockIndex )
 	thash := trsn.GetHash256().Bytes()
 
 	buf := bytes.NewBuffer(thash)

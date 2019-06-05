@@ -10,7 +10,6 @@ type Header struct {
 	cid.Cid
 }
 
-
 func (h *Header) Encode() []byte {
 	return h.Cid.Bytes()
 }

@@ -3,7 +3,7 @@ package worker
 import (
 	ACStep "github.com/ayachain/go-aya/consensus/core/step"
 	ADog "github.com/ayachain/go-aya/consensus/core/watchdog"
-	APos "github.com/ayachain/go-aya/consensus/impls/APOS"
+	APosComm "github.com/ayachain/go-aya/consensus/impls/APOS/common"
 	"github.com/ayachain/go-aya/vdb"
 	"github.com/ipfs/go-ipfs/core"
 )
@@ -22,12 +22,11 @@ type Worker struct {
 
 }
 
-
 func NewWorker(ind *core.IpfsNode, cvfs vdb.CVFS) *Worker {
 
 	return &Worker{
 		identifier : "APOS-Step-3-Worker",
-		acceptChan : make( chan *ADog.MsgFromDogs, APos.StepWorkerChanSize ),
+		acceptChan : make( chan *ADog.MsgFromDogs, APosComm.StepWorkerChanSize ),
 	}
 
 }

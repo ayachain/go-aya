@@ -1,11 +1,14 @@
 package receipt
 
-import EComm "github.com/ethereum/go-ethereum/common"
+import (
+	AVdbComm "github.com/ayachain/go-aya/vdb/common"
+	EComm "github.com/ethereum/go-ethereum/common"
+)
+
+const DBPath = "/db/receipts"
 
 type ReceiptsAPI interface {
-
-	DBKey()	string
+	AVdbComm.VDBSerices
 
 	GetTransactionReceipt( txhs EComm.Hash ) (*Receipt, error)
-
 }

@@ -2,14 +2,15 @@ package block
 
 import (
 	"encoding/json"
-	AvdbComm "github.com/ayachain/go-aya/vdb/common"
+	AVdbComm "github.com/ayachain/go-aya/vdb/common"
 	"github.com/ethereum/go-ethereum/accounts"
+	"github.com/ipfs/go-cid"
 )
 
 type Block struct {
 
-	AvdbComm.RawDBCoder
-	AvdbComm.RawSigner
+	AVdbComm.RawDBCoder
+	AVdbComm.RawSigner
 
 	/// block index
 	Index uint64 `json:"index"`
@@ -62,11 +63,15 @@ func (b *Block) Encode() []byte {
 
 func (b *GenBlock) Decode(bs []byte) error {
 
-	//if bs[0] != 'b' {
-	//	return errors.New("this raw bytes not a block.")
-	//}
+	if err := json.Unmarshal(bs, b); err != nil {
+		return err
+	}
 
-	return json.Unmarshal(bs, b)
+	if len(b.ExtraData) <= 0 {
+		b.ExtraData = cid.Undef.String()
+	}
+
+	return nil
 }
 
 

@@ -8,7 +8,7 @@ package dataloader
 import (
 	ACStep "github.com/ayachain/go-aya/consensus/core/step"
 	ADog "github.com/ayachain/go-aya/consensus/core/watchdog"
-	APos "github.com/ayachain/go-aya/consensus/impls/APOS"
+	APosComm "github.com/ayachain/go-aya/consensus/impls/APOS/common"
 	"github.com/ipfs/go-ipfs/core"
 )
 
@@ -28,6 +28,6 @@ type DataLoader struct {
 func NewDataLoader(ind *core.IpfsNode) *DataLoader {
 	return &DataLoader{
 		identifier : "APOS-Step-2-DataLoader",
-		acceptChan : make(chan *ADog.MsgFromDogs, APos.StepDataLoaderChanSize),
+		acceptChan : make(chan *ADog.MsgFromDogs, APosComm.StepDataLoaderChanSize),
 	}
 }

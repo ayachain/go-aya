@@ -43,28 +43,7 @@ func BigEndianBytesUint16 ( n uint16 ) []byte {
 	return enc
 }
 
-func OpenStandardDB( root *mfs.Root, path string ) *leveldb.DB {
-
-	nd, err := mfs.Lookup(root, path)
-
-	if err != nil {
-
-		err := mfs.Mkdir(root, path, mfs.MkdirOpts{ Mkparents:true, Flush:false })
-		if err != nil {
-			panic(err)
-		}
-
-		nd, err = mfs.Lookup(root, path)
-		if err != nil {
-			panic("can't created db")
-		}
-
-	}
-
-	dir, ok := nd.(*mfs.Directory)
-	if !ok {
-		panic("path is exist but not a standard db dir")
-	}
+func OpenExistedDB( dir *mfs.Directory, path string ) *leveldb.DB {
 
 	dbstroage := ADB.NewMFSStorage(dir)
 	if dbstroage == nil {
@@ -77,4 +56,34 @@ func OpenStandardDB( root *mfs.Root, path string ) *leveldb.DB {
 	}
 
 	return db
+}
+
+func LookupDBPath( root *mfs.Root, path string ) (*mfs.Directory, error) {
+
+	nd, err := mfs.Lookup(root, path)
+
+	if err != nil {
+		if err == mfs.ErrNotExist {
+			err := mfs.Mkdir(root, path, mfs.MkdirOpts{ Mkparents:true, Flush:false })
+			if err != nil {
+				return nil, err
+			}
+
+			nd, err = mfs.Lookup(root, path)
+			if err != nil {
+				return nil, err
+			}
+
+		} else {
+			return nil, err
+		}
+
+	}
+
+	dir, ok := nd.(*mfs.Directory)
+	if !ok {
+		return nil, mfs.ErrInvalidChild
+	}
+
+	return dir, nil
 }

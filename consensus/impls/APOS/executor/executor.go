@@ -3,7 +3,7 @@ package executor
 import (
 	ACStep "github.com/ayachain/go-aya/consensus/core/step"
 	ADog "github.com/ayachain/go-aya/consensus/core/watchdog"
-	APos "github.com/ayachain/go-aya/consensus/impls/APOS"
+	APosComm "github.com/ayachain/go-aya/consensus/impls/APOS/common"
 	"github.com/ayachain/go-aya/vdb"
 )
 
@@ -24,6 +24,6 @@ func NewExecutor( vfs vdb.CVFS ) *Executor {
 	return &Executor{
 		cvfs:vfs,
 		identifier : "APOS-Step-4-Executor",
-		acceptChan : make(chan *ADog.MsgFromDogs, APos.StepExecutorChanSize),
+		acceptChan : make(chan *ADog.MsgFromDogs, APosComm.StepExecutorChanSize),
 	}
 }

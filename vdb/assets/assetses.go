@@ -10,19 +10,23 @@ import (
 
 type aAssetes struct {
 	AssetsAPI
-	*mfs.Root
+	*mfs.Directory
 	rawdb *leveldb.DB
 }
 
-func CreatePropertyAPI( rootref *mfs.Root ) AssetsAPI {
+func CreateServices( mdir *mfs.Directory ) AssetsAPI {
 
 	api := &aAssetes{
-		Root:rootref,
+		Directory:mdir,
 	}
 
-	api.rawdb = common.OpenStandardDB(rootref, availDBPath)
+	api.rawdb = common.OpenExistedDB(mdir, DBPATH)
 
 	return api
+}
+
+func (api *aAssetes) DBKey() string {
+	return DBPATH
 }
 
 func (api *aAssetes) AssetOf( key []byte ) ( *Assets, error ) {
