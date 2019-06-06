@@ -6,12 +6,15 @@ import (
 	EComm "github.com/ethereum/go-ethereum/common"
 	"github.com/ipfs/go-mfs"
 	"github.com/syndtr/goleveldb/leveldb"
+	"sync"
 )
 
 type aTransactions struct {
 	TransactionAPI
 	*mfs.Directory
+
 	rawdb *leveldb.DB
+	RWLocker sync.RWMutex
 }
 
 func CreateServices( mdir *mfs.Directory ) TransactionAPI {
@@ -51,4 +54,24 @@ func (txs *aTransactions) GetTxByHashBs( hsbs []byte ) (*Transaction, error) {
 	hash := EComm.BytesToHash(hsbs)
 
 	return txs.GetTxByHash(hash)
+}
+
+
+func (api *aTransactions) OpenVDBTransaction() (*leveldb.Transaction, *sync.RWMutex, error) {
+
+	tx, err := api.rawdb.OpenTransaction()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return tx, &api.RWLocker, nil
+}
+
+func (api *aTransactions) Close() {
+
+	api.RWLocker.Lock()
+	defer api.RWLocker.Unlock()
+
+	_ = api.rawdb.Close()
+
 }

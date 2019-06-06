@@ -26,15 +26,15 @@ func (s *DataLoader) NextStep() ACStep.ConsensusStep {
 	return s.nextStep
 }
 
-func (s *DataLoader) Consensued( *ADog.MsgFromDogs ) interface{} {
-	return nil
+func (s *DataLoader) Consensued( *ADog.MsgFromDogs ) {
+	panic("nonreversible consensus expected")
 }
 
 func (s *DataLoader) StartListenAccept( ctx context.Context )() {
 
 	go func() {
 
-		fmt.Printf("%v consensus step start accept.", s.Identifier() )
+		fmt.Printf("%v Online\n", s.Identifier() )
 
 		select {
 		case dmsg := <- s.acceptChan :

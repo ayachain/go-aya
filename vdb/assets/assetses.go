@@ -2,15 +2,18 @@ package assets
 
 import (
 	"github.com/ayachain/go-aya/vdb/common"
-	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-mfs"
 	"github.com/syndtr/goleveldb/leveldb"
 	"os"
+	"sync"
 )
 
 type aAssetes struct {
 	AssetsAPI
 	*mfs.Directory
+
+	RWLocker sync.RWMutex
+
 	rawdb *leveldb.DB
 }
 
@@ -29,7 +32,7 @@ func (api *aAssetes) DBKey() string {
 	return DBPATH
 }
 
-func (api *aAssetes) AssetOf( key []byte ) ( *Assets, error ) {
+func (api *aAssetes) AssetsOf( key []byte ) ( *Assets, error ) {
 
 	bnc, err := api.rawdb.Get(key, nil)
 	if err != nil {
@@ -46,12 +49,12 @@ func (api *aAssetes) AssetOf( key []byte ) ( *Assets, error ) {
 
 func (api *aAssetes) AvailBalanceMove( from, to []byte, v uint64 ) ( aftf, aftt *Assets, err error ) {
 
-	fromAsset, err := api.AssetOf(from)
+	fromAsset, err := api.AssetsOf(from)
 	if err != nil {
 		return nil,nil, err
 	}
 
-	toAsset, err := api.AssetOf(to)
+	toAsset, err := api.AssetsOf(to)
 	if err != nil {
 		if err != os.ErrNotExist {
 			return nil, nil, err
@@ -59,14 +62,7 @@ func (api *aAssetes) AvailBalanceMove( from, to []byte, v uint64 ) ( aftf, aftt 
 	}
 
 	if toAsset == nil {
-
-		toAsset = &Assets{
-			Version:DRVer,
-			Avail:0,
-			Vote:0,
-			ExtraCid:cid.Undef,
-		}
-
+		toAsset = NewAssets(0,0,0)
 	}
 
 	if fromAsset.Avail - fromAsset.Vote < v {
@@ -88,4 +84,24 @@ func (api *aAssetes) AvailBalanceMove( from, to []byte, v uint64 ) ( aftf, aftt 
 	}
 
 	return fromAsset, toAsset, nil
+}
+
+func (api *aAssetes) OpenVDBTransaction() (*leveldb.Transaction, *sync.RWMutex, error) {
+
+	tx, err := api.rawdb.OpenTransaction()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return tx, &api.RWLocker, nil
+}
+
+
+func (api *aAssetes) Close() {
+
+	api.RWLocker.Lock()
+	defer api.RWLocker.Unlock()
+
+	_ = api.rawdb.Close()
+
 }

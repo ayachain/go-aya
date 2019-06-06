@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	AVdbComm "github.com/ayachain/go-aya/vdb/common"
 	"github.com/ethereum/go-ethereum/accounts"
-	"github.com/ipfs/go-cid"
 )
 
 type Block struct {
@@ -61,31 +60,6 @@ func (b *Block) Encode() []byte {
 	return bs
 }
 
-func (b *GenBlock) Decode(bs []byte) error {
-
-	if err := json.Unmarshal(bs, b); err != nil {
-		return err
-	}
-
-	if len(b.ExtraData) <= 0 {
-		b.ExtraData = cid.Undef.String()
-	}
-
-	return nil
-}
-
-
-func (b *GenBlock) Encode() []byte {
-
-	bs, err := json.Marshal(b)
-
-	if err != nil {
-		return nil
-	}
-
-	return bs
-}
-
 func (b *Block) Decode(bs []byte) error {
 
 	//if bs[0] != 'b' {
@@ -103,4 +77,21 @@ func (b *Block) RawSignEncode( account accounts.Account ) ([]byte, error) {
 
 func (b *Block) RawVerifyDecode( bs []byte ) error {
 	return b.Decode(bs)
+}
+
+
+func (b *GenBlock) Decode(bs []byte) error {
+	return json.Unmarshal(bs, b)
+}
+
+
+func (b *GenBlock) Encode() []byte {
+
+	bs, err := json.Marshal(b)
+
+	if err != nil {
+		return nil
+	}
+
+	return bs
 }

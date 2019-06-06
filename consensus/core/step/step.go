@@ -15,7 +15,7 @@ type ConsensusStep interface {
 
 	NextStep() ConsensusStep
 
-	Consensued( *ADog.MsgFromDogs ) interface{}
+	Consensued( *ADog.MsgFromDogs )
 
 	StartListenAccept( ctx context.Context )
 }

@@ -5,12 +5,15 @@ import (
 	EComm "github.com/ethereum/go-ethereum/common"
 	"github.com/ipfs/go-mfs"
 	"github.com/syndtr/goleveldb/leveldb"
+	"sync"
 )
 
 type aReceipt struct {
 	ReceiptsAPI
 	*mfs.Directory
+
 	rawdb *leveldb.DB
+	RWLocker sync.RWMutex
 }
 
 func (r *aReceipt) GetTransactionReceipt( txhs EComm.Hash ) (*Receipt, error) {
@@ -44,4 +47,23 @@ func CreateServices( mdir *mfs.Directory ) ReceiptsAPI {
 	api.rawdb = AVdbComm.OpenExistedDB(mdir, DBPath)
 
 	return api
+}
+
+func (api *aReceipt) OpenVDBTransaction() (*leveldb.Transaction, *sync.RWMutex, error) {
+
+	tx, err := api.rawdb.OpenTransaction()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return tx, &api.RWLocker, nil
+}
+
+func (api *aReceipt) Close() {
+
+	api.RWLocker.Lock()
+	defer api.RWLocker.Unlock()
+
+	_ = api.rawdb.Close()
+
 }

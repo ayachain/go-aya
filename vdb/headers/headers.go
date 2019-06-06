@@ -4,17 +4,19 @@ import (
 	"encoding/binary"
 	"github.com/ayachain/go-aya/vdb/common"
 	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-ipfs/core"
 	"github.com/ipfs/go-mfs"
 	"github.com/syndtr/goleveldb/leveldb"
+	"sync"
 )
 
 
 type aHeaders struct {
 	HeadersAPI
 	*mfs.Directory
+
+	RWLocker sync.RWMutex
+
 	rawdb *leveldb.DB
-	ind *core.IpfsNode
 }
 
 func (hds *aHeaders) LatestHeaderIndex() uint64 {
@@ -71,4 +73,24 @@ func CreateServices( mdir *mfs.Directory ) HeadersAPI {
 	api.rawdb = common.OpenExistedDB(mdir, DBPATH)
 
 	return api
+}
+
+func (api *aHeaders) OpenVDBTransaction() (*leveldb.Transaction, *sync.RWMutex, error) {
+
+	tx, err := api.rawdb.OpenTransaction()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return tx, &api.RWLocker, nil
+}
+
+
+func (api *aHeaders) Close() {
+
+	api.RWLocker.Lock()
+	defer api.RWLocker.Unlock()
+
+	_ = api.rawdb.Close()
+
 }

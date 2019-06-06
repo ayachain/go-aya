@@ -6,8 +6,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"github.com/ayachain/go-aya/vdb/common"
-	"github.com/ipfs/go-cid"
-	"io/ioutil"
 )
 
 type Assets struct {
@@ -15,7 +13,18 @@ type Assets struct {
 	Version 	uint8
 	Avail		uint64
 	Vote		uint64
-	ExtraCid 	cid.Cid
+	Locked		uint64
+}
+
+func NewAssets( avail, vote, locked uint64 ) *Assets {
+
+	return &Assets{
+		Version:DRVer,
+		Avail:avail,
+		Vote:vote,
+		Locked:locked,
+	}
+
 }
 
 func (r *Assets) Encode() []byte {
@@ -25,48 +34,33 @@ func (r *Assets) Encode() []byte {
 	buf.WriteByte( byte(r.Version) )
 	buf.Write( common.BigEndianBytes(r.Avail) )
 	buf.Write( common.BigEndianBytes(r.Vote) )
-	buf.Write( r.ExtraCid.Bytes() )
+	buf.Write( common.BigEndianBytes(r.Locked) )
 
 	return buf.Bytes()
 }
 
 func (r *Assets) Decode( bs []byte ) error {
 
+	if len(bs) != 25 {
+		return errors.New("incomplete data of assets")
+	}
+
 	rd := bytes.NewBuffer(bs)
 	bfrd := bufio.NewReader( rd )
 
-	avail := make([]byte, 8)
-	vote := make([]byte, 8)
+	avail 	:= make([]byte, 8)
+	vote 	:= make([]byte, 8)
+	lock 	:= make([]byte, 8)
 
-	ver, err := bfrd.ReadByte()
-	if err != nil {
-		return errors.New("decode expected by version")
-	}
-
-	_, err = bfrd.Read( avail )
-	if err != nil {
-		return errors.New("decode expected by avail")
-	}
-
-	_, err = bfrd.Read( vote )
-	if err != nil {
-		return errors.New("decode expected by vote")
-	}
-
-	cidbs, err := ioutil.ReadAll(bfrd)
-	if err != nil {
-		return errors.New("decode expected by extra cid")
-	}
-
-	ecid, err := cid.Cast(cidbs)
-	if err != nil {
-		return errors.New("decode expected by  cid")
-	}
+	ver, _ := bfrd.ReadByte()
+	_, _ = bfrd.Read(avail)
+	_, _ = bfrd.Read(vote)
+	_, _ = bfrd.Read(lock)
 
 	r.Version = ver
 	r.Avail = binary.BigEndian.Uint64(avail)
 	r.Vote = binary.BigEndian.Uint64(vote)
-	r.ExtraCid = ecid
+	r.Locked = binary.BigEndian.Uint64(lock)
 
 	return nil
 }

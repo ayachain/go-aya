@@ -23,6 +23,7 @@ require (
 	github.com/ipfs/go-metrics-prometheus v0.0.2
 	github.com/ipfs/go-mfs v0.0.7
 	github.com/ipfs/go-path v0.0.4
+	github.com/ipfs/go-unixfs v0.0.6
 	github.com/ipfs/interface-go-ipfs-core v0.0.8
 	github.com/jbenet/goprocess v0.1.3
 	github.com/libp2p/go-libp2p-loggables v0.0.1
@@ -30,7 +31,6 @@ require (
 	github.com/multiformats/go-multiaddr v0.0.4
 	github.com/multiformats/go-multiaddr-dns v0.0.2
 	github.com/multiformats/go-multiaddr-net v0.0.1
-	github.com/pborman/uuid v1.2.0 // indirect
 	github.com/pkg/errors v0.8.1
 	github.com/prometheus/client_golang v0.9.3
 	github.com/rjeczalik/notify v0.9.2 // indirect

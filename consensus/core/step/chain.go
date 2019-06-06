@@ -11,9 +11,9 @@ type ConsensusChain struct {
 
 func NewConsensusChain( idstr string, steps... ConsensusStep ) *ConsensusChain {
 
-	if len(steps) <= 0 {
-		panic(fmt.Errorf("ConsensusChain must hash one \"OverStep\" and one or more sub step"))
-	}
+	//if len(steps) <= 0 {
+	//	panic(fmt.Errorf("ConsensusChain must hash one \"OverStep\" and one or more sub step"))
+	//}
 
 	stepnames := map[string]ConsensusStep{}
 

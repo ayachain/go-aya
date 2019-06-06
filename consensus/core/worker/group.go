@@ -19,7 +19,7 @@ type TaskBatchGroup struct {
 
 func NewGroup() *TaskBatchGroup {
 	return &TaskBatchGroup{
-
+		batchs:make(map[string]*leveldb.Batch),
 	}
 }
 
@@ -102,7 +102,7 @@ func (tgb *TaskBatchGroup) Put( dbkey string, k []byte, v []byte ) {
 
 	batch, exist := tgb.batchs[dbkey]
 	if !exist {
-		batch := &leveldb.Batch{}
+		batch = &leveldb.Batch{}
 		tgb.batchs[dbkey] = batch
 	}
 

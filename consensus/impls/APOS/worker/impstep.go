@@ -11,6 +11,7 @@ import (
 	ABlock "github.com/ayachain/go-aya/vdb/block"
 	ATx "github.com/ayachain/go-aya/vdb/transaction"
 	iBlock "github.com/ipfs/go-block-format"
+	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-ipfs/core"
 	"time"
 )
@@ -31,15 +32,15 @@ func (s *Worker) NextStep() ACStep.ConsensusStep {
 	return s.nextStep
 }
 
-func (s *Worker) Consensued( *ADog.MsgFromDogs ) interface{} {
-	return nil
+func (s *Worker) Consensued( *ADog.MsgFromDogs ) {
+	panic("nonreversible consensus expected")
 }
 
 func (s *Worker) StartListenAccept( ctx context.Context )() {
 
 	go func() {
 
-		fmt.Printf("%v consensus step start accept.", s.Identifier() )
+		fmt.Printf("%v Online\n", s.Identifier() )
 
 		select {
 		case dmsg := <- s.acceptChan :
@@ -93,7 +94,12 @@ func doWorking( ind *core.IpfsNode, txsBlock iBlock.Block, block *ABlock.Block )
 		return nil
 	}
 
-	vfs, err := vdb.CreateVFS( block, ind )
+	baseCid, err := cid.Decode(block.ExtraData)
+	if err != nil {
+		return nil
+	}
+
+	vfs, err := vdb.LinkVFS( baseCid, ind )
 	if err != nil {
 		return nil
 	}

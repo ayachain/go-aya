@@ -7,15 +7,17 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-mfs"
 	"github.com/syndtr/goleveldb/leveldb"
+	"sync"
 )
 
 type aBlocks struct {
-
 	BlocksAPI
 	*mfs.Directory
 
 	headAPI headers.HeadersAPI
 	rawdb *leveldb.DB
+
+	RWLocker sync.RWMutex
 }
 
 func CreateServices( mdir *mfs.Directory, hapi headers.HeadersAPI) BlocksAPI {
@@ -68,4 +70,24 @@ func (blks *aBlocks) GetBlocks ( iorc... interface{} ) ([]*Block, error) {
 	}
 
 	return blist, nil
+}
+
+func (api *aBlocks) OpenVDBTransaction() (*leveldb.Transaction, *sync.RWMutex, error) {
+
+	tx, err := api.rawdb.OpenTransaction()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return tx, &api.RWLocker, nil
+}
+
+
+func (api *aBlocks) Close() {
+
+	api.RWLocker.Lock()
+	defer api.RWLocker.Unlock()
+
+	_ = api.rawdb.Close()
+
 }

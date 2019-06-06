@@ -63,18 +63,14 @@ func LookupDBPath( root *mfs.Root, path string ) (*mfs.Directory, error) {
 	nd, err := mfs.Lookup(root, path)
 
 	if err != nil {
-		if err == mfs.ErrNotExist {
-			err := mfs.Mkdir(root, path, mfs.MkdirOpts{ Mkparents:true, Flush:false })
-			if err != nil {
-				return nil, err
-			}
 
-			nd, err = mfs.Lookup(root, path)
-			if err != nil {
-				return nil, err
-			}
+		err := mfs.Mkdir(root, path, mfs.MkdirOpts{ Mkparents:true, Flush:false })
+		if err != nil {
+			return nil, err
+		}
 
-		} else {
+		nd, err = mfs.Lookup(root, path)
+		if err != nil {
 			return nil, err
 		}
 
