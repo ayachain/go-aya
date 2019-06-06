@@ -18,13 +18,12 @@ package core
 
 import (
 	"github.com/ayachain/go-aya/vdb"
-	ABlock "github.com/ayachain/go-aya/vdb/block"
+	"github.com/libp2p/go-libp2p-pubsub"
 )
 
 type Notary interface {
-
-	VerifyBlock( vfs vdb.CVFS, block *ABlock.Block ) bool
-
-	OnReceiveBlock( vfs vdb.CVFS, block *ABlock.Block )
-
+	FireYou()
+	StartWorking()
+	SendTransaction( tx vdb.Transaction ) error
+	OnReceiveMessage( msg *pubsub.Message ) error
 }

@@ -2,18 +2,21 @@ package APOS
 
 import (
 	"context"
+	ACore "github.com/ayachain/go-aya/consensus/core"
 	ACStep "github.com/ayachain/go-aya/consensus/core/step"
-	APosDataLoad "github.com/ayachain/go-aya/consensus/impls/APOS/dataloader"
-	APosExecutor "github.com/ayachain/go-aya/consensus/impls/APOS/executor"
 	APosSign "github.com/ayachain/go-aya/consensus/impls/APOS/signaturer"
 	APosDog "github.com/ayachain/go-aya/consensus/impls/APOS/watchdog"
+	AMsgBlock "github.com/ayachain/go-aya/chain/message/block"
 	APosWorker "github.com/ayachain/go-aya/consensus/impls/APOS/worker"
+	APosExecutor "github.com/ayachain/go-aya/consensus/impls/APOS/executor"
+	APosDataLoad "github.com/ayachain/go-aya/consensus/impls/APOS/dataloader"
 	"github.com/ayachain/go-aya/vdb"
 	"github.com/ipfs/go-ipfs/core"
+	"github.com/libp2p/go-libp2p-pubsub"
 )
 
 type APOSConsensusNotary struct {
-
+	ACore.Notary
 	mainCVFS vdb.CVFS
 	mydog    *APosDog.Dog
 
@@ -21,7 +24,6 @@ type APOSConsensusNotary struct {
 	workCancel context.CancelFunc
 
 	cclist []*ACStep.ConsensusChain
-
 }
 
 
@@ -43,11 +45,9 @@ func NewAPOSConsensusNotary( m vdb.CVFS, ind *core.IpfsNode ) *APOSConsensusNota
 		)
 
 	blockRule.LinkAllStep()
-	dog.SetRule('b', blockRule )
-
+	dog.SetRule( AMsgBlock.MessagePrefix, blockRule )
 
 	ctx,cancel := context.WithCancel(context.Background())
-
 	return &APOSConsensusNotary{
 		mainCVFS:m,
 		mydog:dog,
@@ -58,16 +58,17 @@ func NewAPOSConsensusNotary( m vdb.CVFS, ind *core.IpfsNode ) *APOSConsensusNota
 
 }
 
-
 func (n *APOSConsensusNotary) HiDog() *APosDog.Dog {
 	return n.mydog
 }
-
 
 func (n *APOSConsensusNotary) FireYou() {
 	n.workCancel()
 }
 
+func (n *APOSConsensusNotary) OnReceiveMessage( msg *pubsub.Message ) error {
+	return n.HiDog().TakeMessage(msg)
+}
 
 func (n *APOSConsensusNotary) StartWorking() {
 
@@ -85,5 +86,4 @@ func (n *APOSConsensusNotary) StartWorking() {
 
 		}
 	}
-
 }

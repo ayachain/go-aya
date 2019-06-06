@@ -3,12 +3,11 @@ package block
 import (
 	"encoding/json"
 	AVdbComm "github.com/ayachain/go-aya/vdb/common"
-	"github.com/ethereum/go-ethereum/accounts"
+	"github.com/ipfs/go-cid"
 )
 
 type Block struct {
 
-	AVdbComm.RawDBCoder
 	AVdbComm.RawSigner
 
 	/// block index
@@ -35,10 +34,10 @@ type Block struct {
 
 }
 
-
 /// only in create a new chain then use
 type GenBlock struct {
 	Block
+	Consensus	string	`json:"consensus"`
 	Award map[string]uint64 `json:"award"`
 }
 
@@ -48,6 +47,17 @@ type GenBlock struct {
 //	Latest 	= &Block{Index: -2}
 //	Pending = &Block{Index: -1}
 //)
+
+func (b *Block) GetExtraDataCid() cid.Cid {
+
+	c, err := cid.Decode( b.ExtraData )
+	if err != nil {
+		return cid.Undef
+	}
+
+	return c
+}
+
 
 func (b *Block) Encode() []byte {
 
@@ -65,25 +75,8 @@ func (b *Block) Decode(bs []byte) error {
 	//if bs[0] != 'b' {
 	//	return errors.New("this raw bytes not a block.")
 	//}
-
 	return json.Unmarshal(bs, b)
 }
-
-
-func (b *Block) RawSignEncode( account accounts.Account ) ([]byte, error) {
-	return json.Marshal(b)
-}
-
-
-func (b *Block) RawVerifyDecode( bs []byte ) error {
-	return b.Decode(bs)
-}
-
-
-func (b *GenBlock) Decode(bs []byte) error {
-	return json.Unmarshal(bs, b)
-}
-
 
 func (b *GenBlock) Encode() []byte {
 
@@ -94,4 +87,8 @@ func (b *GenBlock) Encode() []byte {
 	}
 
 	return bs
+}
+
+func (b *GenBlock) Decode(bs []byte) error {
+	return json.Unmarshal(bs, b)
 }

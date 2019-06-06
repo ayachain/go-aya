@@ -75,7 +75,7 @@ const (
 type FinalResultDefer func( FinalResult )
 
 type MsgFromDogs struct {
-	pubsub.Message
+	*pubsub.Message
 	ResultDefer FinalResultDefer
 	ExtraData interface{}
 }
@@ -85,7 +85,7 @@ type WatchDog interface {
 	// Whether the door can be opened for the designated node, if the familiar
 	// person (white list) opens the door directly, the stranger (black list) closes
 	// the door.
-	TakeBlock( msg pubsub.Message ) error
+	TakeMessage( msg *pubsub.Message ) error
 
 	// We provide a reference logic. When the score is higher than 0, we can pass it.
 	// When the score is lower than 0, we should give up processing the message and

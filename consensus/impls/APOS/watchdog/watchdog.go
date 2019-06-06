@@ -4,10 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	AMsgBlock "github.com/ayachain/go-aya/chain/message/block"
 	ACStep "github.com/ayachain/go-aya/consensus/core/step"
 	ADog "github.com/ayachain/go-aya/consensus/core/watchdog"
 	APosComm "github.com/ayachain/go-aya/consensus/impls/APOS/common"
-	"github.com/ayachain/go-aya/vdb/block"
 	"github.com/libp2p/go-libp2p-pubsub"
 	"time"
 )
@@ -36,17 +36,16 @@ func (d *Dog) SetRule( msgtype byte, cc *ACStep.ConsensusChain ) {
 }
 
 
-func (d *Dog) TakeMessage( msg pubsub.Message ) error {
+func (d *Dog) TakeMessage( msg *pubsub.Message ) error {
 
 	rfunc := func( ADog.FinalResult )  {
 		//Waiting dev
 	}
 
 	switch msg.Data[0] {
-	case 'b' :
+	case AMsgBlock.MessagePrefix :
 
-		blk := &block.Block{}
-
+		blk := AMsgBlock.MsgRawBlock{}
 		if err := blk.Decode(msg.Data[1:]); err != nil {
 			return err
 		}
@@ -58,7 +57,6 @@ func (d *Dog) TakeMessage( msg pubsub.Message ) error {
 		}
 
 		return nil
-
 
 	default:
 		fmt.Println("unkown message type")
