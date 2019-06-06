@@ -23,7 +23,7 @@ APOS Consensus Mechanism
    * Step 5.&emsp;Executor
    
    
-   ###Details of each link
+   ### Details of each link
    
    ##### 1.WatchDog
    > &emsp;&emsp;1.When data enters, the best first entry, after dealing with the trusted 
