@@ -30,7 +30,7 @@ var importCmd = &cmds.Command {
 		if err != nil {
 			return ARsponse.EmitSuccessResponse(re, err)
 		}
-		//defer file.Close()
+		defer file.Close()
 
 		ksjson, err := ioutil.ReadAll(file)
 		if err != nil {

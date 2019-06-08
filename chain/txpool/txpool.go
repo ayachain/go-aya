@@ -7,13 +7,11 @@ import (
 	"fmt"
 	ADB "github.com/ayachain/go-aya-alvm-adb"
 	AMsgMiningBlock "github.com/ayachain/go-aya/chain/message/miningblock"
-	AMsgTx "github.com/ayachain/go-aya/chain/message/transaction"
 	ACore "github.com/ayachain/go-aya/consensus/core"
+	AKeyStore "github.com/ayachain/go-aya/keystore"
 	"github.com/ayachain/go-aya/vdb"
 	AAssets "github.com/ayachain/go-aya/vdb/assets"
 	ABlock "github.com/ayachain/go-aya/vdb/block"
-	AVdbComm "github.com/ayachain/go-aya/vdb/common"
-	AKeyStore "github.com/ayachain/go-aya/keystore"
 	EAccount "github.com/ethereum/go-ethereum/accounts"
 	EComm "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -98,7 +96,7 @@ type ATxPool struct {
 	doPackingBlock chan cid.Cid
 }
 
-func NewTxPool(ind *core.IpfsNode, chainId string, cvfs vdb.CVFS, owner EComm.Address) *ATxPool {
+func NewTxPool( ctx context.Context, ind *core.IpfsNode, chainId string, cvfs vdb.CVFS, acc EAccount.Account) *ATxPool {
 
 	adbpath := "/atxpool/" + chainId
 	var nd *merkledag.ProtoNode

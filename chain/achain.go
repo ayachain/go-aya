@@ -4,24 +4,21 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	AMsgBlock "github.com/ayachain/go-aya/chain/message/block"
-	AMsgInfo "github.com/ayachain/go-aya/chain/message/chaininfo"
-	AMsgTx "github.com/ayachain/go-aya/chain/message/transaction"
+	"github.com/ayachain/go-aya/chain/txpool"
 	ACore "github.com/ayachain/go-aya/consensus/core"
 	ACImpl "github.com/ayachain/go-aya/consensus/impls"
 	"github.com/ayachain/go-aya/vdb"
 	ABlock "github.com/ayachain/go-aya/vdb/block"
 	AvdbComm "github.com/ayachain/go-aya/vdb/common"
+	EAccount "github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ipfs/go-ipfs/core"
-	"github.com/libp2p/go-libp2p-pubsub"
-	"time"
 )
 
 const BroadCastChanSize = 128
 
-
 var(
+	ErrAlreadyExistConnected				= errors.New("chan already exist connected")
 	ErrUnSupportRawMessage			= errors.New("unsupport raw message")
 	ErrCantLinkToChainExpected		= errors.New("not found chain in Aya")
 )
@@ -65,7 +62,7 @@ type aChain struct {
 	/// of the consensus mechanism. We are compared to a "person" serving the node, and
 	/// this person is the same on all nodes. For details, please refer to the corresponding
 	/// documents.
-	notary ACore.Notary
+	Notary ACore.Notary
 
 
 	/// Recording the channel string used in this chain communication broadcasting, each
@@ -81,8 +78,10 @@ type aChain struct {
 	/// When you want to close the link of this example, use it. All threads will listen
 	/// for the end and then enter the terminator.generally, it is called in Disslink in the
 	/// AChain interface.
-	channelCloseFunc context.CancelFunc
+	ctx context.Context
+	ctxCancel context.CancelFunc
 
+	TxPool* txpool.ATxPool
 
 	/// Each AChain's chain object, not only needs to accept the messages on the chain, but
 	/// also must have the ability to send transactions. Then "Chan" is responsible for receiving
@@ -94,11 +93,18 @@ type aChain struct {
 	broadcastChan chan []byte
 }
 
-func LinkChain( genBlock ABlock.GenBlock, ind *core.IpfsNode ) (AyaChain, error) {
+var chains map[string]AyaChain
+
+func AddChainLink( genBlock ABlock.GenBlock, ind *core.IpfsNode, acc EAccount.Account ) error {
+
+	_, exist := chains[genBlock.ChainID]
+	if exist {
+		return ErrAlreadyExistConnected
+	}
 
 	vdbfs, err := vdb.LinkVFS( genBlock.GetExtraDataCid(), ind )
 	if err != nil {
-		return nil, ErrCantLinkToChainExpected
+		return ErrCantLinkToChainExpected
 	}
 
 	topics := fmt.Sprintf("Aya 0.0.1_%v", genBlock.ChainID)
@@ -108,101 +114,38 @@ func LinkChain( genBlock ABlock.GenBlock, ind *core.IpfsNode ) (AyaChain, error)
 	norary, err := ACImpl.CreateNotary( genBlock.Consensus, vdbfs, ind )
 	if err != nil {
 		vdbfs.Close()
-		return nil, err
-	}
-
-	return &aChain{
-		BlockZero:genBlock,
-		VDBServices:vdbfs,
-		INode:ind,
-		notary:norary,
-		broadcastChan:make(chan[]byte, BroadCastChanSize),
-	}, nil
-
-}
-
-
-func (chain *aChain) OpenChannel() error {
-
-	sub, err := chain.INode.PubSub.Subscribe( chain.channelTopics, nil)
-	if err != nil {
 		return err
 	}
 
-	ctx, cancel := context.WithCancel( context.Background() )
-	chain.channelCloseFunc = cancel
-	chain.notary.StartWorking()
+	ctx, cancel := context.WithCancel(context.Background())
 
-	// listen receive channel
-	go func ( ctx context.Context, subs *pubsub.Subscription, notary ACore.Notary ) {
+	ac := &aChain{
+		BlockZero:genBlock,
+		VDBServices:vdbfs,
+		INode:ind,
+		Notary:norary,
+		ctx:ctx,
+		ctxCancel:cancel,
+		broadcastChan:make(chan[]byte, BroadCastChanSize),
+	}
 
-		for {
+	// config txpool
+	tpctx, _ := context.WithCancel(ctx)
+	ac.TxPool = txpool.NewTxPool( tpctx, ind, genBlock.ChainID, vdbfs, acc)
 
-			msg, err := subs.Next( ctx )
-			if err != nil {
-				fmt.Printf("Channel %v error for closed", err)
-				return
-			}
+	if err := ac.OpenChannel(); err != nil {
+		return err
+	}
 
-			if err := notary.OnReceiveMessage(msg); err != nil {
-				fmt.Println(err)
-			}
-
-		}
-
-	}( ctx, sub, chain.notary )
-
-	// listen send channel
-	go func( ctx context.Context, rc chan []byte, ind *core.IpfsNode, topic string ) {
-
-		select {
-		case rawmsg := <- rc : {
-
-			if err := ind.PubSub.Publish( topic, rawmsg ); err != nil {
-				fmt.Println(err)
-			}
-
-		}
-
-		case <- ctx.Done() : {
-			return
-		}
-
-
-		default: {
-			time.Sleep( time.Microsecond  * 100 )
-		}
-
-		}
-
-	}( ctx, chain.broadcastChan, chain.INode, chain.channelTopics )
+	chains[genBlock.ChainID] = ac
 
 	return nil
 }
-
 
 func (chain *aChain) ChainIdentifier() string {
 	return chain.BlockZero.ChainID
 }
 
-
-func (chain *aChain) SendRawMessage( coder AvdbComm.RawDBCoder ) error {
-
-	switch coder.Prefix() {
-	case AMsgBlock.MessagePrefix: {
-		return ErrUnSupportRawMessage
-	}
-
-	case AMsgTx.MessagePrefix: {
-		return chain.notary.SendTransaction(coder)
-	}
-
-	case AMsgInfo.MessagePrefix: {
-		return ErrUnSupportRawMessage
-	}
-
-	default:
-		return ErrUnSupportRawMessage
-	}
+func (chain *aChain) OpenChannel() error {
 
 }
