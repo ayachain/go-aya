@@ -2,88 +2,82 @@ package APOS
 
 import (
 	"context"
+	AMsgBlock "github.com/ayachain/go-aya/chain/message/block"
 	ACore "github.com/ayachain/go-aya/consensus/core"
 	ACStep "github.com/ayachain/go-aya/consensus/core/step"
-	APosSign "github.com/ayachain/go-aya/consensus/impls/APOS/signaturer"
-	APosDog "github.com/ayachain/go-aya/consensus/impls/APOS/watchdog"
-	AMsgBlock "github.com/ayachain/go-aya/chain/message/block"
-	APosWorker "github.com/ayachain/go-aya/consensus/impls/APOS/worker"
-	APosExecutor "github.com/ayachain/go-aya/consensus/impls/APOS/executor"
-	APosDataLoad "github.com/ayachain/go-aya/consensus/impls/APOS/dataloader"
+	AGroup "github.com/ayachain/go-aya/consensus/core/worker"
+	APOSInBlock "github.com/ayachain/go-aya/consensus/impls/APOS/in/block"
+	AKeyStore "github.com/ayachain/go-aya/keystore"
 	"github.com/ayachain/go-aya/vdb"
 	"github.com/ipfs/go-ipfs/core"
-	"github.com/libp2p/go-libp2p-pubsub"
+	"github.com/pkg/errors"
+)
+
+
+var (
+	ErrNotSupportMessageTypeExpected = errors.New("not support message type")
 )
 
 type APOSConsensusNotary struct {
 	ACore.Notary
 	mainCVFS vdb.CVFS
-	mydog    *APosDog.Dog
-
+	workInd	*core.IpfsNode
 	workctx    context.Context
 	workCancel context.CancelFunc
-
-	cclist []*ACStep.ConsensusChain
+	ccmap map[byte]*ACStep.AConsensusStep
 }
-
 
 func NewAPOSConsensusNotary( m vdb.CVFS, ind *core.IpfsNode ) *APOSConsensusNotary {
 
-	dog := APosDog.NewDog()
+	ctx, cancel := context.WithCancel(context.Background())
 
-	var list []*ACStep.ConsensusChain
-
-	// config block message consensus rule
-	blockRule := ACStep.NewConsensusChain("APOS")
-	list = append(list, blockRule)
-
-	blockRule.AppendSteps(
-		APosSign.NewSignturer(),
-		APosDataLoad.NewDataLoader(ind),
-		APosWorker.NewWorker( ind, m ),
-		APosExecutor.NewExecutor(m),
-		)
-
-	blockRule.LinkAllStep()
-	dog.SetRule( AMsgBlock.MessagePrefix, blockRule )
-
-	ctx,cancel := context.WithCancel(context.Background())
-	return &APOSConsensusNotary{
+	notary := &APOSConsensusNotary{
 		mainCVFS:m,
-		mydog:dog,
-		cclist:list,
+		workInd:ind,
 		workctx:ctx,
 		workCancel:cancel,
+		ccmap:make(map[byte]*ACStep.AConsensusStep),
 	}
 
+	notary.ccmap[AMsgBlock.MessagePrefix] = APOSInBlock.NewConsensusStep(m, ind)
+
+	return notary
 }
 
-func (n *APOSConsensusNotary) HiDog() *APosDog.Dog {
-	return n.mydog
-}
 
 func (n *APOSConsensusNotary) FireYou() {
 	n.workCancel()
 }
 
-func (n *APOSConsensusNotary) OnReceiveMessage( msg *pubsub.Message ) error {
-	return n.HiDog().TakeMessage(msg)
-}
 
-func (n *APOSConsensusNotary) StartWorking() {
+func (n *APOSConsensusNotary) OnReceiveRawMessage( msg *AKeyStore.ASignedRawMsg ) <- chan ACStep.AConsensusResult {
 
-	for _, cc := range n.cclist {
+	replay := make(chan ACStep.AConsensusResult)
 
-		root := cc.GetStepRoot()
+	subcc, exist := n.ccmap[msg.Content[0]]
+	if !exist {
+		replay <- ACStep.AConsensusResult{Err:ErrNotSupportMessageTypeExpected, StepIdentifier:"APOS-Root", Msg:msg}
+		return replay
+	}
 
-		root.StartListenAccept(n.workctx)
+	go func() {
 
-		for root.NextStep() != nil {
+		group := AGroup.NewGroup()
 
-			root = root.NextStep()
+		select {
 
-			root.StartListenAccept(n.workctx)
+		case <- n.workctx.Done():
+			break
+
+		case ret := <- subcc.DoConsultation( n.workctx, msg, group ):
+
+			if ret.Err == nil {
+
+			}
 
 		}
-	}
+
+	}()
+
+	return replay
 }

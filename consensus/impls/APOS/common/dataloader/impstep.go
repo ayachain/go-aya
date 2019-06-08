@@ -37,7 +37,7 @@ func (s *DataLoader) StartListenAccept( ctx context.Context )() {
 		fmt.Printf("%v Online\n", s.Identifier() )
 
 		select {
-		case dmsg := <- s.acceptChan :
+		case dmsg := <- s.acceptChan:
 
 			switch dmsg.Data[0] {
 			case 'b':

@@ -17,6 +17,7 @@ func Init( ksdir string ) {
 	}
 }
 
-func ShareInstance(  ) *EKeyStore.KeyStore {
+
+func ShareInstance() *EKeyStore.KeyStore {
 	return _akeystoreInstance
 }

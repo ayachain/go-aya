@@ -11,4 +11,5 @@ type ReceiptsAPI interface {
 	AVdbComm.VDBSerices
 
 	GetTransactionReceipt( txhs EComm.Hash ) (*Receipt, error)
+	HasTransactionReceipt( txhs EComm.Hash ) bool
 }

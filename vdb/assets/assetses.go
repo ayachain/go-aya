@@ -1,19 +1,21 @@
 package assets
 
 import (
+	"bytes"
+	"encoding/binary"
 	"github.com/ayachain/go-aya/vdb/common"
+	EComm "github.com/ethereum/go-ethereum/common"
 	"github.com/ipfs/go-mfs"
+	"github.com/pkg/errors"
 	"github.com/syndtr/goleveldb/leveldb"
-	"os"
+	"github.com/syndtr/goleveldb/leveldb/util"
 	"sync"
 )
 
 type aAssetes struct {
 	AssetsAPI
 	*mfs.Directory
-
 	RWLocker sync.RWMutex
-
 	rawdb *leveldb.DB
 }
 
@@ -32,6 +34,10 @@ func (api *aAssetes) DBKey() string {
 	return DBPATH
 }
 
+func (api *aAssetes) VotingCountOf( key []byte ) ( uint64, error ) {
+	return 0,nil
+}
+
 func (api *aAssetes) AssetsOf( key []byte ) ( *Assets, error ) {
 
 	bnc, err := api.rawdb.Get(key, nil)
@@ -47,44 +53,6 @@ func (api *aAssetes) AssetsOf( key []byte ) ( *Assets, error ) {
 	return rcd, nil
 }
 
-func (api *aAssetes) AvailBalanceMove( from, to []byte, v uint64 ) ( aftf, aftt *Assets, err error ) {
-
-	fromAsset, err := api.AssetsOf(from)
-	if err != nil {
-		return nil,nil, err
-	}
-
-	toAsset, err := api.AssetsOf(to)
-	if err != nil {
-		if err != os.ErrNotExist {
-			return nil, nil, err
-		}
-	}
-
-	if toAsset == nil {
-		toAsset = NewAssets(0,0,0)
-	}
-
-	if fromAsset.Avail - fromAsset.Vote < v {
-		return nil, nil, notEnoughError
-	}
-
-	fromAsset.Avail -= v
-	fromAsset.Vote -= v
-
-	toAsset.Avail += v
-	toAsset.Vote += v
-
-	mvBatch := &leveldb.Batch{}
-	mvBatch.Put( from, fromAsset.Encode() )
-	mvBatch.Put( to, fromAsset.Encode() )
-
-	if err := api.rawdb.Write(mvBatch, nil); err != nil {
-		return nil,nil, err
-	}
-
-	return fromAsset, toAsset, nil
-}
 
 func (api *aAssetes) OpenVDBTransaction() (*leveldb.Transaction, *sync.RWMutex, error) {
 
@@ -104,4 +72,43 @@ func (api *aAssetes) Close() {
 
 	_ = api.rawdb.Close()
 
+}
+
+func (api *aAssetes) GetLockedTop100() ( []*SortAssets, error ) {
+
+	list := make([]*SortAssets, 100)
+
+	sbs := bytes.NewBuffer([]byte(DBTopIndexPrefix))
+	sbs.Write( []byte{ 0x00, 0x00 } )
+
+	ebs := bytes.NewBuffer([]byte(DBTopIndexPrefix))
+	ebs.Write( []byte{ 0xff, 0xff })
+
+	topIt := api.rawdb.NewIterator( &util.Range{Start:sbs.Bytes(), Limit:ebs.Bytes()}, nil )
+	defer topIt.Release()
+
+	for topIt.Next() {
+
+		rcd, err := api.AssetsOf( topIt.Value() )
+		if err != nil {
+			return nil, err
+		}
+
+		assets := &SortAssets{
+			Addredd : EComm.BytesToAddress(topIt.Value()),
+			Assets : rcd,
+		}
+
+		nbs := topIt.Key()[ len([]byte(DBTopIndexPrefix)) : ]
+
+		index := int(binary.BigEndian.Uint16(nbs))
+
+		if index < 0 || index >= 100 {
+			return nil, errors.New("array index bound")
+		}
+
+		list[index] = assets
+	}
+
+	return list, nil
 }

@@ -2,7 +2,7 @@ package block
 
 import (
 	AVdbComm "github.com/ayachain/go-aya/vdb/common"
-	)
+)
 
 const DBPath = "/db/blocks"
 

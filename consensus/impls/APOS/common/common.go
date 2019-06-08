@@ -6,4 +6,6 @@ const (
 	StepDataLoaderChanSize		= 	8
 	StepWorkerChanSize			= 	6
 	StepExecutorChanSize		= 	1
+
+	StepTxSenderChanSize		= 	256
 )

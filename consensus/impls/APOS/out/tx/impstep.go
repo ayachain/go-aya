@@ -1,4 +1,4 @@
-package executor
+package tx
 
 import (
 	"context"
@@ -6,27 +6,28 @@ import (
 	ACStep "github.com/ayachain/go-aya/consensus/core/step"
 	ADog "github.com/ayachain/go-aya/consensus/core/watchdog"
 	AWork "github.com/ayachain/go-aya/consensus/core/worker"
+	AMsgTx "github.com/ayachain/go-aya/vdb/transaction"
 	"github.com/ipfs/go-cid"
 	"time"
 )
 
-func (s *Executor) Identifier( ) string {
-	return s.identifier
+func (s *TxSender) Identifier( ) string {
+	return identifier
 }
 
-func (s *Executor) SetNextStep( ns ACStep.ConsensusStep ) {
+func (s *TxSender) SetNextStep( ns ACStep.ConsensusStep ) {
 
 }
 
-func (s *Executor) ChannelAccept() chan *ADog.MsgFromDogs {
-	return s.acceptChan
+func (s *TxSender) ChannelAccept() chan *ADog.MsgFromDogs {
+	return acceptChan
 }
 
-func (s *Executor) NextStep() ACStep.ConsensusStep {
+func (s *TxSender) NextStep() ACStep.ConsensusStep {
 	return nil
 }
 
-func (s *Executor) Consensued( msg *ADog.MsgFromDogs ) {
+func (s *TxSender) Consensued( msg *ADog.MsgFromDogs ) {
 
 	mcid, ok := msg.ExtraData.(cid.Cid)
 	if !ok {
@@ -51,14 +52,18 @@ func (s *Executor) Consensued( msg *ADog.MsgFromDogs ) {
 	return
 }
 
-func (s *Executor) StartListenAccept( ctx context.Context )() {
+func (s *TxSender) StartListenAccept( ctx context.Context )() {
 
 	go func() {
 
 		fmt.Printf("%v Online\n", s.Identifier() )
 
 		select {
-		case dmsg := <- s.acceptChan :
+		case dmsg := <-acceptChan:
+
+			tx := &AMsgTx.Transaction{}
+
+			tx.Decode(dmsg.Data)
 
 			switch dmsg.Data[0] {
 			case 'b':

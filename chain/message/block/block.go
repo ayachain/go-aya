@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"errors"
 	ABlock "github.com/ayachain/go-aya/vdb/block"
-	AvdbComm"github.com/ayachain/go-aya/vdb/common"
+	AvdbComm "github.com/ayachain/go-aya/vdb/common"
 )
 
 // 1 byte prefix + 4 * Hash(32Byte) = 129 byte
@@ -19,13 +19,15 @@ type MsgRawBlock struct {
 	ABlock.Block
 }
 
+
 func (msg *MsgRawBlock) Encode() []byte {
 
 	buff := bytes.NewBuffer([]byte{MessagePrefix})
 	buff.Write( msg.Block.Encode() )
-
 	return buff.Bytes()
 }
+
+
 
 func (msg *MsgRawBlock) Decode(bs []byte) error {
 
@@ -35,4 +37,3 @@ func (msg *MsgRawBlock) Decode(bs []byte) error {
 
 	return msg.Block.Decode(bs[1:])
 }
-

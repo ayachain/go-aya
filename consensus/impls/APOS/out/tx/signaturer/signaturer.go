@@ -3,6 +3,7 @@ package signaturer
 import (
 	"context"
 	"fmt"
+	AMsgBlock "github.com/ayachain/go-aya/chain/message/block"
 	ACStep "github.com/ayachain/go-aya/consensus/core/step"
 	ADog "github.com/ayachain/go-aya/consensus/core/watchdog"
 	APosComm "github.com/ayachain/go-aya/consensus/impls/APOS/common"
@@ -31,27 +32,6 @@ func NewSignturer() ACStep.ConsensusStep {
 	return stp
 }
 
-
-func (s *Signturer) Identifier( ) string {
-	return s.identifier
-}
-
-func (s *Signturer) SetNextStep( ns ACStep.ConsensusStep ) {
-	s.nextStep = ns
-}
-
-func (s *Signturer) ChannelAccept() chan *ADog.MsgFromDogs {
-	return s.acceptChan
-}
-
-func (s *Signturer) NextStep() ACStep.ConsensusStep {
-	return s.nextStep
-}
-
-func (s *Signturer) Consensued( *ADog.MsgFromDogs ) {
-	panic("nonreversible consensus expected")
-}
-
 func (s *Signturer) StartListenAccept( ctx context.Context )() {
 
 	go func() {
@@ -62,12 +42,9 @@ func (s *Signturer) StartListenAccept( ctx context.Context )() {
 		case dmsg := <- s.acceptChan :
 
 			switch dmsg.Data[0] {
-			case 'b':
-
-				// If it is a message of block data, it goes directly to the next step,
-				// because block data is unsigned and only the source of the data provides
-				// the judgment.
+			case AMsgBlock.MessagePrefix:
 				s.NextStep().ChannelAccept() <- dmsg
+
 			}
 
 		case <- ctx.Done() :

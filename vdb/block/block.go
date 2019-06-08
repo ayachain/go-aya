@@ -3,6 +3,8 @@ package block
 import (
 	"encoding/json"
 	AVdbComm "github.com/ayachain/go-aya/vdb/common"
+	EComm "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ipfs/go-cid"
 )
 
@@ -19,7 +21,7 @@ type Block struct {
 	/// prev block hash is a ipfs block CID
 	Parent  string `json:"parent"`
 
-	/// full block data CID
+	/// full block data CID, is cvfs root CID
 	ExtraData string `json:"extradata"`
 
 	/// broadcasting time super master node package this block times.
@@ -32,6 +34,14 @@ type Block struct {
 	Txc uint16	`json:"txc"`
 	Txs string	`json:"txs"`
 
+	/// Because in the development of AAPP, it is necessary to use random number,
+	/// so if each node decides random number by itself, it can not reach consensus
+	/// eventually, so we provide a random seed. The first is to prevent Hash conflict,
+	/// and the second can be used to support the generation of random number. It has
+	/// been guaranteed that random number algorithms run on different nodes will get
+	/// the same results. However, the random number is determined by the broadcast of
+	/// super nodes, and other nodes can not cheat.
+	RandSeed int32 `json:"seed"`
 }
 
 /// only in create a new chain then use
@@ -47,6 +57,16 @@ type GenBlock struct {
 //	Latest 	= &Block{Index: -2}
 //	Pending = &Block{Index: -1}
 //)
+
+func (b *Block) GetHash() EComm.Hash {
+
+	bs := b.Encode()
+	if bs == nil {
+		panic("unrecoverable computing exception : Hash")
+	}
+
+	return crypto.Keccak256Hash(bs)
+}
 
 func (b *Block) GetExtraDataCid() cid.Cid {
 
@@ -76,6 +96,16 @@ func (b *Block) Decode(bs []byte) error {
 	//	return errors.New("this raw bytes not a block.")
 	//}
 	return json.Unmarshal(bs, b)
+}
+
+func (b *GenBlock) GetHash() EComm.Hash {
+
+	bs := b.Encode()
+	if bs == nil {
+		panic("unrecoverable computing exception : Hash")
+	}
+
+	return crypto.Keccak256Hash(bs)
 }
 
 func (b *GenBlock) Encode() []byte {

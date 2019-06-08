@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"github.com/ayachain/go-aya/vdb/common"
+	EComm "github.com/ethereum/go-ethereum/common"
 )
 
 type Assets struct {
@@ -14,6 +15,11 @@ type Assets struct {
 	Avail		uint64
 	Vote		uint64
 	Locked		uint64
+}
+
+type SortAssets struct {
+	*Assets
+	Addredd		EComm.Address
 }
 
 func NewAssets( avail, vote, locked uint64 ) *Assets {

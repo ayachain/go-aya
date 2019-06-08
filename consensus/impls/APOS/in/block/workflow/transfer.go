@@ -1,25 +1,22 @@
-package worker
+package workflow
 
 import (
 	"encoding/binary"
 	AWorker "github.com/ayachain/go-aya/consensus/core/worker"
+	"github.com/ayachain/go-aya/consensus/impls/APOS/in/block"
 	ARsp "github.com/ayachain/go-aya/response"
 	"github.com/ayachain/go-aya/vdb"
 	ATx "github.com/ayachain/go-aya/vdb/transaction"
 	"github.com/pkg/errors"
 )
 
-var expectedErr = errors.New("SimpleWorking expected")
+var expectedErr = errors.New("transfer expected")
 
-var (
-	TxConfirm              = []byte("Confirm")
-	TxerrreceiptsNotenough = []byte("not enough avail or voting balance")
-)
-
-func transfer( tx *ATx.Transaction, group *AWorker.TaskBatchGroup, base vdb.CVFS ) error {
+func DoTransfer( tx *ATx.Transaction, group *AWorker.TaskBatchGroup, base vdb.CVFS ) error {
 
 	if !tx.Verify() {
 
+		//base.Assetses().AvailBalanceMove()
 		bindexBs := make([]byte, 8)
 		binary.LittleEndian.PutUint64(bindexBs, tx.BlockIndex)
 
@@ -39,9 +36,10 @@ func transfer( tx *ATx.Transaction, group *AWorker.TaskBatchGroup, base vdb.CVFS
 			group.Put(
 				base.Receipts().DBKey(),
 				receiptKey,
-				ARsp.RawExpectedResponse(TxerrreceiptsNotenough),
+				ARsp.RawExpectedResponse(block.TxReceiptsNotenough),
 				)
 
+			return nil
 		}
 
 		// success
@@ -57,9 +55,10 @@ func transfer( tx *ATx.Transaction, group *AWorker.TaskBatchGroup, base vdb.CVFS
 		group.Put(
 			base.Receipts().DBKey(),
 			receiptKey,
-			ARsp.RawSusccessResponse(TxConfirm),
+			ARsp.RawSusccessResponse(block.TxConfirm),
 			)
 
+		return nil
 	}
 
 	return nil

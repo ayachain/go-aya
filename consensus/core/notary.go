@@ -17,13 +17,14 @@
 package core
 
 import (
-	"github.com/ayachain/go-aya/vdb"
-	"github.com/libp2p/go-libp2p-pubsub"
+	ACStep "github.com/ayachain/go-aya/consensus/core/step"
+	AKeyStore "github.com/ayachain/go-aya/keystore"
+	AvdbComm "github.com/ayachain/go-aya/vdb/common"
 )
 
 type Notary interface {
 	FireYou()
 	StartWorking()
-	SendTransaction( tx vdb.Transaction ) error
-	OnReceiveMessage( msg *pubsub.Message ) error
+	SendTransaction( AvdbComm.RawDBCoder ) error
+	OnReceiveRawMessage( msg *AKeyStore.ASignedRawMsg ) <- chan ACStep.AConsensusResult
 }

@@ -19,9 +19,13 @@ var (
 type MsgRawChainInfo struct {
 	AvdbComm.RawDBCoder
 	GenBlock 	EComm.Hash	 	`json:"G"`
-	VDBRoot	EComm.Hash		`json:"V"`
+	VDBRoot		EComm.Hash		`json:"V"`
 	Header		EComm.Hash 		`json:"H"`
 	Block		EComm.Hash		`json:"B"`
+}
+
+func (msg *MsgRawChainInfo) Prefix() byte{
+	return MessagePrefix
 }
 
 func (msg *MsgRawChainInfo) Encode() []byte {
@@ -46,10 +50,10 @@ func (msg *MsgRawChainInfo) Decode(bs []byte) error {
 		return ErrLenLess
 	}
 
-	msg.GenBlock 	=  EComm.BytesToHash(bs[1 + 256 * 0 : 256])
-	msg.VDBRoot 	=  EComm.BytesToHash(bs[1 + 256 * 1 : 256])
-	msg.Header    	=  EComm.BytesToHash(bs[1 + 256 * 2 : 256])
-	msg.Header     	=  EComm.BytesToHash(bs[1 + 256 * 3 : 256])
+	msg.GenBlock 	=  EComm.BytesToHash(bs[ 1 + 256 * 0 : 1 + 256 * 1 ])
+	msg.VDBRoot 	=  EComm.BytesToHash(bs[ 1 + 256 * 1 : 1 + 256 * 2 ])
+	msg.Header    	=  EComm.BytesToHash(bs[ 1 + 256 * 2 : 1 + 256 * 3 ])
+	msg.Header     	=  EComm.BytesToHash(bs[ 1 + 256 * 3 : 1 + 256 * 4 ])
 
 	return nil
 }
