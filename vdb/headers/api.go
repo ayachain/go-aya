@@ -1,6 +1,7 @@
 package headers
 
 import	 (
+	AWork "github.com/ayachain/go-aya/consensus/core/worker"
 	AVdbComm "github.com/ayachain/go-aya/vdb/common"
 )
 
@@ -18,5 +19,5 @@ type HeadersAPI interface {
 
 	LatestHeaderIndex() uint64
 
-	AppendHeaders( header... *Header) error
+	AppendHeaders( group *AWork.TaskBatchGroup, header... *Header) error
 }

@@ -14,6 +14,11 @@ type RawDBCoder interface {
 }
 
 
+type AMessageEncode interface {
+	RawMessageEncode() []byte
+	RawMessageDecode( bs []byte ) error
+}
+
 type RawSigner interface {
 	RawSignEncode( account accounts.Account ) ([]byte, error)
 	RawVerifyDecode( bs []byte ) error

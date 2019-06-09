@@ -23,8 +23,12 @@ import (
 )
 
 type Notary interface {
+
 	FireYou()
+
 	StartWorking()
+
 	SendTransaction( AvdbComm.RawDBCoder ) error
+
 	OnReceiveRawMessage( msg *AKeyStore.ASignedRawMsg ) <- chan ACStep.AConsensusResult
 }

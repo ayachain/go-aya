@@ -2,42 +2,45 @@ package txpool
 
 import (
 	"context"
-	AKeyStore "github.com/ayachain/go-aya/keystore"
+	"fmt"
+	"github.com/ipfs/go-cid"
 )
 
-/// Super Node Mode Specialization
-func (pool *ATxPool) threadBlockPackage(pctx context.Context) <- chan error {
+func (pool *ATxPool) blockPackageThread(ctx context.Context) {
 
-	replay := make(chan error)
+	fmt.Println("ATxPool block package thread power on")
+	defer fmt.Println("ATxPool block package thread power off")
 
-	go func() {
+	for {
 
-		for {
+		select {
+		case <-ctx.Done():
+			return
 
-			select {
-			case <- pctx.Done():
-				break
+		default:
 
-			case ret := <- pool.doPackingBlock:
+			pool.miningBlockLocker.Lock()
+			defer pool.miningBlockLocker.Unlock()
 
-				confblok := pool.miningBlock.ConfirmByCid(ret)
+			if pool.miningBlock != nil && len(pool.miningBlock.ExtraData) > 0 {
 
-				srawmsg, err := AKeyStore.CreateMsg(confblok.Encode(), pool.ownerAccount)
+				if err := pool.DoBroadcast(pool.miningBlock); err != nil {
+					break
+				}
+
+				ucide, err := cid.Decode(pool.miningBlock.ExtraData)
 				if err != nil {
-					replay <- err
 					break
 				}
 
-				if err := pool.DoBroadcast( srawmsg ); err != nil {
-					replay <- err
+				if err := pool.UpdateBestBlock( ucide ); err != nil {
 					break
 				}
 
-				replay <- nil
-
+				pool.miningBlock = nil
 			}
-		}
-	}()
 
-	return replay
+		}
+	}
+
 }

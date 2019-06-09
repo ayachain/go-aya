@@ -3,6 +3,7 @@ module github.com/ayachain/go-aya
 go 1.12
 
 require (
+	github.com/Kubuxu/go-os-helper v0.0.1
 	github.com/allegro/bigcache v1.2.0 // indirect
 	github.com/aristanetworks/goarista v0.0.0-20190531155855-fef20d617fa7 // indirect
 	github.com/ayachain/go-aya-alvm v0.0.0-00010101000000-000000000000
@@ -33,8 +34,10 @@ require (
 	github.com/multiformats/go-multiaddr-net v0.0.1
 	github.com/pkg/errors v0.8.1
 	github.com/prometheus/client_golang v0.9.3
+	github.com/prometheus/common v0.4.0
 	github.com/rjeczalik/notify v0.9.2 // indirect
 	github.com/syndtr/goleveldb v1.0.0
+	github.com/whyrusleeping/go-logging v0.0.0-20170515211332-0457bb6b88fc
 )
 
 replace (

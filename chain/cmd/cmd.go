@@ -11,6 +11,7 @@ var ChainCMDS = &cmds.Command{
 	},
 	Subcommands: map[string]*cmds.Command{
 		"conn" 	: 	connCmd,
+		"test"  :	testCmd,
 	},
 
 }

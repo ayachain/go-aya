@@ -2,8 +2,8 @@ package headers
 
 import (
 	"encoding/binary"
+	AWork "github.com/ayachain/go-aya/consensus/core/worker"
 	"github.com/ayachain/go-aya/vdb/common"
-	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-mfs"
 	"github.com/syndtr/goleveldb/leveldb"
 	"sync"
@@ -37,27 +37,26 @@ func (hds *aHeaders) HeaderOf( index uint64 ) (*Header, error) {
 		return nil, err
 	}
 
-	c, err := cid.Cast(bs)
-	if err != nil {
+	hd := &Header{}
+	if err := hd.Decode(bs); err != nil {
 		return nil, err
 	}
 
-	return &Header{Cid:c}, nil
+	return hd, nil
 }
 
-func (hds *aHeaders) AppendHeaders( header... *Header ) error {
+func (hds *aHeaders) AppendHeaders( group *AWork.TaskBatchGroup, header... *Header) error {
 
 	lindex := hds.LatestHeaderIndex()
 
-	wbc := &leveldb.Batch{}
 	for _, v := range header {
 		lindex ++
-		wbc.Put( common.BigEndianBytes(lindex), v.Encode() )
+		group.Put(DBPATH, common.BigEndianBytes(lindex), v.Encode())
 	}
 
-	wbc.Put([]byte(latestHeaderNumKey), common.BigEndianBytes(lindex) )
+	group.Put(DBPATH, []byte(latestHeaderNumKey), common.BigEndianBytes(lindex) )
 
-	return hds.rawdb.Write(wbc, nil)
+	return nil
 }
 
 func (txs *aHeaders) DBKey()	string {

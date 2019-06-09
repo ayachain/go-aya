@@ -3,20 +3,19 @@ package workflow
 import (
 	"bytes"
 	"encoding/binary"
+	APOSComm "github.com/ayachain/go-aya/consensus/impls/APOS/in/common"
 	AWorker "github.com/ayachain/go-aya/consensus/core/worker"
-	"github.com/ayachain/go-aya/consensus/impls/APOS/in/block"
 	ARsp "github.com/ayachain/go-aya/response"
 	"github.com/ayachain/go-aya/vdb"
 	ATx "github.com/ayachain/go-aya/vdb/transaction"
 )
-
 
 func DoLockAmount( tx *ATx.Transaction, group *AWorker.TaskBatchGroup, base vdb.CVFS ) error {
 
 	if tx.Verify() {
 
 		if !bytes.Equal(tx.From.Bytes(), tx.To.Bytes()) || string(tx.Data) != "LOCK" {
-			return block.ErrParmasExpected
+			return APOSComm.ErrParmasExpected
 		}
 
 		//base.Assetses().AvailBalanceMove()
@@ -28,7 +27,7 @@ func DoLockAmount( tx *ATx.Transaction, group *AWorker.TaskBatchGroup, base vdb.
 
 		astfrom, err := base.Assetses().AssetsOf(tx.From.Bytes())
 		if err != nil {
-			return block.ErrExpected
+			return APOSComm.ErrExpected
 		}
 
 		if astfrom.Avail < tx.Value {
@@ -36,7 +35,7 @@ func DoLockAmount( tx *ATx.Transaction, group *AWorker.TaskBatchGroup, base vdb.
 			group.Put(
 				base.Receipts().DBKey(),
 				receiptKey,
-				ARsp.RawExpectedResponse(block.TxReceiptsNotenough),
+				ARsp.RawExpectedResponse(APOSComm.TxReceiptsNotenough),
 			)
 
 			return nil
@@ -51,13 +50,13 @@ func DoLockAmount( tx *ATx.Transaction, group *AWorker.TaskBatchGroup, base vdb.
 		group.Put(
 			base.Receipts().DBKey(),
 			receiptKey,
-			ARsp.RawSusccessResponse(block.TxConfirm),
+			ARsp.RawSusccessResponse(APOSComm.TxConfirm),
 		)
 
 		return nil
 	}
 
-	return block.ErrTxVerifyExpected
+	return APOSComm.ErrTxVerifyExpected
 }
 
 
@@ -66,7 +65,7 @@ func unlockAmount( tx *ATx.Transaction, group *AWorker.TaskBatchGroup, base vdb.
 	if tx.Verify() {
 
 		if !bytes.Equal(tx.From.Bytes(), tx.To.Bytes()) || string(tx.Data) != "UNLOCK" {
-			return block.ErrParmasExpected
+			return APOSComm.ErrParmasExpected
 		}
 
 		//base.Assetses().AvailBalanceMove()
@@ -78,7 +77,7 @@ func unlockAmount( tx *ATx.Transaction, group *AWorker.TaskBatchGroup, base vdb.
 
 		astfrom, err := base.Assetses().AssetsOf(tx.From.Bytes())
 		if err != nil {
-			return block.ErrExpected
+			return APOSComm.ErrExpected
 		}
 
 		if astfrom.Locked >= tx.Value {
@@ -86,7 +85,7 @@ func unlockAmount( tx *ATx.Transaction, group *AWorker.TaskBatchGroup, base vdb.
 			group.Put(
 				base.Receipts().DBKey(),
 				receiptKey,
-				ARsp.RawExpectedResponse(block.TxReceiptsNotenough),
+				ARsp.RawExpectedResponse(APOSComm.TxReceiptsNotenough),
 			)
 
 			return nil
@@ -101,11 +100,11 @@ func unlockAmount( tx *ATx.Transaction, group *AWorker.TaskBatchGroup, base vdb.
 		group.Put(
 			base.Receipts().DBKey(),
 			receiptKey,
-			ARsp.RawSusccessResponse(block.TxConfirm),
+			ARsp.RawSusccessResponse(APOSComm.TxConfirm),
 		)
 
 		return nil
 	}
 
-	return block.ErrTxVerifyExpected
+	return APOSComm.ErrTxVerifyExpected
 }

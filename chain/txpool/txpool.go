@@ -2,16 +2,17 @@ package txpool
 
 import (
 	"context"
+	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
 	ADB "github.com/ayachain/go-aya-alvm-adb"
-	AMsgMiningBlock "github.com/ayachain/go-aya/chain/message/miningblock"
 	ACore "github.com/ayachain/go-aya/consensus/core"
 	AKeyStore "github.com/ayachain/go-aya/keystore"
 	"github.com/ayachain/go-aya/vdb"
 	AAssets "github.com/ayachain/go-aya/vdb/assets"
-	ABlock "github.com/ayachain/go-aya/vdb/block"
+	AvdbComm "github.com/ayachain/go-aya/vdb/common"
+	AMsgMBlock "github.com/ayachain/go-aya/vdb/mblock"
 	EAccount "github.com/ethereum/go-ethereum/accounts"
 	EComm "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -23,23 +24,30 @@ import (
 	"github.com/ipfs/go-unixfs"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/util"
-	"log"
+	"github.com/whyrusleeping/go-logging"
+	"sync"
 	"time"
 )
 
+const AtxPoolVersion = "AyaTxPool 0.0.1"
+
 var (
-	ErrPackageThreadExpected = errors.New("an unrecoverable error occurred inside the thread")
-	ErrRawDBEndoedZeroLen = errors.New("ready to sent content is empty")
-	ErrMessageVerifyExpected = errors.New("message verify failed")
+	ErrPackageThreadExpected 		= errors.New("an unrecoverable error occurred inside the thread")
+	ErrRawDBEndoedZeroLen 			= errors.New("ready to sent content is empty")
+	ErrMessageVerifyExpected 		= errors.New("message verify failed")
 	ErrStorageRawDataDecodeExpected = errors.New("decode raw data expected")
-	ErrStorageLowAPIExpected = errors.New("atx pool storage low api operation expected")
+	ErrStorageLowAPIExpected 		= errors.New("atx pool storage low api operation expected")
 )
 
 var(
-	TxHashIteratorStart 	= []byte{0x0000000000000000000000000000000000000000000000000000000000000000}
-	TxHashIteratorLimit		= []byte{0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF}
-	TxReceiptPrefix			= []byte{0xAE0000000000000000000000000000000000000000000000000000000000000000}
+	TxHashIteratorStart 	= []byte{0}
+	TxHashIteratorLimit		= []byte{0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF}
+	TxReceiptPrefix			= []byte{0xAE,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00}
+	TxCount					= TxHashIteratorLimit
 )
+
+
+var log = logging.MustGetLogger("ATxPool")
 
 /// Because nodes play different roles in the network, we divide the nodes into three categories:
 /// super nodes, master nodes and ordinary nodes, and describe the operation of the transaction
@@ -64,21 +72,36 @@ const (
 	/// sending transactions, validating transactions, saving data, blocking, packaging, computing
 	/// ALVM execution results, etc.
 	AtxPoolWorkModeSuper AtxPoolWorkMode = 2
+
+	/// owner
+	AtxPoolWorkModeOblivioned AtxPoolWorkMode = 3
 )
 
+type AtxThreadsName string
+
+const (
+	AtxThreadsAll					AtxThreadsName = "All"
+	AtxThreadsNameTxPackage 		AtxThreadsName = "MiningBlockPackageThread"
+	AtxThreadsNameBlockPacage		AtxThreadsName = "BlockConfirmPackageThread"
+	AtxThreadsNameReceiptListen 	AtxThreadsName = "MiningBlockReceiptListenThread"
+	AtxThreadsNameTransactionCommit AtxThreadsName = "TransactionCommitThread"
+	AtxThreadsNameMining			AtxThreadsName = "MiningThread"
+	AtxThreadsNameChannelListen		AtxThreadsName = "ChannelListenThread"
+)
 
 type ATxPool struct {
 
-	storage *leveldb.DB
 	cvfs vdb.CVFS
+	storage *leveldb.DB
 	ownerAccount EAccount.Account
-	ownerAsset AAssets.Assets
+	ownerAsset *AAssets.Assets
 
+	adbpath string
 	chainId string
 	channelTopics string
-	adbpath string
-	bestBlock *ABlock.Block
-	miningBlock *AMsgMiningBlock.MsgRawMiningBlock
+
+	miningBlock *AMsgMBlock.MBlock
+	miningBlockLocker sync.Mutex
 
 	/// Top100 changes only when the block is updated. In order to reduce the reading and writing frequency
 	/// of the database, we cache this information here and update it when the block is actually out.
@@ -90,11 +113,13 @@ type ATxPool struct {
 	workctx context.Context
 	workcancel context.CancelFunc
 
-	notary ACore.Notary
+	threadCancels map[AtxThreadsName]context.CancelFunc
+	threadChans map[AtxThreadsName] chan *AKeyStore.ASignedRawMsg
 
-	doPackingMiningBlock chan bool
-	doPackingBlock chan cid.Cid
+	notary ACore.Notary
+	packLocker sync.Mutex
 }
+
 
 func NewTxPool( ctx context.Context, ind *core.IpfsNode, chainId string, cvfs vdb.CVFS, acc EAccount.Account) *ATxPool {
 
@@ -102,6 +127,9 @@ func NewTxPool( ctx context.Context, ind *core.IpfsNode, chainId string, cvfs vd
 	var nd *merkledag.ProtoNode
 	dsk := datastore.NewKey(adbpath)
 	val, err := ind.Repo.Datastore().Get(dsk)
+
+	// create channel topices string
+	topic := crypto.Keccak256Hash( []byte( AtxPoolVersion + chainId ) )
 
 	switch {
 	case err == datastore.ErrNotFound || val == nil:
@@ -153,15 +181,9 @@ func NewTxPool( ctx context.Context, ind *core.IpfsNode, chainId string, cvfs vd
 	dbnode, err := mfs.Lookup(root, "/" + chainId)
 	if err != nil {
 
-		if err == mfs.ErrNotExist {
-
-			if err := mfs.Mkdir(root, "/" + chainId, mfs.MkdirOpts{Flush:false, Mkparents:true}); err != nil {
-				panic(err)
-			}
-
+		if err := mfs.Mkdir(root, "/" + chainId, mfs.MkdirOpts{Flush:false, Mkparents:true}); err != nil {
+			panic(err)
 		}
-
-		goto configNewDir
 
 	} else {
 
@@ -180,6 +202,10 @@ func NewTxPool( ctx context.Context, ind *core.IpfsNode, chainId string, cvfs vd
 			cvfs:cvfs,
 			topAssets:tops,
 			workmode:AtxPoolWorkModeNormal,
+			ind:ind,
+			channelTopics:topic.String(),
+			threadCancels:make(map[AtxThreadsName]context.CancelFunc),
+			threadChans:make(map[AtxThreadsName] chan *AKeyStore.ASignedRawMsg),
 		}
 	}
 
@@ -201,6 +227,10 @@ configNewDir :
 		cvfs:cvfs,
 		topAssets:tops,
 		workmode:AtxPoolWorkModeNormal,
+		ind:ind,
+		channelTopics:topic.String(),
+		threadCancels:make(map[AtxThreadsName]context.CancelFunc),
+		threadChans:make(map[AtxThreadsName] chan *AKeyStore.ASignedRawMsg),
 	}
 
 }
@@ -213,104 +243,47 @@ func (pool *ATxPool) PowerOn() error {
 
 	pool.judgingMode()
 
-	ctx, cancel := context.WithCancel(context.Background())
-	pool.workctx = ctx
-	pool.workcancel = cancel
-
-	subscribe, err := pool.ind.PubSub.Subscribe( pool.channelTopics, nil )
-	if err != nil {
-		return err
-	}
-
-	// Accept subscription chan
-	go func() {
-
-		for {
-
-			msg, err := subscribe.Next(context.TODO())
-			if err != nil {
-				return
-			}
-
-			rawmsg, err := AKeyStore.BytesToRawMsg(msg.Data)
-			if err != nil {
-				log.Println(err)
-				continue
-			}
-
-			if err := pool.rawMessageSwitch(rawmsg); err != nil {
-				log.Println(err)
-				continue
-			}
-
-			select {
-			case <- ctx.Done() :
-				return
-
-			default:
-				time.Sleep( time.Microsecond  * 300 )
-			}
-
-		}
-
-	}()
+	pool.workctx, pool.workcancel = context.WithCancel(context.Background())
 
 	switch pool.workmode {
 
+	case AtxPoolWorkModeOblivioned:
+
+		pool.runthreads(
+			AtxThreadsNameTxPackage,
+			AtxThreadsNameBlockPacage,
+			AtxThreadsNameReceiptListen,
+			AtxThreadsNameTransactionCommit,
+			AtxThreadsNameMining,
+			AtxThreadsNameChannelListen,
+		)
+
 	case AtxPoolWorkModeSuper:
-		// package tx, block and listen block receipt
-		go func() {
 
-			select {
+		pool.runthreads(
+			AtxThreadsNameChannelListen,
+			AtxThreadsNameTxPackage,
+			AtxThreadsNameBlockPacage,
+			AtxThreadsNameReceiptListen,
+			AtxThreadsNameTransactionCommit,
+			)
 
-			case <- ctx.Done() :
-				return
-
-			case err := <- pool.threadBlockPackage(ctx):
-
-				/// successful broadcasting, continue packing
-				if err != nil {
-					pool.PowerOff(err)
-				}
-
-				pool.miningBlock = nil
-
-				if !pool.IsEmpty() {
-					pool.doPackingMiningBlock <- true
-				}
-
-			case err := <- pool.threadTransactionPackage(ctx):
-
-				if err != nil {
-					pool.PowerOff(err)
-				}
-
-			default:
-				time.Sleep( time.Microsecond  * 300 )
-			}
-
-		}()
-
-		fallthrough
 
 	case AtxPoolWorkModeMaster:
 
-		//do miner
-		go func() {
-
-			//Miner
-
-		}()
-
-		fallthrough
+		pool.runthreads(
+			AtxThreadsNameChannelListen,
+			AtxThreadsNameReceiptListen,
+			AtxThreadsNameTransactionCommit,
+			AtxThreadsNameMining,
+		)
 
 	case AtxPoolWorkModeNormal:
 
-		go func() {
-
-
-
-		}()
+		pool.runthreads(
+			AtxThreadsNameChannelListen,
+			AtxThreadsNameTransactionCommit,
+		)
 
 	}
 
@@ -319,34 +292,138 @@ func (pool *ATxPool) PowerOn() error {
 	return nil
 }
 
+func (pool *ATxPool) runthreads( names ... AtxThreadsName ) {
+
+	for _, n := range names {
+
+		cancel, exist := pool.threadCancels[n]
+		if exist && cancel != nil {
+			cancel()
+		}
+
+		switch n {
+
+		case AtxThreadsNameChannelListen:
+
+			workCtx, cancel := context.WithCancel(pool.workctx)
+
+			pool.threadCancels[n] = cancel
+			pool.threadChans[n] = make(chan *AKeyStore.ASignedRawMsg)
+
+			go pool.channelListening(workCtx)
+
+
+		case AtxThreadsNameTxPackage:
+
+			workCtx, cancel := context.WithCancel(pool.workctx)
+
+			pool.threadCancels[n] = cancel
+			pool.threadChans[n] = make(chan *AKeyStore.ASignedRawMsg)
+
+			go pool.txPackageThread(workCtx)
+
+
+		case AtxThreadsNameReceiptListen:
+
+			workCtx, cancel := context.WithCancel(pool.workctx)
+
+			pool.threadCancels[n] = cancel
+			pool.threadChans[n] = make(chan *AKeyStore.ASignedRawMsg)
+
+			go pool.receiptListen(workCtx)
+
+
+		case AtxThreadsNameBlockPacage:
+
+			workCtx, cancel := context.WithCancel(pool.workctx)
+
+			pool.threadCancels[n] = cancel
+			pool.threadChans[n] = make(chan *AKeyStore.ASignedRawMsg)
+
+			go pool.blockPackageThread(workCtx)
+
+
+		case AtxThreadsNameMining:
+
+			workCtx, cancel := context.WithCancel(pool.workctx)
+
+			pool.threadCancels[n] = cancel
+			pool.threadChans[n] = make(chan *AKeyStore.ASignedRawMsg)
+
+			go pool.miningThread(workCtx)
+
+		}
+
+
+
+	}
+
+}
+
 func (pool *ATxPool) PowerOff(err error) {
-	log.Println(err)
+	log.Error(err)
 	pool.workcancel()
 	pool.poweron = false
 }
 
-func (pool *ATxPool) UpdateBestBlock(  ) {
+func (pool *ATxPool) UpdateBestBlock( bcid cid.Cid ) error {
 
+	pool.packLocker.Lock()
+	defer pool.packLocker.Unlock()
+
+	if err := pool.cvfs.SeekToBlock( bcid ); err != nil {
+		return err
+	}
+
+	ast, err := pool.cvfs.Assetses().AssetsOf(pool.ownerAccount.Address.Bytes())
+	if err != nil {
+		return err
+	}
+
+	tops, err := pool.cvfs.Assetses().GetLockedTop100()
+	if err != nil {
+		tops = []*AAssets.SortAssets{}
+	}
+
+	pool.topAssets = tops
+	pool.ownerAsset = ast
+
+	return nil
+}
+
+
+func (pool *ATxPool) sign( coder AvdbComm.AMessageEncode ) (*AKeyStore.ASignedRawMsg, error) {
+
+	cbs := coder.RawMessageEncode()
+
+	if len(cbs) <= 0 {
+		return nil, ErrRawDBEndoedZeroLen
+	}
+
+	return AKeyStore.CreateMsg(cbs, pool.ownerAccount)
 }
 
 /// Send a transaction by signing with the identity of the current node
-func (pool *ATxPool) DoBroadcast( msg *AKeyStore.ASignedRawMsg ) error {
+func (pool *ATxPool) DoBroadcast( coder AvdbComm.AMessageEncode ) error {
 
-	if msg.Verify() {
+	cbs := coder.RawMessageEncode()
 
-		bs, err := msg.Bytes()
-		if err != nil {
-			return ErrMessageVerifyExpected
-		}
-
-		if len(bs) <= 0 {
-			return ErrRawDBEndoedZeroLen
-		}
-
-		return pool.ind.PubSub.Publish( pool.channelTopics, bs )
+	if len(cbs) <= 0 {
+		return ErrRawDBEndoedZeroLen
 	}
 
-	return ErrMessageVerifyExpected
+	if signmsg, err := AKeyStore.CreateMsg(cbs, pool.ownerAccount); err != nil {
+		return err
+	} else {
+
+		rawsmsg, err := signmsg.Bytes()
+		if err != nil {
+			return err
+		}
+
+		return pool.ind.PubSub.Publish( pool.channelTopics, rawsmsg )
+	}
+
 }
 
 /// We will record the miningblock receipts received by history. If the number of coins
@@ -399,14 +476,12 @@ func (pool *ATxPool) AddConfrimReceipt( mbhash EComm.Hash, retcid cid.Cid, from 
 
 		if receiptMap[rcidstr] > pool.ownerAsset.Vote * 3 {
 
-			pool.doPackingBlock <- retcid
-
 			batch := &leveldb.Batch{}
 			batch.Delete(receiptKey)
 			batch.Delete(mbhash.Bytes())
 
 			if err := pool.storage.Write(batch, nil); err != nil {
-				pool.KillByErr(err)
+				pool.PowerOff(err)
 			}
 
 		}
@@ -435,16 +510,18 @@ func (pool *ATxPool) AddRawTransaction( tx *AKeyStore.ASignedRawMsg ) error {
 		return err
 	}
 
-
 	key := crypto.Keccak256(txraw)
 	value := txraw
 
+	if err := pool.storage.Put(TxCount, AvdbComm.BigEndianBytes(pool.Size() + 1), nil); err != nil {
+		pool.PowerOff(err)
+	}
 
 	if err := pool.storage.Put(key, value, nil); err != nil {
 		pool.PowerOff(err)
 	}
 
-	return pool.ind.PubSub.Publish( pool.channelTopics, value )
+	return nil
 }
 
 /// When an underlying invocation error occurs, the error cannot be handled or recovered,
@@ -454,12 +531,26 @@ func (pool *ATxPool) KillByErr( err error ) {
 	panic(err)
 }
 
+
+func (pool *ATxPool) Size() uint64 {
+
+	if exist, err := pool.storage.Has(TxCount, nil); err != nil || !exist {
+		return 0
+	}
+
+	indexbs, err := pool.storage.Get(TxCount, nil)
+
+	if err != nil {
+		panic(ErrStorageLowAPIExpected)
+	}
+
+	return binary.BigEndian.Uint64(indexbs)
+}
+
 func (pool *ATxPool) IsEmpty() bool {
 
-	it := pool.storage.NewIterator(nil,nil)
-	defer it.Release()
+	return pool.Size() == 0
 
-	return it.Next()
 }
 
 func (pool *ATxPool) Close() {
@@ -467,7 +558,7 @@ func (pool *ATxPool) Close() {
 	err := pool.storage.Close()
 
 	if err != nil {
-		log.Printf(err.Error())
+		log.Warning(err)
 	}
 
 }
@@ -483,10 +574,13 @@ func (pool *ATxPool) Close() {
 /// Judging working mode
 func (pool *ATxPool) judgingMode() {
 
+	pool.workmode = AtxPoolWorkModeOblivioned
+	return
+
 	n := 99999999
 
 	for i := 0; i < len(pool.topAssets); i++ {
-		if pool.topAssets[i].Addredd == pool.ownerAccount.Address {
+		if pool.topAssets[i] != nil && pool.topAssets[i].Addredd == pool.ownerAccount.Address {
 			n = i
 			break
 		}

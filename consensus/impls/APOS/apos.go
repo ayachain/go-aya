@@ -2,13 +2,13 @@ package APOS
 
 import (
 	"context"
-	AMsgBlock "github.com/ayachain/go-aya/chain/message/block"
 	ACore "github.com/ayachain/go-aya/consensus/core"
 	ACStep "github.com/ayachain/go-aya/consensus/core/step"
 	AGroup "github.com/ayachain/go-aya/consensus/core/worker"
 	APOSInBlock "github.com/ayachain/go-aya/consensus/impls/APOS/in/block"
 	AKeyStore "github.com/ayachain/go-aya/keystore"
 	"github.com/ayachain/go-aya/vdb"
+	AMsgBlock "github.com/ayachain/go-aya/vdb/block"
 	"github.com/ipfs/go-ipfs/core"
 	"github.com/pkg/errors"
 )

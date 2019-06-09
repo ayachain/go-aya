@@ -1,16 +1,25 @@
 package block
 
 import (
+	"bytes"
 	"encoding/json"
+	"errors"
 	AVdbComm "github.com/ayachain/go-aya/vdb/common"
 	EComm "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ipfs/go-cid"
 )
 
+const MessagePrefix = byte('b')
+
+var (
+	ErrMsgPrefix = errors.New("not a chain info message")
+)
+
 type Block struct {
 
-	AVdbComm.RawSigner
+	AVdbComm.RawDBCoder	`json:"-"`
+	AVdbComm.AMessageEncode `json:"-"`
 
 	/// block index
 	Index uint64 `json:"index"`
@@ -58,7 +67,7 @@ type GenBlock struct {
 //	Pending = &Block{Index: -1}
 //)
 
-func (b *Block) GetHash() EComm.Hash {
+func ( b *Block ) GetHash() EComm.Hash {
 
 	bs := b.Encode()
 	if bs == nil {
@@ -68,7 +77,7 @@ func (b *Block) GetHash() EComm.Hash {
 	return crypto.Keccak256Hash(bs)
 }
 
-func (b *Block) GetExtraDataCid() cid.Cid {
+func ( b *Block ) GetExtraDataCid() cid.Cid {
 
 	c, err := cid.Decode( b.ExtraData )
 	if err != nil {
@@ -78,8 +87,7 @@ func (b *Block) GetExtraDataCid() cid.Cid {
 	return c
 }
 
-
-func (b *Block) Encode() []byte {
+func ( b *Block ) Encode() []byte {
 
 	bs, err := json.Marshal(b)
 
@@ -90,7 +98,7 @@ func (b *Block) Encode() []byte {
 	return bs
 }
 
-func (b *Block) Decode(bs []byte) error {
+func ( b *Block ) Decode(bs []byte) error {
 
 	//if bs[0] != 'b' {
 	//	return errors.New("this raw bytes not a block.")
@@ -98,9 +106,29 @@ func (b *Block) Decode(bs []byte) error {
 	return json.Unmarshal(bs, b)
 }
 
-func (b *GenBlock) GetHash() EComm.Hash {
+func ( b *Block ) RawMessageEncode() []byte {
 
-	bs := b.Encode()
+	buff := bytes.NewBuffer([]byte{MessagePrefix})
+
+	buff.Write( b.Encode() )
+
+	return buff.Bytes()
+}
+
+func ( b *Block ) RawMessageDecode( bs []byte ) error {
+
+	if bs[0] != MessagePrefix {
+		return ErrMsgPrefix
+	}
+
+	return b.Decode(bs[1:])
+
+}
+
+
+func ( gb *GenBlock ) GetHash() EComm.Hash {
+
+	bs := gb.Encode()
 	if bs == nil {
 		panic("unrecoverable computing exception : Hash")
 	}
@@ -108,9 +136,9 @@ func (b *GenBlock) GetHash() EComm.Hash {
 	return crypto.Keccak256Hash(bs)
 }
 
-func (b *GenBlock) Encode() []byte {
+func ( gb *GenBlock ) Encode() []byte {
 
-	bs, err := json.Marshal(b)
+	bs, err := json.Marshal(gb)
 
 	if err != nil {
 		return nil
@@ -119,6 +147,25 @@ func (b *GenBlock) Encode() []byte {
 	return bs
 }
 
-func (b *GenBlock) Decode(bs []byte) error {
-	return json.Unmarshal(bs, b)
+func ( gb *GenBlock ) Decode(bs []byte) error {
+	return json.Unmarshal(bs, gb)
+}
+
+func ( gb *GenBlock ) RawMessageEncode() []byte {
+
+	buff := bytes.NewBuffer([]byte{MessagePrefix})
+
+	buff.Write( gb.Encode() )
+
+	return buff.Bytes()
+}
+
+func ( gb *GenBlock ) RawMessageDecode( bs []byte ) error {
+
+	if bs[0] != MessagePrefix {
+		return ErrMsgPrefix
+	}
+
+	return gb.Decode(bs[1:])
+
 }

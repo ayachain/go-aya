@@ -3,14 +3,22 @@ package transaction
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	AVdbComm "github.com/ayachain/go-aya/vdb/common"
 	EComm "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
+const MessagePrefix = byte('t')
+
+var (
+	ErrMsgPrefix = errors.New("not a chain info message")
+)
+
 type Transaction struct {
 
-	AVdbComm.RawDBCoder
+	AVdbComm.RawDBCoder				`json:"-"`
+	AVdbComm.AMessageEncode			`json:"-"`
 
 	BlockIndex		uint64			`json:"index"`
 	From 			EComm.Address	`json:"from"`
@@ -22,6 +30,7 @@ type Transaction struct {
 	Price			uint32			`json:"price"`
 	Tid				uint64			`json:"tid"`
 	Sig				[]byte			`json:"sig"`
+
 }
 
 func ( trsn *Transaction ) Encode() []byte {
@@ -37,7 +46,6 @@ func ( trsn *Transaction ) Encode() []byte {
 func ( trsn *Transaction ) Decode( bs []byte ) error {
 	return json.Unmarshal(bs, trsn)
 }
-
 
 func ( trsn *Transaction ) GetHash256( ) EComm.Hash {
 
@@ -73,7 +81,6 @@ func ( trsn *Transaction ) Verify() bool {
 
 }
 
-///// key = Transaction.Bytes + BlockIndex(LittleEndian)
 func ( trsn *Transaction ) EncodeRawKey() []byte {
 
 	ibs := AVdbComm.BigEndianBytes( trsn.BlockIndex )
@@ -83,4 +90,23 @@ func ( trsn *Transaction ) EncodeRawKey() []byte {
 	buf.Write(ibs)
 
 	return buf.Bytes()
+}
+
+func ( trsn *Transaction ) RawMessageEncode() []byte {
+
+	buff := bytes.NewBuffer([]byte{MessagePrefix})
+
+	buff.Write( trsn.Encode() )
+
+	return buff.Bytes()
+}
+
+func ( trsn *Transaction ) RawMessageDecode( bs []byte ) error {
+
+	if bs[0] != MessagePrefix {
+		return ErrMsgPrefix
+	}
+
+	return trsn.Decode(bs[1:])
+
 }

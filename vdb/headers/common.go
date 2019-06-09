@@ -1,14 +1,18 @@
 package headers
 
-import "github.com/ipfs/go-cid"
+import (
+	EComm "github.com/ethereum/go-ethereum/common"
+)
 
-func HeadersToCids( hs []*Header ) []cid.Cid {
+func HeadersToHash( hs []*Header ) []EComm.Hash {
 
-	var cids []cid.Cid
+	var hashs []EComm.Hash
 
 	for _, v := range hs {
-		cids = append(cids, v.Cid)
+
+		hashs = append(hashs, v.Hash)
+
 	}
 
-	return cids
+	return hashs
 }

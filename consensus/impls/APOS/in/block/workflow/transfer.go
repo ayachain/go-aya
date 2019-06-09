@@ -3,7 +3,7 @@ package workflow
 import (
 	"encoding/binary"
 	AWorker "github.com/ayachain/go-aya/consensus/core/worker"
-	"github.com/ayachain/go-aya/consensus/impls/APOS/in/block"
+	APosComm "github.com/ayachain/go-aya/consensus/impls/APOS/in/common"
 	ARsp "github.com/ayachain/go-aya/response"
 	"github.com/ayachain/go-aya/vdb"
 	ATx "github.com/ayachain/go-aya/vdb/transaction"
@@ -36,7 +36,7 @@ func DoTransfer( tx *ATx.Transaction, group *AWorker.TaskBatchGroup, base vdb.CV
 			group.Put(
 				base.Receipts().DBKey(),
 				receiptKey,
-				ARsp.RawExpectedResponse(block.TxReceiptsNotenough),
+				ARsp.RawExpectedResponse(APosComm.TxReceiptsNotenough),
 				)
 
 			return nil
@@ -55,7 +55,7 @@ func DoTransfer( tx *ATx.Transaction, group *AWorker.TaskBatchGroup, base vdb.CV
 		group.Put(
 			base.Receipts().DBKey(),
 			receiptKey,
-			ARsp.RawSusccessResponse(block.TxConfirm),
+			ARsp.RawSusccessResponse(APosComm.TxConfirm),
 			)
 
 		return nil

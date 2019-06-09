@@ -3,92 +3,87 @@ package txpool
 import (
 	"context"
 	"encoding/json"
-	AMsgMBlock "github.com/ayachain/go-aya/chain/message/miningblock"
+	"fmt"
+	AKeyStore "github.com/ayachain/go-aya/keystore"
+	AMsgMBlock "github.com/ayachain/go-aya/vdb/mblock"
 	ATx "github.com/ayachain/go-aya/vdb/transaction"
 	blocks "github.com/ipfs/go-block-format"
-	"github.com/pkg/errors"
 	"github.com/syndtr/goleveldb/leveldb/util"
 	"math/rand"
 	"time"
 )
 
-/// Super Node Mode Specialization
-/// The super node is responsible for the package and broadcast of the transaction
-/// after receiving the transaction.
-/// The block data sent must be an undetermined block, which needs to be processed
-/// by other nodes. We define the message header as "m", which is actually the meaning
-/// of minerblock. We tell other nodes that I want to use this piece to help me calculate
-/// the final result.
-const PackageTxsLimit = 1024
-
-var (
-	WarningMiningHashWaitingReceipt = errors.New("there are data that are being calculated and cannot be submitted repeatedly.")
+const (
+	PackageTxsLimit = 1024
 )
 
-func (pool *ATxPool) threadTransactionPackage(pctx context.Context) <- chan error {
+var (
+	PackageThreadSleepTime = time.Microsecond  * 100
+)
 
-	replay := make(chan error)
+func (pool *ATxPool) txPackageThread(ctx context.Context) {
 
-	go func() {
+	fmt.Println("ATxPool txpackage thread power on")
+	defer fmt.Println("ATxPool txpackage thread power off")
 
-		for {
+	for {
 
-			select {
-			case <- pctx.Done() :
-				break
+		select {
+		case <-ctx.Done():
+			return
 
-			case <- pool.doPackingMiningBlock :
+		default:
 
-				/// If there is an undetermined block that is being computed when a package request
-				/// is initiated, it needs to wait. In fact, this is wrong. This is not allowed in
-				/// the logic control of txpool. That is to say, if there is a block currently being
-				/// computed, it is allowed to pack the next block.
-				for pool.miningBlock != nil {
-					replay <- WarningMiningHashWaitingReceipt
-				}
+			if pool.miningBlock == nil && !pool.IsEmpty() {
 
 				poolTransaction, err := pool.storage.OpenTransaction()
+
 				if err != nil {
-					replay <- err
-					break
+					pool.PowerOff(err)
+					return
 				}
 
 				rand.Seed(time.Now().UnixNano())
-
-				mblk := &AMsgMBlock.MsgRawMiningBlock{}
+				bestBlock := pool.cvfs.Blocks().BestBlock()
 
 				/// Because you need to wait for calculation, miningblock does not have a field for the final result.
+				mblk := &AMsgMBlock.MBlock{}
 				mblk.ExtraData = ""
-
-				mblk.Index = pool.bestBlock.Index
-				mblk.ChainID = pool.chainId
-				mblk.Parent = pool.bestBlock.GetHash().Hex()
+				mblk.Index = bestBlock.Index + 1
+				mblk.ChainID = bestBlock.ChainID
+				mblk.Parent = bestBlock.GetHash().Hex()
 				mblk.Timestamp = uint64(time.Now().Unix())
 				mblk.RandSeed = rand.Int31()
 
-
-				it := poolTransaction.NewIterator(&util.Range{Start:TxHashIteratorStart,Limit:TxHashIteratorLimit}, nil)
-
 				count := uint16(0)
-
 				var txs []ATx.Transaction
-				var looperr error
+				it := poolTransaction.NewIterator(&util.Range{Start: TxHashIteratorStart, Limit: TxHashIteratorLimit}, nil)
 
-				for it.Next(){
+				for it.Next() {
+
+					signedmsg, err := AKeyStore.BytesToRawMsg(it.Value())
+					if err != nil {
+						poolTransaction.Delete(it.Key(), nil)
+						continue
+					}
+
+					if signedmsg.Content[0] != ATx.MessagePrefix {
+						poolTransaction.Delete(it.Key(), nil)
+						continue
+					}
 
 					subTx := ATx.Transaction{}
-
-					if looperr = subTx.Decode( it.Value() ); err != nil {
-						goto loopend
+					if err = subTx.Decode(signedmsg.Content[1:]); err != nil {
+						poolTransaction.Delete(it.Key(), nil)
+						continue
 					}
 
 					txs = append(txs, subTx)
+					count++
 
-					count ++
-
-					err := poolTransaction.Delete(it.Key(), nil)
+					err = poolTransaction.Delete(it.Key(), nil)
 					if err != nil {
-						pool.KillByErr(err)
+						pool.PowerOff(err)
 					}
 
 					if count >= PackageTxsLimit {
@@ -96,47 +91,50 @@ func (pool *ATxPool) threadTransactionPackage(pctx context.Context) <- chan erro
 					}
 				}
 
-				loopend:
+				//commit block to ipfs block
+				txsblockcontent, err := json.Marshal(txs)
+				if err != nil {
+					pool.PowerOff(err)
+					return
+				}
 
-					if looperr != nil {
+				iblk := blocks.NewBlock(txsblockcontent)
+				err = pool.ind.Blocks.AddBlock(iblk)
+				if err != nil {
+					pool.PowerOff(err)
+					return
+				}
 
-						replay <- looperr
-						break
+				//packing
+				mblk.Txc = count
+				mblk.Txs = iblk.Cid().String()
 
-					} else {
+				if err := poolTransaction.Commit(); err != nil {
+					break
+				}
 
-						//commit block to ipfs block
-						txsblockcontent, err := json.Marshal(txs)
-						if err != nil {
-							replay <- err
-							break
-						}
+				pool.miningBlock = mblk
+				if err := pool.DoBroadcast(mblk); err != nil {
+					break
+				}
 
-						iblk := blocks.NewBlock( txsblockcontent )
-						err = pool.ind.Blocks.AddBlock(iblk)
-						if err != nil {
-							replay <- err
-							break
-						}
+				c, exist := pool.threadChans[AtxThreadsNameMining]
+				if exist {
 
-						//packing
-						mblk.Txc = count
-						mblk.Txs = iblk.Cid().String()
-
-						if err := poolTransaction.Commit(); err != nil {
-							replay <- err
-							break
-						}
-
-						pool.miningBlock = mblk
-						replay <- nil
+					signmsg, err := pool.sign(mblk)
+					if err != nil {
 						break
 					}
+
+					c <- signmsg
+				}
+
+			} else {
+				time.Sleep(PackageThreadSleepTime)
 			}
 
 		}
 
-	}()
+	}
 
-	return replay
 }

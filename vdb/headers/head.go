@@ -1,27 +1,28 @@
 package headers
 
 import (
+	"encoding/json"
 	"github.com/ayachain/go-aya/vdb/common"
-	"github.com/ipfs/go-cid"
+	EComm "github.com/ethereum/go-ethereum/common"
 )
 
 type Header struct {
 	common.RawDBCoder
-	cid.Cid
+	BlockIndex uint64 	`json:"I"`
+	Hash EComm.Hash		`json:"H"`
 }
 
 func (h *Header) Encode() []byte {
-	return h.Cid.Bytes()
+
+	bs, err := json.Marshal(h)
+
+	if err != nil {
+		return nil
+	}
+
+	return bs
 }
 
 func (h *Header) Decode(bs []byte) error {
-
-	c, err := cid.Cast(bs)
-	if err != nil {
-		return err
-	}
-
-	h.Cid = c
-
-	return nil
+	return json.Unmarshal(bs, h)
 }

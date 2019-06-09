@@ -39,17 +39,17 @@ var connCmd = &cmds.Command {
 			return ARsponse.EmitErrorResponse(re, err)
 		}
 
-		gblk := ABlock.GenBlock{}
+		gblk := &ABlock.GenBlock{}
 		if err := gblk.Decode(bs); err != nil {
 			return ARsponse.EmitErrorResponse(re, errors.New("decode gen block config file expected") )
 		}
 
-		acc, err := findAccount( req.Arguments[0] )
+		acc, err := AKeyStore.FindAccount( req.Arguments[0] )
 		if err != nil {
 			return ARsponse.EmitErrorResponse(re, err )
 		}
 
-		if err := AChain.AddChainLink(gblk, ind, *acc); err != nil {
+		if err := AChain.AddChainLink(gblk, ind, acc); err != nil {
 			return ARsponse.EmitErrorResponse(re, err )
 		}
 

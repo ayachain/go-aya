@@ -3,10 +3,10 @@ package signaturer
 import (
 	"context"
 	"fmt"
-	AMsgBlock "github.com/ayachain/go-aya/chain/message/block"
 	ACStep "github.com/ayachain/go-aya/consensus/core/step"
 	ADog "github.com/ayachain/go-aya/consensus/core/watchdog"
 	APosComm "github.com/ayachain/go-aya/consensus/impls/APOS/common"
+	AMsgBlock "github.com/ayachain/go-aya/vdb/block"
 	"time"
 )
 
