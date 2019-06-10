@@ -6,6 +6,7 @@ import (
 	APosComm "github.com/ayachain/go-aya/consensus/impls/APOS/in/common"
 	ARsp "github.com/ayachain/go-aya/response"
 	"github.com/ayachain/go-aya/vdb"
+	AAsset "github.com/ayachain/go-aya/vdb/assets"
 	ATx "github.com/ayachain/go-aya/vdb/transaction"
 	"github.com/pkg/errors"
 )
@@ -25,10 +26,20 @@ func DoTransfer( tx *ATx.Transaction, group *AWorker.TaskBatchGroup, base vdb.CV
 
 		astfrom, err := base.Assetses().AssetsOf(tx.From.Bytes())
 		if err != nil {
-			return expectedErr
+
+			group.Put(
+				base.Receipts().DBKey(),
+				receiptKey,
+				ARsp.RawExpectedResponse(APosComm.TxReceiptsNotenough),
+			)
+
+			return nil
 		}
 
-		astto, _ := base.Assetses().AssetsOf(tx.To.Bytes())
+		astto, err := base.Assetses().AssetsOf(tx.To.Bytes())
+		if err != nil || astto == nil {
+			astto = &AAsset.Assets{ Version:AAsset.DRVer,Avail:0,Vote:0,Locked:0 }
+		}
 
 		// expected
 		if astfrom.Avail < tx.Value || astfrom.Vote < tx.Value {
@@ -37,7 +48,7 @@ func DoTransfer( tx *ATx.Transaction, group *AWorker.TaskBatchGroup, base vdb.CV
 				base.Receipts().DBKey(),
 				receiptKey,
 				ARsp.RawExpectedResponse(APosComm.TxReceiptsNotenough),
-				)
+			)
 
 			return nil
 		}

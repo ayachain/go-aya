@@ -121,7 +121,7 @@ type ATxPool struct {
 }
 
 
-func NewTxPool( ctx context.Context, ind *core.IpfsNode, chainId string, cvfs vdb.CVFS, acc EAccount.Account) *ATxPool {
+func NewTxPool( ctx context.Context, ind *core.IpfsNode, chainId string, cvfs vdb.CVFS, miner ACore.Notary, acc EAccount.Account) *ATxPool {
 
 	adbpath := "/atxpool/" + chainId
 	var nd *merkledag.ProtoNode
@@ -166,6 +166,16 @@ func NewTxPool( ctx context.Context, ind *core.IpfsNode, chainId string, cvfs vd
 		tops = []*AAssets.SortAssets{}
 	}
 
+	oast, err := cvfs.Assetses().AssetsOf(acc.Address.Bytes())
+	if err != nil {
+		oast = &AAssets.Assets{
+			Version:AAssets.DRVer,
+			Avail:0,
+			Locked:0,
+			Vote:0,
+		}
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second  * 5 )
 	defer cancel()
 
@@ -206,6 +216,9 @@ func NewTxPool( ctx context.Context, ind *core.IpfsNode, chainId string, cvfs vd
 			channelTopics:topic.String(),
 			threadCancels:make(map[AtxThreadsName]context.CancelFunc),
 			threadChans:make(map[AtxThreadsName] chan *AKeyStore.ASignedRawMsg),
+			ownerAccount:acc,
+			ownerAsset:oast,
+			notary:miner,
 		}
 	}
 
@@ -231,6 +244,9 @@ configNewDir :
 		channelTopics:topic.String(),
 		threadCancels:make(map[AtxThreadsName]context.CancelFunc),
 		threadChans:make(map[AtxThreadsName] chan *AKeyStore.ASignedRawMsg),
+		ownerAccount:acc,
+		ownerAsset:oast,
+		notary:miner,
 	}
 
 }
@@ -580,7 +596,7 @@ func (pool *ATxPool) judgingMode() {
 	n := 99999999
 
 	for i := 0; i < len(pool.topAssets); i++ {
-		if pool.topAssets[i] != nil && pool.topAssets[i].Addredd == pool.ownerAccount.Address {
+		if pool.topAssets[i] != nil && pool.topAssets[i].Address == pool.ownerAccount.Address {
 			n = i
 			break
 		}

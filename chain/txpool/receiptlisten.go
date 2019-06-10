@@ -17,7 +17,7 @@ func (pool *ATxPool) receiptListen(ctx context.Context) {
 
 		select {
 
-		case rmsg := <- pool.receiptChan :
+		case rmsg := <- pool.threadChans[AtxThreadsNameReceiptListen] :
 
 			pool.packLocker.Lock()
 			defer pool.packLocker.Unlock()
@@ -27,6 +27,7 @@ func (pool *ATxPool) receiptListen(ctx context.Context) {
 			}
 
 			from, err := rmsg.ECRecover()
+			fmt.Println("RCPAddr:" + from.String())
 			if err != nil {
 				break
 			}
@@ -41,6 +42,9 @@ func (pool *ATxPool) receiptListen(ctx context.Context) {
 			if err != nil {
 				break
 			}
+
+			fmt.Println( "TxPoolMiningBlockHash:" + pool.miningBlock.GetHash().String() )
+			fmt.Println( "RcpMBlockHash:" + rcp.MBlockHash.String() )
 
 			if pool.miningBlock.GetHash() != rcp.MBlockHash {
 				break
@@ -92,7 +96,7 @@ func (pool *ATxPool) receiptListen(ctx context.Context) {
 			}
 
 
-			if receiptMap[rcidstr] > pool.ownerAsset.Vote * 3 {
+			if receiptMap[rcidstr] > pool.ownerAsset.Vote * 3 || pool.workmode == AtxPoolWorkModeOblivioned {
 
 				pool.miningBlockLocker.Lock()
 				defer pool.packLocker.Unlock()

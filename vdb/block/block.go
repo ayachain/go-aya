@@ -16,6 +16,13 @@ var (
 	ErrMsgPrefix = errors.New("not a chain info message")
 )
 
+//var (
+//	Genesis = &Block{Index: -4}
+//	Curr 	= &Block{Index: -3}
+//	Latest 	= &Block{Index: -2}
+//	Pending = &Block{Index: -1}
+//)
+
 type Block struct {
 
 	AVdbComm.RawDBCoder	`json:"-"`
@@ -60,12 +67,6 @@ type GenBlock struct {
 	Award map[string]uint64 `json:"award"`
 }
 
-//var (
-//	Genesis = &Block{Index: -4}
-//	Curr 	= &Block{Index: -3}
-//	Latest 	= &Block{Index: -2}
-//	Pending = &Block{Index: -1}
-//)
 
 func ( b *Block ) GetHash() EComm.Hash {
 

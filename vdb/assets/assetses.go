@@ -35,7 +35,14 @@ func (api *aAssetes) DBKey() string {
 }
 
 func (api *aAssetes) VotingCountOf( key []byte ) ( uint64, error ) {
-	return 0,nil
+
+	ast, err := api.AssetsOf(key)
+	if err != nil {
+		return 0, err
+	}
+
+	return ast.Vote, nil
+
 }
 
 func (api *aAssetes) AssetsOf( key []byte ) ( *Assets, error ) {
@@ -95,7 +102,7 @@ func (api *aAssetes) GetLockedTop100() ( []*SortAssets, error ) {
 		}
 
 		assets := &SortAssets{
-			Addredd : EComm.BytesToAddress(topIt.Value()),
+			Address : EComm.BytesToAddress(topIt.Value()),
 			Assets : rcd,
 		}
 

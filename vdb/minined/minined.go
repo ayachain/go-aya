@@ -27,7 +27,7 @@ type Minined struct {
 
 func (md *Minined) Encode() []byte {
 
-	buff := bytes.NewBuffer([]byte{MessagePrefix})
+	buff := bytes.NewBuffer([]byte{})
 	buff.Write( md.MBlockHash.Bytes() )
 	buff.Write( md.RetCID.Bytes() )
 
@@ -36,15 +36,10 @@ func (md *Minined) Encode() []byte {
 
 func (md *Minined) Decode(bs []byte) error {
 
-	if bs[0] != MessagePrefix {
-		return ErrMsgPrefix
-	}
-
 	var err error
-	
-	md.MBlockHash = EComm.BytesToHash(bs[1 : 257])
 
-	md.RetCID, err = cid.Cast(bs[258:])
+	md.MBlockHash = EComm.BytesToHash(bs[0 : 32])
+	md.RetCID, err = cid.Cast(bs[32:])
 
 	if err != nil {
 		return err

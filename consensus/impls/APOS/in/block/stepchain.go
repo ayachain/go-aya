@@ -13,8 +13,7 @@ func NewConsensusStep( cfvs vdb.CVFS, ind *core.IpfsNode ) *AStep.AConsensusStep
 
 	sroot.
 		LinkNext("APOS_In_Block_Signature", SignaturerStep ).
-		LinkNext("APOS_In_Block_Worker", WokerSwitcher).
-		LinkNext("APOS_In_Block_Executor", ExecutorTransaction)
+		LinkNext("APOS_In_Block_Worker", WokerSwitcher)
 
 	return sroot
 }

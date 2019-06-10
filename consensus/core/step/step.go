@@ -63,12 +63,13 @@ func (bl *AConsensusStep) DoConsultation( ctx context.Context, msg interface{}, 
 	go func( stp *AConsensusStep ) {
 
 		if rmsg, err := bl.cfun( msg, bl.cvfs, bl.ind, group ); err != nil {
-			cc <- AConsensusResult{ err, stp.identifier, msg }
+			cc <- AConsensusResult{ err, stp.identifier, rmsg }
 		} else {
 			if bl.next != nil {
-				cc <- <- bl.next.DoConsultation( ctx, rmsg, group )
+				m := <- bl.next.DoConsultation( ctx, rmsg, group )
+				cc <- m
 			} else {
-				cc <- AConsensusResult{ nil, stp.identifier, msg }
+				cc <- AConsensusResult{ nil, stp.identifier, rmsg }
 			}
 		}
 

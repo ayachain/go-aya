@@ -114,6 +114,9 @@ func (pool *ATxPool) txPackageThread(ctx context.Context) {
 				}
 
 				pool.miningBlock = mblk
+
+				fmt.Println( "PackageMiningBlockHash:" + pool.miningBlock.GetHash().String() )
+
 				if err := pool.DoBroadcast(mblk); err != nil {
 					break
 				}

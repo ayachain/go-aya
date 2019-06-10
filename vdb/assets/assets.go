@@ -19,7 +19,7 @@ type Assets struct {
 
 type SortAssets struct {
 	*Assets
-	Addredd		EComm.Address
+	Address		EComm.Address
 }
 
 func NewAssets( avail, vote, locked uint64 ) *Assets {

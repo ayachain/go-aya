@@ -24,7 +24,5 @@ type AssetsAPI interface {
 
 	AssetsOf( key []byte ) ( *Assets, error )
 
-	AvailBalanceMove( from, to []byte, v uint64 ) ( aftf, aftt *Assets, err error )
-
 	GetLockedTop100() ( []*SortAssets, error )
 }

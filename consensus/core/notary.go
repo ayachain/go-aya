@@ -17,9 +17,8 @@
 package core
 
 import (
-	ACStep "github.com/ayachain/go-aya/consensus/core/step"
-	AKeyStore "github.com/ayachain/go-aya/keystore"
-	AvdbComm "github.com/ayachain/go-aya/vdb/common"
+	AGroup "github.com/ayachain/go-aya/consensus/core/worker"
+	AMsgMBlock "github.com/ayachain/go-aya/vdb/mblock"
 )
 
 type Notary interface {
@@ -28,7 +27,5 @@ type Notary interface {
 
 	StartWorking()
 
-	SendTransaction( AvdbComm.RawDBCoder ) error
-
-	OnReceiveRawMessage( msg *AKeyStore.ASignedRawMsg ) <- chan ACStep.AConsensusResult
+	MiningBlock( block *AMsgMBlock.MBlock ) (*AGroup.TaskBatchGroup, error)
 }

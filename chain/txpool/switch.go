@@ -1,7 +1,6 @@
 package txpool
 
 import (
-	"github.com/ipfs/go-cid"
 	"github.com/pkg/errors"
 
 	AKeyStore "github.com/ayachain/go-aya/keystore"
@@ -22,26 +21,26 @@ func (pool *ATxPool) RawMessageSwitch( msg *AKeyStore.ASignedRawMsg ) error  {
 
 	case AMsgBlock.MessagePrefix:
 
-		result := <- pool.notary.OnReceiveRawMessage(msg)
-		if result.Err != nil {
-			// consensus failed
-		}
-
-		block := AMsgBlock.Block{}
-		if err := block.RawMessageDecode( msg.Content ); err != nil {
-			return err
-		}
-
-		bcid, err:= cid.Decode(block.ExtraData)
-		if err != nil {
-			return err
-		}
-
-		if err := pool.UpdateBestBlock(bcid); err != nil {
-			return err
-		}
-
-		break
+		//result := <- pool.notary.OnReceiveRawMessage(msg)
+		//if result.Err != nil {
+		//	// consensus failed
+		//}
+		//
+		//block := AMsgBlock.Block{}
+		//if err := block.RawMessageDecode( msg.Content ); err != nil {
+		//	return err
+		//}
+		//
+		//bcid, err:= cid.Decode(block.ExtraData)
+		//if err != nil {
+		//	return err
+		//}
+		//
+		//if err := pool.UpdateBestBlock(bcid); err != nil {
+		//	return err
+		//}
+		//
+		//break
 
 
 	case ATransaction.MessagePrefix:
@@ -66,9 +65,11 @@ func (pool *ATxPool) RawMessageSwitch( msg *AKeyStore.ASignedRawMsg ) error  {
 
 
 	case AMsgMinied.MessagePrefix :
-		pool.receiptChan <- msg
+
+		pool.threadChans[AtxThreadsNameMining] <- msg
 
 	default:
+
 		return errors.New("undecode raw data")
 
 	}

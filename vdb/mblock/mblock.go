@@ -37,3 +37,23 @@ func (mb *MBlock) Confirm( bindex uint64,  cid cid.Cid ) *ABlock.Block {
 	return blk
 
 }
+
+
+func ( b *MBlock ) RawMessageEncode() []byte {
+
+	buff := bytes.NewBuffer([]byte{MessagePrefix})
+
+	buff.Write( b.Encode() )
+
+	return buff.Bytes()
+}
+
+func ( b *MBlock ) RawMessageDecode( bs []byte ) error {
+
+	if bs[0] != MessagePrefix {
+		return ErrMsgPrefix
+	}
+
+	return b.Decode(bs[1:])
+
+}

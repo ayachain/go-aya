@@ -3,9 +3,9 @@ package chain
 import (
 	"context"
 	"errors"
-	"fmt"
 	"github.com/ayachain/go-aya/chain/txpool"
 	ACore "github.com/ayachain/go-aya/consensus/core"
+	ACIMPL "github.com/ayachain/go-aya/consensus/impls"
 	AKeyStore "github.com/ayachain/go-aya/keystore"
 	"github.com/ayachain/go-aya/vdb"
 	ABlock "github.com/ayachain/go-aya/vdb/block"
@@ -13,7 +13,6 @@ import (
 	ATransaction "github.com/ayachain/go-aya/vdb/transaction"
 	EAccount "github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ipfs/go-ipfs/core"
 )
 
@@ -79,23 +78,22 @@ func AddChainLink( genBlock *ABlock.GenBlock, ind *core.IpfsNode, acc EAccount.A
 		return ErrCantLinkToChainExpected
 	}
 
-
-	testSet, _ := vdbfs.Assetses().AssetsOf(common.HexToAddress("0xD2bfC9AC49F3F0CfC1cBDF1cf579593D6De85435").Bytes())
-	fmt.Println(testSet.Avail)
-
-	topics := fmt.Sprintf("Aya 0.0.1_%v", genBlock.ChainID)
-	topics = crypto.Keccak256Hash([]byte(topics)).String()
+	notary, err := ACIMPL.CreateNotary( genBlock.Consensus, vdbfs, ind )
+	if err != nil {
+		return err
+	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	ac := &aChain{
 		INode:ind,
+		Notary:notary,
 		ctx:ctx,
 		ctxCancel:cancel,
 	}
 
 	// config txpool
 	tpctx, _ := context.WithCancel(ctx)
-	ac.TxPool = txpool.NewTxPool( tpctx, ind, genBlock.ChainID, vdbfs, acc)
+	ac.TxPool = txpool.NewTxPool( tpctx, ind, genBlock.ChainID, vdbfs, notary, acc)
 
 	if err := ac.OpenChannel(); err != nil {
 		return err
@@ -125,7 +123,7 @@ func (chain *aChain) Test() error {
 
 	tx := &ATransaction.Transaction{}
 	tx.BlockIndex = 0
-	tx.From = common.HexToAddress("0x341f244DDd50f51187a6036b3BDB4FCA9cAFeE16")
+	tx.From = common.HexToAddress("0xfC8Bc1E33131Bd9586C8fB8d9E96955Eb1210C67")
 	tx.To = common.HexToAddress("0x341f244DDd50f51187a6036b3BDB4FCA9cAFeE16")
 	tx.Value = 10000
 	tx.Data = nil

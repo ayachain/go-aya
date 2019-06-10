@@ -6,9 +6,8 @@ import (
 	ACStep "github.com/ayachain/go-aya/consensus/core/step"
 	AGroup "github.com/ayachain/go-aya/consensus/core/worker"
 	APOSInBlock "github.com/ayachain/go-aya/consensus/impls/APOS/in/block"
-	AKeyStore "github.com/ayachain/go-aya/keystore"
 	"github.com/ayachain/go-aya/vdb"
-	AMsgBlock "github.com/ayachain/go-aya/vdb/block"
+	AMsgMBlock "github.com/ayachain/go-aya/vdb/mblock"
 	"github.com/ipfs/go-ipfs/core"
 	"github.com/pkg/errors"
 )
@@ -16,6 +15,7 @@ import (
 
 var (
 	ErrNotSupportMessageTypeExpected = errors.New("not support message type")
+	ErrNotExistConsensusRule = errors.New("not found rule")
 )
 
 type APOSConsensusNotary struct {
@@ -39,7 +39,7 @@ func NewAPOSConsensusNotary( m vdb.CVFS, ind *core.IpfsNode ) *APOSConsensusNota
 		ccmap:make(map[byte]*ACStep.AConsensusStep),
 	}
 
-	notary.ccmap[AMsgBlock.MessagePrefix] = APOSInBlock.NewConsensusStep(m, ind)
+	notary.ccmap[AMsgMBlock.MessagePrefix] = APOSInBlock.NewConsensusStep(m, ind)
 
 	return notary
 }
@@ -50,34 +50,26 @@ func (n *APOSConsensusNotary) FireYou() {
 }
 
 
-func (n *APOSConsensusNotary) OnReceiveRawMessage( msg *AKeyStore.ASignedRawMsg ) <- chan ACStep.AConsensusResult {
+func (n *APOSConsensusNotary) MiningBlock( block *AMsgMBlock.MBlock ) (*AGroup.TaskBatchGroup, error) {
 
-	replay := make(chan ACStep.AConsensusResult)
+	subcc, exist := n.ccmap[AMsgMBlock.MessagePrefix]
 
-	subcc, exist := n.ccmap[msg.Content[0]]
 	if !exist {
-		replay <- ACStep.AConsensusResult{Err:ErrNotSupportMessageTypeExpected, StepIdentifier:"APOS-Root", Msg:msg}
-		return replay
+		return nil, ErrNotExistConsensusRule
 	}
 
-	go func() {
+	ctx, cancel := context.WithCancel(n.workctx)
 
-		group := AGroup.NewGroup()
+	defer cancel()
 
-		select {
 
-		case <- n.workctx.Done():
-			break
+	group := AGroup.NewGroup()
+	ret := <- subcc.DoConsultation(ctx, block, group)
 
-		case ret := <- subcc.DoConsultation( n.workctx, msg, group ):
+	if ret.Err != nil {
+		return nil, ret.Err
+	}
 
-			if ret.Err == nil {
+	return group, nil
 
-			}
-
-		}
-
-	}()
-
-	return replay
 }
