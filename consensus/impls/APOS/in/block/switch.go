@@ -49,7 +49,6 @@ func WokerSwitcher( msg interface{}, vdb Avdb.CVFS, ind *core.IpfsNode, group *A
 				return nil, err
 			}
 		}
-
 	}
 
 	return group, nil

@@ -19,15 +19,14 @@ func (pool *ATxPool) receiptListen(ctx context.Context) {
 
 		case rmsg := <- pool.threadChans[AtxThreadsNameReceiptListen] :
 
-			pool.packLocker.Lock()
-			defer pool.packLocker.Unlock()
+			//pool.packLocker.Lock()
+			//defer pool.packLocker.Unlock()
 
 			if rmsg.Content[0] != AMsgMinied.MessagePrefix {
 				break
 			}
 
 			from, err := rmsg.ECRecover()
-			fmt.Println("RCPAddr:" + from.String())
 			if err != nil {
 				break
 			}
@@ -43,9 +42,6 @@ func (pool *ATxPool) receiptListen(ctx context.Context) {
 				break
 			}
 
-			fmt.Println( "TxPoolMiningBlockHash:" + pool.miningBlock.GetHash().String() )
-			fmt.Println( "RcpMBlockHash:" + rcp.MBlockHash.String() )
-
 			if pool.miningBlock.GetHash() != rcp.MBlockHash {
 				break
 			}
@@ -56,7 +52,7 @@ func (pool *ATxPool) receiptListen(ctx context.Context) {
 			exist, err := pool.storage.Has(receiptKey, nil)
 			if err != nil {
 				pool.Close()
-				pool.KillByErr(ErrStorageLowAPIExpected)
+				pool.PowerOff(ErrStorageLowAPIExpected)
 			}
 
 			rcidstr := rcp.RetCID.String()
@@ -65,11 +61,11 @@ func (pool *ATxPool) receiptListen(ctx context.Context) {
 
 				value, err := pool.storage.Get(receiptKey, nil)
 				if err != nil {
-					pool.KillByErr(ErrStorageLowAPIExpected)
+					pool.PowerOff(ErrStorageLowAPIExpected)
 				}
 
 				if json.Unmarshal(value, receiptMap) != nil {
-					pool.KillByErr(ErrStorageRawDataDecodeExpected)
+					pool.PowerOff(ErrStorageRawDataDecodeExpected)
 				}
 
 				ocount, vexist := receiptMap[rcidstr]
@@ -98,9 +94,6 @@ func (pool *ATxPool) receiptListen(ctx context.Context) {
 
 			if receiptMap[rcidstr] > pool.ownerAsset.Vote * 3 || pool.workmode == AtxPoolWorkModeOblivioned {
 
-				pool.miningBlockLocker.Lock()
-				defer pool.packLocker.Unlock()
-
 				batch := &leveldb.Batch{}
 				batch.Delete(receiptKey)
 				batch.Delete(rcp.MBlockHash.Bytes())
@@ -110,8 +103,24 @@ func (pool *ATxPool) receiptListen(ctx context.Context) {
 					return
 				}
 
-				pool.miningBlock.ExtraData = rcidstr
 
+				cblock := pool.miningBlock.Confirm(rcidstr)
+
+				if err := pool.DoBroadcast(cblock); err != nil {
+					break
+				}
+
+				//c, exist := pool.threadChans[AtxThreadsNameBlockPacage]
+				//if exist {
+				//
+				//	signmsg, err := pool.sign(cblock)
+				//
+				//	if err != nil {
+				//		break
+				//	}
+				//
+				//	c <- signmsg
+				//}
 			}
 
 		}

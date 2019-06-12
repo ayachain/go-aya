@@ -73,7 +73,7 @@ func AddChainLink( genBlock *ABlock.GenBlock, ind *core.IpfsNode, acc EAccount.A
 		return err
 	}
 
-	vdbfs, err := vdb.LinkVFS( baseCid, ind )
+	vdbfs, err := vdb.LinkVFS(genBlock.ChainID, baseCid, ind )
 	if err != nil {
 		return ErrCantLinkToChainExpected
 	}
@@ -118,7 +118,7 @@ func (chain *aChain) SendRawMessage( coder AvdbComm.AMessageEncode ) error {
 	return chain.TxPool.DoBroadcast( coder )
 }
 
-
+var tid uint64 = 0
 func (chain *aChain) Test() error {
 
 	tx := &ATransaction.Transaction{}
@@ -129,7 +129,9 @@ func (chain *aChain) Test() error {
 	tx.Data = nil
 	tx.Steps = 50
 	tx.Price = 1
-	tx.Tid = 0
+	tx.Tid = tid
+
+	tid ++
 
 	acc, err := AKeyStore.FindAccount("0xfC8Bc1E33131Bd9586C8fB8d9E96955Eb1210C67")
 	if err != nil {

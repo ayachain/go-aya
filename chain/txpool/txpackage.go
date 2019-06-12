@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	AKeyStore "github.com/ayachain/go-aya/keystore"
+	"github.com/ayachain/go-aya/vdb/common"
 	AMsgMBlock "github.com/ayachain/go-aya/vdb/mblock"
 	ATx "github.com/ayachain/go-aya/vdb/transaction"
 	blocks "github.com/ipfs/go-block-format"
@@ -57,10 +58,14 @@ func (pool *ATxPool) txPackageThread(ctx context.Context) {
 
 				count := uint16(0)
 				var txs []ATx.Transaction
+
 				it := poolTransaction.NewIterator(&util.Range{Start: TxHashIteratorStart, Limit: TxHashIteratorLimit}, nil)
+
+				loopCount := uint64(0)
 
 				for it.Next() {
 
+					loopCount ++
 					signedmsg, err := AKeyStore.BytesToRawMsg(it.Value())
 					if err != nil {
 						poolTransaction.Delete(it.Key(), nil)
@@ -89,6 +94,15 @@ func (pool *ATxPool) txPackageThread(ctx context.Context) {
 					if count >= PackageTxsLimit {
 						break
 					}
+
+				}
+
+				newSize := pool.Size() - loopCount
+				if newSize <= 0 {
+					poolTransaction.Put(TxCount, common.BigEndianBytes( uint64(0) ), nil )
+
+				} else {
+					poolTransaction.Put(TxCount, common.BigEndianBytes( newSize ), nil )
 				}
 
 				//commit block to ipfs block
@@ -114,22 +128,8 @@ func (pool *ATxPool) txPackageThread(ctx context.Context) {
 				}
 
 				pool.miningBlock = mblk
-
-				fmt.Println( "PackageMiningBlockHash:" + pool.miningBlock.GetHash().String() )
-
 				if err := pool.DoBroadcast(mblk); err != nil {
 					break
-				}
-
-				c, exist := pool.threadChans[AtxThreadsNameMining]
-				if exist {
-
-					signmsg, err := pool.sign(mblk)
-					if err != nil {
-						break
-					}
-
-					c <- signmsg
 				}
 
 			} else {

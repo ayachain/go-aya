@@ -3,7 +3,10 @@ package txpool
 import (
 	"context"
 	"fmt"
+	ATaskGroup "github.com/ayachain/go-aya/consensus/core/worker"
+	AMsgBlock "github.com/ayachain/go-aya/vdb/block"
 	"github.com/ipfs/go-cid"
+	"time"
 )
 
 func (pool *ATxPool) blockPackageThread(ctx context.Context) {
@@ -17,27 +20,93 @@ func (pool *ATxPool) blockPackageThread(ctx context.Context) {
 		case <-ctx.Done():
 			return
 
-		default:
+		case msg := <- pool.threadChans[AtxThreadsNameBlockPacage] :
 
-			pool.miningBlockLocker.Lock()
-			defer pool.miningBlockLocker.Unlock()
+			if pool.miningBlock != nil {
 
-			if pool.miningBlock != nil && len(pool.miningBlock.ExtraData) > 0 {
-
-				if err := pool.DoBroadcast(pool.miningBlock); err != nil {
+				if !msg.Verify() {
 					break
 				}
 
-				ucide, err := cid.Decode(pool.miningBlock.ExtraData)
+				cblock := &AMsgBlock.Block{}
+				if err := cblock.RawMessageDecode(msg.Content); err != nil {
+					break
+				}
+
+
+				bcid, err := cid.Decode(cblock.ExtraData)
 				if err != nil {
 					break
 				}
 
-				if err := pool.UpdateBestBlock( ucide ); err != nil {
+
+				bctx, cancel := context.WithTimeout(context.TODO(), time.Second  * 60)
+				defer cancel()
+
+
+				batchBlock, err := pool.ind.Blocks.GetBlock( bctx, bcid )
+				if err != nil {
+					fmt.Println(err)
 					break
 				}
 
-				pool.miningBlock = nil
+
+				group := ATaskGroup.NewGroup()
+				if err := group.Decode(batchBlock.RawData()); err != nil {
+					fmt.Println(err)
+					break
+				}
+
+
+				putBlockTransaction, err := pool.cvfs.OpenTransaction()
+				if err != nil {
+					fmt.Println(err)
+					break
+				}
+
+
+				if err := putBlockTransaction.Write(group); err != nil {
+					fmt.Println(err)
+					break
+				}
+
+
+				if err := putBlockTransaction.Commit(); err != nil {
+					fmt.Println(err)
+					break
+				}
+
+
+				if err := pool.cvfs.Blocks().AppendBlocks( cblock ); err != nil {
+					fmt.Println(err)
+					break
+				}
+
+				cctx, ccancel := context.WithTimeout(context.TODO(), time.Second  * 60)
+				defer ccancel()
+
+
+				fllcid, err := pool.cvfs.Flush(cctx)
+				if err != nil {
+					fmt.Println(err)
+					break
+				}
+
+				if err := pool.cvfs.Indexes().PutIndexBy( cblock.Index, cblock.GetHash(), fllcid ); err != nil {
+					fmt.Println(err)
+					break
+				}
+
+				if err := pool.UpdateBestBlock(); err != nil {
+
+					fmt.Println("UpdateBestBlockErr:" + err.Error())
+
+				} else {
+
+					fmt.Printf( "ConfirmBlock:%v FullCID:%v\n", cblock.Index, fllcid)
+
+				}
+
 			}
 
 		}

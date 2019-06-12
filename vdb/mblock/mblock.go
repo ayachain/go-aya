@@ -5,7 +5,6 @@ import (
 	"encoding/gob"
 	"errors"
 	ABlock "github.com/ayachain/go-aya/vdb/block"
-	"github.com/ipfs/go-cid"
 )
 
 const MessagePrefix = byte('m')
@@ -18,12 +17,12 @@ type MBlock struct {
 	ABlock.Block
 }
 
-func (mb *MBlock) Confirm( bindex uint64,  cid cid.Cid ) *ABlock.Block {
+func (mb *MBlock) Confirm( groupCid string ) *ABlock.Block {
 
 	blk := &ABlock.Block{}
 	var buf bytes.Buffer
 
-	if err := gob.NewEncoder(&buf).Encode(mb); err != nil {
+	if err := gob.NewEncoder(&buf).Encode(mb.Block); err != nil {
 		return nil
 	}
 
@@ -31,8 +30,7 @@ func (mb *MBlock) Confirm( bindex uint64,  cid cid.Cid ) *ABlock.Block {
 		return nil
 	}
 
-	blk.ExtraData = cid.String()
-	blk.Index = bindex
+	blk.ExtraData = groupCid
 
 	return blk
 

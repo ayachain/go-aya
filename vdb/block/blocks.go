@@ -4,7 +4,7 @@ import (
 	"errors"
 	AWork "github.com/ayachain/go-aya/consensus/core/worker"
 	"github.com/ayachain/go-aya/vdb/common"
-	"github.com/ayachain/go-aya/vdb/headers"
+	AIndexes "github.com/ayachain/go-aya/vdb/indexes"
 	EComm "github.com/ethereum/go-ethereum/common"
 	"github.com/ipfs/go-mfs"
 	"github.com/syndtr/goleveldb/leveldb"
@@ -18,13 +18,13 @@ type aBlocks struct {
 	BlocksAPI
 	*mfs.Directory
 
-	headAPI headers.HeadersAPI
+	headAPI AIndexes.IndexesAPI
 	rawdb *leveldb.DB
 
 	RWLocker sync.RWMutex
 }
 
-func CreateServices( mdir *mfs.Directory, hapi headers.HeadersAPI) BlocksAPI {
+func CreateServices( mdir *mfs.Directory, hapi AIndexes.IndexesAPI) BlocksAPI {
 
 	api := &aBlocks{
 		Directory:mdir,
@@ -48,7 +48,7 @@ func (blks *aBlocks) GetBlocks( hashOrIndex...interface{} ) ([]*Block, error) {
 
 		case uint64:
 
-			hd, err := blks.headAPI.HeaderOf(v.(uint64))
+			hd, err := blks.headAPI.GetIndex(v.(uint64))
 			if err != nil {
 				return nil, err
 			}
@@ -116,7 +116,7 @@ func (blks *aBlocks) Close() {
 
 }
 
-func (blks *aBlocks) AppendBlocks( group *AWork.TaskBatchGroup, blocks...*Block ) error {
+func (blks *aBlocks) AppendBlocks( blocks...*Block ) error {
 
 	if len(blocks) <= 0 {
 		return nil
@@ -124,30 +124,30 @@ func (blks *aBlocks) AppendBlocks( group *AWork.TaskBatchGroup, blocks...*Block 
 
 	var latesthash EComm.Hash
 
+	batch := &leveldb.Batch{}
+
 	for _, v := range blocks {
 
 		latesthash = v.GetHash()
 
 		rawvalue := v.Encode()
 
-		group.Put( DBPath, latesthash.Bytes(), rawvalue )
+		batch.Put( latesthash.Bytes(), rawvalue )
 
 	}
 
-	group.Put(DBPath, []byte(BestBlockKey), latesthash.Bytes())
+	batch.Put([]byte(BestBlockKey), latesthash.Bytes())
 
-	return nil
+	return blks.rawdb.Write(batch, nil)
 }
 
-
 func (blks *aBlocks) WriteGenBlock( group *AWork.TaskBatchGroup, gen *GenBlock ) error {
-
 
 	hash := gen.GetHash().Bytes()
 
 	group.Put( DBPath, hash, gen.Encode() )
 
-	group.Put(DBPath, []byte(BestBlockKey), hash)
+	group.Put( DBPath, []byte(BestBlockKey), hash)
 
 	return nil
 

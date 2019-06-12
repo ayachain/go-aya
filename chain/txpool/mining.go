@@ -34,7 +34,7 @@ func (pool *ATxPool) miningThread(ctx context.Context) {
 					break
 				}
 
-				fmt.Println( "MiningBlockHash:" + mblock.GetHash().String() )
+				pool.miningBlock = mblock
 
 				group, err := pool.notary.MiningBlock(mblock)
 				if err != nil {
@@ -47,8 +47,6 @@ func (pool *ATxPool) miningThread(ctx context.Context) {
 					break
 				}
 
-				fmt.Println( "MininedBlockHash:" + mblock.GetHash().String() )
-
 				mRet := &AMsgMined.Minined{
 					MBlockHash:mblock.GetHash(),
 					RetCID:gblock.Cid(),
@@ -58,17 +56,16 @@ func (pool *ATxPool) miningThread(ctx context.Context) {
 					pool.PowerOff(err)
 				}
 
-
-				c, exist := pool.threadChans[AtxThreadsNameReceiptListen]
-				if exist {
-
-					signmsg, err := pool.sign(mRet)
-					if err != nil {
-						break
-					}
-
-					c <- signmsg
-				}
+				//c, exist := pool.threadChans[AtxThreadsNameReceiptListen]
+				//if exist {
+				//
+				//	signmsg, err := pool.sign(mRet)
+				//	if err != nil {
+				//		break
+				//	}
+				//
+				//	c <- signmsg
+				//}
 
 			}
 		}

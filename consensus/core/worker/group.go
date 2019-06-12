@@ -5,8 +5,11 @@ import (
 	"bytes"
 	"encoding/binary"
 	"encoding/json"
+	"fmt"
 	AVdbComm "github.com/ayachain/go-aya/vdb/common"
 	"github.com/syndtr/goleveldb/leveldb"
+	"strconv"
+	"strings"
 )
 
 // In order to ensure that the final task group can write concurrently, the
@@ -34,11 +37,14 @@ func (tbg *TaskBatchGroup) Encode() []byte {
 
 	batchBuff := bytes.NewBuffer([]byte{})
 
-	head := map[string]int{}
+	head := []string{}
 
 	for k, batch := range tbg.batchs {
+
 		batchbs := batch.Dump()
-		head[k] = len(batchbs)
+
+		head = append(head, fmt.Sprintf("%s:%d", k, len(batchbs)))
+
 		batchBuff.Write(batchbs)
 	}
 
@@ -73,15 +79,22 @@ func (tgb *TaskBatchGroup) Decode( bs []byte ) error {
 		return err
 	}
 
-	head := map[string]int{}
-	if err := json.Unmarshal(hcbs, head); err != nil {
+	head := []string{}
+	if err := json.Unmarshal(hcbs, &head); err != nil {
 		return err
 	}
 
-	for k, v := range head {
+	for _, h := range head {
+
+		arr := strings.SplitN(h,":", 2)
+		k := arr[0]
+
+		v, err := strconv.ParseUint( arr[1], 10,64)
+		if err != nil {
+			return err
+		}
 
 		tbs := make([]byte, v)
-
 		if _, err := buff.Read(tbs); err != nil {
 			return err
 		}

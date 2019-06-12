@@ -87,6 +87,7 @@ const (
 	AtxThreadsNameTransactionCommit AtxThreadsName = "TransactionCommitThread"
 	AtxThreadsNameMining			AtxThreadsName = "MiningThread"
 	AtxThreadsNameChannelListen		AtxThreadsName = "ChannelListenThread"
+	AtxThreadsNameExector			AtxThreadsName = "BlockExectorThread"
 )
 
 type ATxPool struct {
@@ -101,7 +102,6 @@ type ATxPool struct {
 	channelTopics string
 
 	miningBlock *AMsgMBlock.MBlock
-	miningBlockLocker sync.Mutex
 
 	/// Top100 changes only when the block is updated. In order to reduce the reading and writing frequency
 	/// of the database, we cache this information here and update it when the block is actually out.
@@ -377,21 +377,28 @@ func (pool *ATxPool) runthreads( names ... AtxThreadsName ) {
 }
 
 func (pool *ATxPool) PowerOff(err error) {
-	log.Error(err)
+	fmt.Println(err)
 	pool.workcancel()
 	pool.poweron = false
 }
 
-func (pool *ATxPool) UpdateBestBlock( bcid cid.Cid ) error {
+func (pool *ATxPool) UpdateBestBlock( ) error {
 
-	pool.packLocker.Lock()
-	defer pool.packLocker.Unlock()
+	idx, err := pool.cvfs.Indexes().GetIndex( pool.miningBlock.Index )
+	if err != nil {
+		return err
+	}
 
-	if err := pool.cvfs.SeekToBlock( bcid ); err != nil {
+	if err := pool.cvfs.SeekToBlock( idx.FullCID ); err != nil {
 		return err
 	}
 
 	ast, err := pool.cvfs.Assetses().AssetsOf(pool.ownerAccount.Address.Bytes())
+
+	if ast != nil {
+		fmt.Printf("Avail:%d\tVote:%d\n", ast.Avail, ast.Vote)
+	}
+
 	if err != nil {
 		return err
 	}
@@ -403,6 +410,7 @@ func (pool *ATxPool) UpdateBestBlock( bcid cid.Cid ) error {
 
 	pool.topAssets = tops
 	pool.ownerAsset = ast
+	pool.miningBlock = nil
 
 	return nil
 }
@@ -461,7 +469,7 @@ func (pool *ATxPool) AddConfrimReceipt( mbhash EComm.Hash, retcid cid.Cid, from 
 	exist, err := pool.storage.Has(receiptKey, nil)
 	if err != nil {
 		pool.Close()
-		pool.KillByErr(ErrStorageLowAPIExpected)
+		pool.PowerOff(ErrStorageLowAPIExpected)
 	}
 
 	rcidstr := retcid.String()
@@ -470,11 +478,11 @@ func (pool *ATxPool) AddConfrimReceipt( mbhash EComm.Hash, retcid cid.Cid, from 
 
 		value, err := pool.storage.Get(receiptKey, nil)
 		if err != nil {
-			pool.KillByErr(ErrStorageLowAPIExpected)
+			pool.PowerOff(ErrStorageLowAPIExpected)
 		}
 
 		if json.Unmarshal(value, receiptMap) != nil {
-			pool.KillByErr(ErrStorageRawDataDecodeExpected)
+			pool.PowerOff(ErrStorageRawDataDecodeExpected)
 		}
 
 		ocount, vexist := receiptMap[rcidstr]
@@ -506,11 +514,11 @@ func (pool *ATxPool) AddConfrimReceipt( mbhash EComm.Hash, retcid cid.Cid, from 
 
 	rmapbs, err := json.Marshal(receiptMap)
 	if err != nil {
-		pool.KillByErr(ErrStorageLowAPIExpected)
+		pool.PowerOff(ErrStorageLowAPIExpected)
 	}
 
 	if err := pool.storage.Put( receiptKey, rmapbs, nil ); err != nil {
-		pool.KillByErr(ErrStorageLowAPIExpected)
+		pool.PowerOff(ErrStorageLowAPIExpected)
 	}
 
 }
@@ -539,14 +547,6 @@ func (pool *ATxPool) AddRawTransaction( tx *AKeyStore.ASignedRawMsg ) error {
 
 	return nil
 }
-
-/// When an underlying invocation error occurs, the error cannot be handled or recovered,
-/// and the program can only be killed before more errors are caused.
-func (pool *ATxPool) KillByErr( err error ) {
-	pool.Close()
-	panic(err)
-}
-
 
 func (pool *ATxPool) Size() uint64 {
 
@@ -650,15 +650,15 @@ func (pool *ATxPool) reduction() {
 
 		dbtransaction, err := pool.storage.OpenTransaction()
 		if err != nil {
-			pool.KillByErr(err)
+			pool.PowerOff(err)
 		}
 
 		if err := dbtransaction.Write(batch, nil); err != nil {
-			pool.KillByErr(err)
+			pool.PowerOff(err)
 		}
 
 		if err := dbtransaction.Commit(); err != nil {
-			pool.KillByErr(err)
+			pool.PowerOff(err)
 		}
 
 	}

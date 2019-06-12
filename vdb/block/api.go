@@ -15,7 +15,7 @@ type BlocksAPI interface {
 
 	BestBlock()	*Block
 
-	AppendBlocks( group *AWork.TaskBatchGroup, blocks...*Block ) error
+	AppendBlocks( blocks...*Block ) error
 
 	WriteGenBlock( group *AWork.TaskBatchGroup, gen *GenBlock ) error
 

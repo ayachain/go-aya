@@ -19,30 +19,6 @@ func (pool *ATxPool) RawMessageSwitch( msg *AKeyStore.ASignedRawMsg ) error  {
 
 	switch msg.Content[0] {
 
-	case AMsgBlock.MessagePrefix:
-
-		//result := <- pool.notary.OnReceiveRawMessage(msg)
-		//if result.Err != nil {
-		//	// consensus failed
-		//}
-		//
-		//block := AMsgBlock.Block{}
-		//if err := block.RawMessageDecode( msg.Content ); err != nil {
-		//	return err
-		//}
-		//
-		//bcid, err:= cid.Decode(block.ExtraData)
-		//if err != nil {
-		//	return err
-		//}
-		//
-		//if err := pool.UpdateBestBlock(bcid); err != nil {
-		//	return err
-		//}
-		//
-		//break
-
-
 	case ATransaction.MessagePrefix:
 
 		if err := pool.AddRawTransaction( msg ); err != nil {
@@ -52,21 +28,18 @@ func (pool *ATxPool) RawMessageSwitch( msg *AKeyStore.ASignedRawMsg ) error  {
 		break
 
 
+	case AMsgBlock.MessagePrefix:
+		pool.threadChans[AtxThreadsNameBlockPacage] <- msg
+
+	case AMsgMinied.MessagePrefix:
+		pool.threadChans[AtxThreadsNameReceiptListen] <- msg
+
 	case AMsgMBlock.MessagePrefix:
-		{
-
-		}
-
+		pool.threadChans[AtxThreadsNameMining] <- msg
 
 	case AMsgInfo.MessagePrefix :
-		{
-
-		}
 
 
-	case AMsgMinied.MessagePrefix :
-
-		pool.threadChans[AtxThreadsNameMining] <- msg
 
 	default:
 

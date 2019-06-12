@@ -5,10 +5,10 @@ import (
 	"errors"
 	"fmt"
 	AWrok "github.com/ayachain/go-aya/consensus/core/worker"
+	AIndexes "github.com/ayachain/go-aya/vdb/indexes"
 	AAssetses "github.com/ayachain/go-aya/vdb/assets"
 	ABlock "github.com/ayachain/go-aya/vdb/block"
 	AVdbComm "github.com/ayachain/go-aya/vdb/common"
-	AHeader "github.com/ayachain/go-aya/vdb/headers"
 	AReceipts "github.com/ayachain/go-aya/vdb/receipt"
 	ATx "github.com/ayachain/go-aya/vdb/transaction"
 	EComm "github.com/ethereum/go-ethereum/common"
@@ -28,13 +28,13 @@ var (
 type CVFS interface {
 	Close()
 	Blocks() 					ABlock.BlocksAPI		/// Body
-	Headers() 					AHeader.HeadersAPI		/// Indexes
 	Receipts() 					AReceipts.ReceiptsAPI	/// Receipt
 	Assetses() 					AAssetses.AssetsAPI		/// Asset
 	Transactions() 				ATx.TransactionAPI		/// Transaction
 	OpenTransaction() 			(*Transaction, error)	/// Open Transaction to commit writing
 	Flush(context.Context ) 	(cid.Cid, error)		/// Flush root cid
 	SeekToBlock( bcid cid.Cid )  error
+	Indexes()					AIndexes.IndexesAPI
 }
 
 type aCVFS struct {
@@ -46,6 +46,8 @@ type aCVFS struct {
 	ctxCancel context.CancelFunc
 
 	servies map[string]AVdbComm.VDBSerices
+
+	indexServices AIndexes.IndexesAPI
 }
 
 
@@ -53,12 +55,8 @@ func CreateVFS( block *ABlock.GenBlock, ind *core.IpfsNode ) (cid.Cid, error) {
 
 	var err error
 
-	cvfs, err := LinkVFS( cid.Undef, ind)
+	cvfs, err := LinkVFS(block.ChainID, cid.Undef, ind)
 	defer cvfs.Close()
-
-	if err != nil {
-		return cid.Undef, err
-	}
 
 	genBatchGroup := AWrok.NewGroup()
 
@@ -70,14 +68,6 @@ func CreateVFS( block *ABlock.GenBlock, ind *core.IpfsNode ) (cid.Cid, error) {
 		genBatchGroup.Put( cvfs.Assetses().DBKey(), EComm.HexToAddress(addr).Bytes(), assetBn )
 
 	}
-
-	// Header
-	genBlockHash := block.GetHash()
-	err = cvfs.Headers().AppendHeaders(genBatchGroup, &AHeader.Header{BlockIndex:0, Hash:genBlockHash})
-	if err != nil {
-		return cid.Undef, err
-	}
-
 
 	// Block
 	err = cvfs.Blocks().WriteGenBlock( genBatchGroup, block )
@@ -98,12 +88,24 @@ func CreateVFS( block *ABlock.GenBlock, ind *core.IpfsNode ) (cid.Cid, error) {
 		return cid.Undef, err
 	}
 
-	return cvfs.Flush(context.TODO())
+	// Indexes
+	baseCid, err := cvfs.Flush(context.TODO())
+	if err != nil {
+		return cid.Undef, err
+	}
+
+	if err := cvfs.Indexes().PutIndexBy( 0, block.GetHash(), baseCid); err != nil {
+		return cid.Undef, err
+	}
+
+	cvfs.Indexes().Close()
+
+	return baseCid, nil
 }
 
 
 //ctx context.Context, aappns string, pnode *dag.ProtoNode, ind *core.IpfsNode
-func LinkVFS( baseCid cid.Cid, ind *core.IpfsNode ) (CVFS, error) {
+func LinkVFS( chainId string, baseCid cid.Cid, ind *core.IpfsNode ) (CVFS, error) {
 
 	ctx, cancel := context.WithCancel( context.Background() )
 	root, err := newMFSRoot( ctx, baseCid, ind )
@@ -116,11 +118,6 @@ func LinkVFS( baseCid cid.Cid, ind *core.IpfsNode ) (CVFS, error) {
 	if err != nil {
 		return nil, err
 	}
-	headerDir, err := AVdbComm.LookupDBPath( root,  AHeader.DBPATH )
-	if err != nil {
-		return nil, err
-	}
-
 
 	blockDir, err := AVdbComm.LookupDBPath(root, ABlock.DBPath)
 	if err != nil {
@@ -137,10 +134,11 @@ func LinkVFS( baseCid cid.Cid, ind *core.IpfsNode ) (CVFS, error) {
 		return nil, err
 	}
 
+	indexServices := AIndexes.CreateServices(chainId)
+
 	var (
 			assetsServices 	= AAssetses.CreateServices( assetDir )
-			headerServices	= AHeader.CreateServices( headerDir )
-			blockServices	= ABlock.CreateServices( blockDir, headerServices )
+			blockServices	= ABlock.CreateServices( blockDir, indexServices )
 			txServices		= ATx.CreateServices( txsDir )
 			receiptServices	= AReceipts.CreateServices(receiptDir)
 	)
@@ -152,12 +150,14 @@ func LinkVFS( baseCid cid.Cid, ind *core.IpfsNode ) (CVFS, error) {
 		inode:ind,
 		servies: map[string]AVdbComm.VDBSerices{
 			AAssetses.DBPATH 	: assetsServices,
-			AHeader.DBPATH 		: headerServices,
 			ABlock.DBPath		: blockServices,
 			ATx.DBPath			: txServices,
 			AReceipts.DBPath	: receiptServices,
 		},
+		indexServices:indexServices,
 	}
+
+
 
 	return vfs, nil
 }
@@ -186,7 +186,7 @@ func newMFSRoot( ctx context.Context, c cid.Cid, ind *core.IpfsNode ) ( *mfs.Roo
 	}
 
 	mroot, err := mfs.NewRoot(ctx, ind.DAG, pbnd, func(i context.Context, i2 cid.Cid) error {
-		fmt.Println("CVFS Published New CID : " + i2.String())
+		//fmt.Println("CVFS Published New CID : " + i2.String())
 		return nil
 	})
 
@@ -208,13 +208,12 @@ func ( vfs *aCVFS ) SeekToBlock( bcid cid.Cid ) error {
 		return nil
 	}
 
-	vfs.ctxCancel()
-
-	vfs.ctx, vfs.ctxCancel = context.WithCancel(context.Background())
 	if err = vfs.Root.Close(); err != nil {
 		return err
 	}
+	vfs.ctxCancel()
 
+	vfs.ctx, vfs.ctxCancel = context.WithCancel(context.Background())
 	root, err := newMFSRoot(vfs.ctx, nd.Cid(), vfs.inode)
 	if err != nil {
 		return err
@@ -253,22 +252,6 @@ func ( vfs *aCVFS ) Assetses() AAssetses.AssetsAPI {
 	}
 
 	return api
-}
-
-func ( vfs *aCVFS ) Headers() AHeader.HeadersAPI {
-
-	absapi, exist := vfs.servies[ AHeader.DBPATH ]
-	if !exist {
-		return nil
-	}
-
-	api, ok := absapi.(AHeader.HeadersAPI)
-	if !ok {
-		return nil
-	}
-
-	return api
-
 }
 
 func ( vfs *aCVFS ) Blocks() ABlock.BlocksAPI {
@@ -317,6 +300,10 @@ func ( vfs *aCVFS ) Receipts() AReceipts.ReceiptsAPI {
 
 	return api
 
+}
+
+func ( vfs *aCVFS ) Indexes() AIndexes.IndexesAPI {
+	return vfs.indexServices
 }
 
 func ( vfs *aCVFS ) OpenTransaction() (*Transaction, error) {
