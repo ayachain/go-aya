@@ -48,10 +48,10 @@ func (info *ChainInfo) Decode(bs []byte) error {
 		return ErrLenLess
 	}
 
-	info.GenBlock 	=  EComm.BytesToHash(bs[ 1 + 256 * 0 : 1 + 256 * 1 ])
-	info.VDBRoot 	=  EComm.BytesToHash(bs[ 1 + 256 * 1 : 1 + 256 * 2 ])
-	info.Header    	=  EComm.BytesToHash(bs[ 1 + 256 * 2 : 1 + 256 * 3 ])
-	info.Header     =  EComm.BytesToHash(bs[ 1 + 256 * 3 : 1 + 256 * 4 ])
+	info.GenBlock 	=  EComm.BytesToHash(bs[ 1 + 32 * 0 : 1 + 32 * 1 ])
+	info.VDBRoot 	=  EComm.BytesToHash(bs[ 1 + 32 * 1 : 1 + 32 * 2 ])
+	info.Header    	=  EComm.BytesToHash(bs[ 1 + 32 * 2 : 1 + 32 * 3 ])
+	info.Header     =  EComm.BytesToHash(bs[ 1 + 32 * 3 : 1 + 32 * 4 ])
 
 	return nil
 }

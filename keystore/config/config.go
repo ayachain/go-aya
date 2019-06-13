@@ -16,11 +16,11 @@ func Default() *config {
 
 	if _config == nil {
 
-		tWinConfig := `{"IPFSRootPath":"D:/AyaRopo/IPFS","RepoKeyStorePath":"D:/RepoKS","WalletKeyStorePath":"D:/WalletKS"}`
-		//tMacConfig := `{"IPFSRootPath":"~/.ipfs,","RepoKeyStorePath ":"~/.ipfs/keystore","WalletKeyStorePath ":"~/.aya/keystore"}`
+		//tWinConfig := `{"IPFSRootPath":"D:/AyaRopo/IPFS","RepoKeyStorePath":"D:/RepoKS","WalletKeyStorePath":"D:/WalletKS"}`
+		tMacConfig := `{"IPFSRootPath":"~/.ipfs,","RepoKeyStorePath ":"~/.ipfs/keystore","WalletKeyStorePath ":"~/.aya/keystore"}`
 		_config = &config{}
 
-		if err := json.Unmarshal([]byte(tWinConfig), _config); err != nil {
+		if err := json.Unmarshal([]byte(tMacConfig), _config); err != nil {
 			panic(err)
 		}
 

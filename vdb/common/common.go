@@ -6,6 +6,8 @@ import (
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ipfs/go-mfs"
 	"github.com/syndtr/goleveldb/leveldb"
+	"github.com/syndtr/goleveldb/leveldb/opt"
+	"github.com/syndtr/goleveldb/leveldb/storage"
 )
 
 type RawDBCoder interface {
@@ -48,19 +50,24 @@ func BigEndianBytesUint16 ( n uint16 ) []byte {
 	return enc
 }
 
-func OpenExistedDB( dir *mfs.Directory, path string ) *leveldb.DB {
+func OpenExistedDB( dir *mfs.Directory, path string, rdonly bool ) (*leveldb.DB, storage.Storage) {
 
 	dbstroage := ADB.NewMFSStorage(dir)
 	if dbstroage == nil {
 		panic("create adb storage expected")
 	}
 
-	db, err := leveldb.Open(dbstroage, nil)
+	db, err := leveldb.Open(dbstroage, &opt.Options{})
+
 	if err != nil {
 		panic(err)
 	}
 
-	return db
+	if rdonly {
+		_ = db.SetReadOnly()
+	}
+
+	return db, dbstroage
 }
 
 func LookupDBPath( root *mfs.Root, path string ) (*mfs.Directory, error) {

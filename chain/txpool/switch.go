@@ -11,7 +11,7 @@ import (
 	ATransaction "github.com/ayachain/go-aya/vdb/transaction"
 )
 
-func (pool *ATxPool) RawMessageSwitch( msg *AKeyStore.ASignedRawMsg ) error  {
+func (pool *ATxPool) rawMessageSwitch( msg *AKeyStore.ASignedRawMsg ) error  {
 
 	if !msg.Verify() {
 		return ErrMessageVerifyExpected
@@ -29,16 +29,21 @@ func (pool *ATxPool) RawMessageSwitch( msg *AKeyStore.ASignedRawMsg ) error  {
 
 
 	case AMsgBlock.MessagePrefix:
-		pool.threadChans[AtxThreadsNameBlockPackage] <- msg
+
+		pool.threadChans[AtxThreadExecutor] <- msg
+
 
 	case AMsgMinied.MessagePrefix:
-		pool.threadChans[AtxThreadsNameReceiptListen] <- msg
+
+		pool.threadChans[AtxThreadReceiptListen] <- msg
+
 
 	case AMsgMBlock.MessagePrefix:
-		pool.threadChans[AtxThreadsNameMining] <- msg
+
+		pool.threadChans[AtxThreadMining] <- msg
+
 
 	case AMsgInfo.MessagePrefix :
-
 
 
 	default:

@@ -8,8 +8,10 @@ import (
 type IndexesAPI interface {
 
 	PutIndex( index *Index ) error
+
 	PutIndexBy( num uint64, bhash EComm.Hash, cid cid.Cid ) error
 
 	GetIndex( blockNumber uint64 ) (*Index, error)
+
 	Close() error
 }

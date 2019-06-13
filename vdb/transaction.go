@@ -2,9 +2,11 @@ package vdb
 
 import (
 	"context"
+	"fmt"
 	"github.com/ayachain/go-aya/consensus/core/worker"
 	"github.com/pkg/errors"
 	"github.com/syndtr/goleveldb/leveldb"
+	"github.com/syndtr/goleveldb/leveldb/opt"
 	"sync"
 )
 
@@ -29,6 +31,7 @@ func (t *Transaction) Commit() error {
 	for k, vtx := range t.transactions {
 
 		waiterLock.Add(1)
+
 		go func( commitTx *leveldb.Transaction, lock *sync.RWMutex ) {
 
 			lock.RLock()
@@ -64,6 +67,8 @@ func (t *Transaction) Commit() error {
 
 	ctx.CancelWithErr(nil)
 
+	fmt.Println("CommitSuccess")
+
 	return nil
 }
 
@@ -89,6 +94,8 @@ func (t *Transaction) Discard() {
 	}
 
 	waiterLock.Wait()
+
+	fmt.Println("DiscardSuccess")
 }
 
 
@@ -103,7 +110,7 @@ func (t *Transaction) Write( group *worker.TaskBatchGroup ) error {
 			return ErrDBTargetNotExist
 		}
 
-		if err := tx.Write(batch, nil); err != nil {
+		if err := tx.Write(batch, &opt.WriteOptions{Sync:true}); err != nil {
 			return nil
 		}
 

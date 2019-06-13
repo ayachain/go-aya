@@ -8,6 +8,7 @@ import (
 	EComm "github.com/ethereum/go-ethereum/common"
 	"github.com/ipfs/go-mfs"
 	"github.com/syndtr/goleveldb/leveldb"
+	"github.com/syndtr/goleveldb/leveldb/storage"
 	"sync"
 )
 
@@ -17,21 +18,22 @@ var BestBlockKey = []byte("_BestBlock")
 type aBlocks struct {
 	BlocksAPI
 	*mfs.Directory
-
 	headAPI AIndexes.IndexesAPI
+
+	mfsstorage storage.Storage
 	rawdb *leveldb.DB
 
 	RWLocker sync.RWMutex
 }
 
-func CreateServices( mdir *mfs.Directory, hapi AIndexes.IndexesAPI) BlocksAPI {
+func CreateServices( mdir *mfs.Directory, hapi AIndexes.IndexesAPI, rdonly bool) BlocksAPI {
 
 	api := &aBlocks{
 		Directory:mdir,
 		headAPI:hapi,
 	}
 
-	api.rawdb = common.OpenExistedDB(mdir, DBPath)
+	api.rawdb, api.mfsstorage = common.OpenExistedDB(mdir, DBPath, rdonly)
 
 	return api
 }
@@ -113,10 +115,11 @@ func (blks *aBlocks) Close() {
 	defer blks.RWLocker.Unlock()
 
 	_ = blks.rawdb.Close()
-
+	_ = blks.mfsstorage.Close()
+	_ = blks.Flush()
 }
 
-func (blks *aBlocks) AppendBlocks( blocks...*Block ) error {
+func (blks *aBlocks) AppendBlocks( group *AWork.TaskBatchGroup, blocks...*Block ) error {
 
 	if len(blocks) <= 0 {
 		return nil
@@ -124,21 +127,18 @@ func (blks *aBlocks) AppendBlocks( blocks...*Block ) error {
 
 	var latesthash EComm.Hash
 
-	batch := &leveldb.Batch{}
-
 	for _, v := range blocks {
 
 		latesthash = v.GetHash()
 
 		rawvalue := v.Encode()
 
-		batch.Put( latesthash.Bytes(), rawvalue )
-
+		group.Put(DBPath, latesthash.Bytes(), rawvalue)
 	}
 
-	batch.Put([]byte(BestBlockKey), latesthash.Bytes())
+	group.Put(DBPath, []byte(BestBlockKey), latesthash.Bytes())
 
-	return blks.rawdb.Write(batch, nil)
+	return nil
 }
 
 func (blks *aBlocks) WriteGenBlock( group *AWork.TaskBatchGroup, gen *GenBlock ) error {

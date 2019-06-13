@@ -10,6 +10,7 @@ import (
 	"github.com/ayachain/go-aya/vdb"
 	ABlock "github.com/ayachain/go-aya/vdb/block"
 	AvdbComm "github.com/ayachain/go-aya/vdb/common"
+	"github.com/ayachain/go-aya/vdb/indexes"
 	ATransaction "github.com/ayachain/go-aya/vdb/transaction"
 	EAccount "github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/common"
@@ -31,6 +32,7 @@ type AyaChain interface {
 	ChainIdentifier() string
 	SendRawMessage( coder AvdbComm.AMessageEncode ) error
 	Disslink()
+	IndexOf( idx uint64 ) (*indexes.Index, error)
 	Test() error
 
 }
@@ -118,12 +120,24 @@ func (chain *aChain) SendRawMessage( coder AvdbComm.AMessageEncode ) error {
 	return chain.TxPool.DoBroadcast( coder )
 }
 
+
+func (chain *aChain) IndexOf( idx uint64 ) (*indexes.Index, error) {
+
+	index, err := chain.TxPool.ReadOnlyCVFS().Indexes().GetIndex(idx)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return index, nil
+}
+
 var tid uint64 = 0
 func (chain *aChain) Test() error {
 
 	tx := &ATransaction.Transaction{}
 	tx.BlockIndex = 0
-	tx.From = common.HexToAddress("0xc7eAb651B78954F038e3Aa885FFA8938CdAf89A8")
+	tx.From = common.HexToAddress("0xfC8Bc1E33131Bd9586C8fB8d9E96955Eb1210C67")
 	tx.To = common.HexToAddress("0x341f244DDd50f51187a6036b3BDB4FCA9cAFeE16")
 	tx.Value = 10000
 	tx.Data = nil
@@ -133,7 +147,7 @@ func (chain *aChain) Test() error {
 
 	tid ++
 
-	acc, err := AKeyStore.FindAccount("0xc7eAb651B78954F038e3Aa885FFA8938CdAf89A8")
+	acc, err := AKeyStore.FindAccount("0xfC8Bc1E33131Bd9586C8fB8d9E96955Eb1210C67")
 	if err != nil {
 		return err
 	}
@@ -142,20 +156,19 @@ func (chain *aChain) Test() error {
 		return err
 	}
 
-	//return chain.TxPool.DoBroadcast(tx)
-	cbs := tx.RawMessageEncode()
-
-	if signmsg, err := AKeyStore.CreateMsg(cbs, acc); err != nil {
-		return err
-	} else {
-
-		err := chain.TxPool.RawMessageSwitch(signmsg)
-		if err != nil {
-			return err
-		}
-
-	}
-
-	return nil
-
+	return chain.TxPool.DoBroadcast(tx)
+	//cbs := tx.RawMessageEncode()
+	//
+	//if signmsg, err := AKeyStore.CreateMsg(cbs, acc); err != nil {
+	//	return err
+	//} else {
+	//
+	//	err := chain.TxPool.RawMessageSwitch(signmsg)
+	//	if err != nil {
+	//		return err
+	//	}
+	//
+	//}
+	//
+	//return nil
 }

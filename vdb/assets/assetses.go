@@ -8,6 +8,7 @@ import (
 	"github.com/ipfs/go-mfs"
 	"github.com/pkg/errors"
 	"github.com/syndtr/goleveldb/leveldb"
+	"github.com/syndtr/goleveldb/leveldb/storage"
 	"github.com/syndtr/goleveldb/leveldb/util"
 	"sync"
 )
@@ -17,15 +18,16 @@ type aAssetes struct {
 	*mfs.Directory
 	RWLocker sync.RWMutex
 	rawdb *leveldb.DB
+	mfsstorage storage.Storage
 }
 
-func CreateServices( mdir *mfs.Directory ) AssetsAPI {
+func CreateServices( mdir *mfs.Directory, rdOnly bool ) AssetsAPI {
 
 	api := &aAssetes{
 		Directory:mdir,
 	}
 
-	api.rawdb = common.OpenExistedDB(mdir, DBPATH)
+	api.rawdb, api.mfsstorage = common.OpenExistedDB( mdir, DBPATH, rdOnly )
 
 	return api
 }
@@ -78,7 +80,8 @@ func (api *aAssetes) Close() {
 	defer api.RWLocker.Unlock()
 
 	_ = api.rawdb.Close()
-
+	_ = api.mfsstorage.Close()
+	_ = api.Flush()
 }
 
 func (api *aAssetes) GetLockedTop100() ( []*SortAssets, error ) {

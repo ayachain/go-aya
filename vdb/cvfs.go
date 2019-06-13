@@ -5,10 +5,10 @@ import (
 	"errors"
 	"fmt"
 	AWrok "github.com/ayachain/go-aya/consensus/core/worker"
-	AIndexes "github.com/ayachain/go-aya/vdb/indexes"
 	AAssetses "github.com/ayachain/go-aya/vdb/assets"
 	ABlock "github.com/ayachain/go-aya/vdb/block"
 	AVdbComm "github.com/ayachain/go-aya/vdb/common"
+	AIndexes "github.com/ayachain/go-aya/vdb/indexes"
 	AReceipts "github.com/ayachain/go-aya/vdb/receipt"
 	ATx "github.com/ayachain/go-aya/vdb/transaction"
 	EComm "github.com/ethereum/go-ethereum/common"
@@ -26,47 +26,53 @@ var (
 )
 
 type CVFS interface {
-	Close()
+
+	Close()						error
+	SeekToBlock( bcid cid.Cid )  error
+
 	Blocks() 					ABlock.BlocksAPI		/// Body
 	Receipts() 					AReceipts.ReceiptsAPI	/// Receipt
 	Assetses() 					AAssetses.AssetsAPI		/// Asset
 	Transactions() 				ATx.TransactionAPI		/// Transaction
-	OpenTransaction() 			(*Transaction, error)	/// Open Transaction to commit writing
-	Flush(context.Context ) 	(cid.Cid, error)		/// Flush root cid
-	SeekToBlock( bcid cid.Cid )  error
 	Indexes()					AIndexes.IndexesAPI
+
+	WriteTaskGroup( group *AWrok.TaskBatchGroup) (cid.Cid, error)
+
 }
 
 type aCVFS struct {
 
 	CVFS
 	*mfs.Root
+
 	inode *core.IpfsNode
+
 	ctx context.Context
 	ctxCancel context.CancelFunc
 
 	servies map[string]AVdbComm.VDBSerices
-
 	indexServices AIndexes.IndexesAPI
-}
+	chainId string
 
+	rwmutex sync.RWMutex
+}
 
 func CreateVFS( block *ABlock.GenBlock, ind *core.IpfsNode ) (cid.Cid, error) {
 
 	var err error
 
 	cvfs, err := LinkVFS(block.ChainID, cid.Undef, ind)
+	if err != nil {
+		return cid.Undef, err
+	}
 	defer cvfs.Close()
 
 	genBatchGroup := AWrok.NewGroup()
 
 	// Award
 	for addr, amount := range block.Award {
-
 		assetBn := AAssetses.NewAssets( amount, amount, 0 ).Encode()
-
 		genBatchGroup.Put( cvfs.Assetses().DBKey(), EComm.HexToAddress(addr).Bytes(), assetBn )
-
 	}
 
 	// Block
@@ -75,21 +81,8 @@ func CreateVFS( block *ABlock.GenBlock, ind *core.IpfsNode ) (cid.Cid, error) {
 		return cid.Undef, err
 	}
 
-	txcommiter, err := cvfs.OpenTransaction()
-	if err != nil {
-		return cid.Undef, err
-	}
-
-	if err := txcommiter.Write( genBatchGroup ); err != nil {
-		return cid.Undef, err
-	}
-
-	if err := txcommiter.Commit(); err != nil {
-		return cid.Undef, err
-	}
-
-	// Indexes
-	baseCid, err := cvfs.Flush(context.TODO())
+	// Group Write
+	baseCid, err := cvfs.WriteTaskGroup(genBatchGroup)
 	if err != nil {
 		return cid.Undef, err
 	}
@@ -98,68 +91,240 @@ func CreateVFS( block *ABlock.GenBlock, ind *core.IpfsNode ) (cid.Cid, error) {
 		return cid.Undef, err
 	}
 
-	cvfs.Indexes().Close()
+	_ = cvfs.Close()
 
 	return baseCid, nil
 }
 
 
-//ctx context.Context, aappns string, pnode *dag.ProtoNode, ind *core.IpfsNode
 func LinkVFS( chainId string, baseCid cid.Cid, ind *core.IpfsNode ) (CVFS, error) {
 
 	ctx, cancel := context.WithCancel( context.Background() )
+
 	root, err := newMFSRoot( ctx, baseCid, ind )
 
 	if err != nil {
 		return nil, err
 	}
 
-	assetDir, err := AVdbComm.LookupDBPath(root, AAssetses.DBPATH)
-	if err != nil {
-		return nil, err
-	}
-
-	blockDir, err := AVdbComm.LookupDBPath(root, ABlock.DBPath)
-	if err != nil {
-		return nil, err
-	}
-
-	txsDir, err := AVdbComm.LookupDBPath(root, ATx.DBPath)
-	if err != nil {
-		return nil, err
-	}
-
-	receiptDir, err := AVdbComm.LookupDBPath(root, AReceipts.DBPath)
-	if err != nil {
-		return nil, err
-	}
-
-	indexServices := AIndexes.CreateServices(chainId)
-
-	var (
-			assetsServices 	= AAssetses.CreateServices( assetDir )
-			blockServices	= ABlock.CreateServices( blockDir, indexServices )
-			txServices		= ATx.CreateServices( txsDir )
-			receiptServices	= AReceipts.CreateServices(receiptDir)
-	)
-
 	vfs := &aCVFS{
 		ctx:ctx,
 		ctxCancel:cancel,
 		Root:root,
 		inode:ind,
+		chainId:chainId,
 		servies: map[string]AVdbComm.VDBSerices{
-			AAssetses.DBPATH 	: assetsServices,
-			ABlock.DBPath		: blockServices,
-			ATx.DBPath			: txServices,
-			AReceipts.DBPath	: receiptServices,
 		},
-		indexServices:indexServices,
+	}
+
+	vfs.indexServices = AIndexes.CreateServices(vfs.inode, vfs.chainId)
+
+	return vfs, nil
+}
+
+func ( vfs *aCVFS ) SeekToBlock( bcid cid.Cid ) error {
+
+	if err := vfs.Root.Close(); err != nil {
+		return err
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	root, err := newMFSRoot(ctx, bcid, vfs.inode)
+
+	if err != nil {
+		return err
+	}
+
+	vfs.Root = root
+	vfs.ctxCancel = cancel
+	vfs.ctx = ctx
+
+	return nil
+}
+
+func ( vfs *aCVFS ) Assetses() AAssetses.AssetsAPI {
+
+	vfs.rwmutex.Lock()
+	defer vfs.rwmutex.Unlock()
+
+	v, exist := vfs.servies[ AAssetses.DBPATH ]
+
+	if !exist {
+
+		astDir, err := AVdbComm.LookupDBPath(vfs.Root, AAssetses.DBPATH)
+
+		if err != nil {
+			return nil
+		}
+
+		v = AAssetses.CreateServices(astDir,true)
+
+		vfs.servies[ AAssetses.DBPATH ] = v
+	}
+
+	return v.(AAssetses.AssetsAPI)
+
+}
+
+func ( vfs *aCVFS ) Blocks() ABlock.BlocksAPI {
+
+	vfs.rwmutex.Lock()
+	defer vfs.rwmutex.Unlock()
+
+	v, exist := vfs.servies[ ABlock.DBPath ]
+
+	if !exist {
+
+		blockDir, err := AVdbComm.LookupDBPath(vfs.Root, ABlock.DBPath)
+
+		if err != nil {
+			return nil
+		}
+
+		v = ABlock.CreateServices(blockDir, vfs.indexServices, true)
+
+		vfs.servies[ ABlock.DBPath ] = v
+
+	}
+
+	return v.(ABlock.BlocksAPI)
+}
+
+func ( vfs *aCVFS ) Transactions() ATx.TransactionAPI {
+
+	vfs.rwmutex.Lock()
+	defer vfs.rwmutex.Unlock()
+
+	v, exist := vfs.servies[ ATx.DBPath ]
+
+	if !exist {
+
+		atxDir, err := AVdbComm.LookupDBPath(vfs.Root, ATx.DBPath)
+
+		if err != nil {
+			return nil
+		}
+
+		v =  ATx.CreateServices(atxDir, true)
+
+		vfs.servies[ ATx.DBPath ] = v
+
+	}
+
+	return v.(ATx.TransactionAPI)
+}
+
+func ( vfs *aCVFS ) Receipts() AReceipts.ReceiptsAPI {
+
+	vfs.rwmutex.Lock()
+	defer vfs.rwmutex.Unlock()
+
+	v, exist := vfs.servies[ AReceipts.DBPath ]
+
+	if !exist {
+
+		rcpDir, err := AVdbComm.LookupDBPath(vfs.Root, AReceipts.DBPath)
+
+		if err != nil {
+			return nil
+		}
+
+		v =  AReceipts.CreateServices(rcpDir, true)
+
+		vfs.servies[ AReceipts.DBPath ] = v
+
+	}
+
+	return v.(AReceipts.ReceiptsAPI)
+}
+
+func ( vfs *aCVFS ) Indexes() AIndexes.IndexesAPI {
+
+	vfs.rwmutex.Lock()
+	defer vfs.rwmutex.Unlock()
+
+	return vfs.indexServices
+}
+
+func ( vfs *aCVFS ) WriteTaskGroup( group *AWrok.TaskBatchGroup) (cid.Cid, error) {
+
+	vfs.rwmutex.RLock()
+	defer vfs.rwmutex.RUnlock()
+
+	for k, v := range vfs.servies {
+		v.Close()
+		delete(vfs.servies, k)
+	}
+
+	var err error
+
+	assetDir, err := AVdbComm.LookupDBPath(vfs.Root, AAssetses.DBPATH)
+	if err != nil {
+		return cid.Undef, err
+	}
+
+	blockDir, err := AVdbComm.LookupDBPath(vfs.Root, ABlock.DBPath)
+	if err != nil {
+		return cid.Undef, err
+	}
+
+	txsDir, err := AVdbComm.LookupDBPath(vfs.Root, ATx.DBPath)
+	if err != nil {
+		return cid.Undef, err
+	}
+
+	receiptDir, err := AVdbComm.LookupDBPath(vfs.Root, AReceipts.DBPath)
+	if err != nil {
+		return cid.Undef, err
+	}
+
+	tx := &Transaction{
+		transactions:make(map[string]*leveldb.Transaction),
+		lockers: make(map[string]*sync.RWMutex),
+	}
+
+	writeServicse := map[string]AVdbComm.VDBSerices {
+
+		AAssetses.DBPATH : AAssetses.CreateServices( assetDir, false ),
+		ABlock.DBPath : ABlock.CreateServices( blockDir, vfs.indexServices,false ),
+		ATx.DBPath : ATx.CreateServices( txsDir,false ),
+		AReceipts.DBPath : AReceipts.CreateServices( receiptDir,false ),
+
+	}
+
+	for k, v := range writeServicse {
+
+		tx.transactions[k], tx.lockers[k], err = v.OpenVDBTransaction()
+
+		if err != nil {
+			return cid.Undef, err
+		}
+	}
+
+	if err := tx.Write(group); err != nil {
+		return cid.Undef, err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return cid.Undef, err
+	}
+
+	nd, err := mfs.FlushPath(context.TODO(), vfs.Root, "/")
+	if err != nil {
+		return cid.Undef, err
+	}
+
+	return nd.Cid(), nil
+}
+
+func ( vfs *aCVFS ) Close() error {
+
+	if err := vfs.indexServices.Close(); err != nil {
+		return err
 	}
 
 
-
-	return vfs, nil
+	return vfs.Root.Close()
 }
 
 func newMFSRoot( ctx context.Context, c cid.Cid, ind *core.IpfsNode ) ( *mfs.Root, error ) {
@@ -195,161 +360,4 @@ func newMFSRoot( ctx context.Context, c cid.Cid, ind *core.IpfsNode ) ( *mfs.Roo
 	}
 
 	return mroot, nil
-}
-
-func ( vfs *aCVFS ) SeekToBlock( bcid cid.Cid ) error {
-
-	nd, err := mfs.FlushPath( context.TODO(), vfs.Root, "/" )
-	if err != nil {
-		return err
-	}
-
-	if nd.Cid().Equals(bcid) {
-		return nil
-	}
-
-	if err = vfs.Root.Close(); err != nil {
-		return err
-	}
-	vfs.ctxCancel()
-
-	vfs.ctx, vfs.ctxCancel = context.WithCancel(context.Background())
-	root, err := newMFSRoot(vfs.ctx, nd.Cid(), vfs.inode)
-	if err != nil {
-		return err
-	}
-
-	vfs.Root = root
-
-	return nil
-}
-
-func ( vfs *aCVFS ) Close() {
-
-	vfs.ctxCancel()
-
-	for k, v := range vfs.servies {
-
-		if v != nil {
-			v.Close()
-			fmt.Printf("%v services closed.\n", k)
-		}
-
-	}
-
-}
-
-func ( vfs *aCVFS ) Assetses() AAssetses.AssetsAPI {
-
-	absapi, exist := vfs.servies[ AAssetses.DBPATH ]
-	if !exist {
-		return nil
-	}
-
-	api, ok := absapi.(AAssetses.AssetsAPI)
-	if !ok {
-		return nil
-	}
-
-	return api
-}
-
-func ( vfs *aCVFS ) Blocks() ABlock.BlocksAPI {
-
-	absapi, exist := vfs.servies[ ABlock.DBPath ]
-	if !exist {
-		return nil
-	}
-
-	api, ok := absapi.(ABlock.BlocksAPI)
-	if !ok {
-		return nil
-	}
-
-	return api
-
-}
-
-func ( vfs *aCVFS ) Transactions() ATx.TransactionAPI {
-
-	absapi, exist := vfs.servies[ ATx.DBPath ]
-	if !exist {
-		return nil
-	}
-
-	api, ok := absapi.(ATx.TransactionAPI)
-	if !ok {
-		return nil
-	}
-
-	return api
-
-}
-
-func ( vfs *aCVFS ) Receipts() AReceipts.ReceiptsAPI {
-
-	absapi, exist := vfs.servies[ AReceipts.DBPath ]
-	if !exist {
-		return nil
-	}
-
-	api, ok := absapi.(AReceipts.ReceiptsAPI)
-	if !ok {
-		return nil
-	}
-
-	return api
-
-}
-
-func ( vfs *aCVFS ) Indexes() AIndexes.IndexesAPI {
-	return vfs.indexServices
-}
-
-func ( vfs *aCVFS ) OpenTransaction() (*Transaction, error) {
-
-	var err error
-	tx := &Transaction{
-		transactions:make(map[string]*leveldb.Transaction),
-		lockers: make(map[string]*sync.RWMutex),
-	}
-
-	for k, v := range vfs.servies {
-
-		tx.transactions[k], tx.lockers[k], err = v.OpenVDBTransaction()
-		if err != nil {
-			return nil, err
-		}
-
-	}
-
-	return tx, nil
-}
-
-func ( vfs *aCVFS ) WriteTaskGroup( group *AWrok.TaskBatchGroup) error {
-
-	tx, err := vfs.OpenTransaction()
-	if err != nil {
-		return nil
-	}
-
-	if err := tx.Write(group); err != nil {
-		return err
-	}
-
-	if err := tx.Commit(); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func ( vfs *aCVFS ) Flush( ctx context.Context ) (cid.Cid, error) {
-
-	nd, err := mfs.FlushPath( ctx, vfs.Root, "/" )
-	if err != nil {
-		return cid.Undef, err
-	}
-
-	return nd.Cid(), nil
 }

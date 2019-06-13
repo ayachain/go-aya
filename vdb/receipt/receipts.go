@@ -5,6 +5,7 @@ import (
 	EComm "github.com/ethereum/go-ethereum/common"
 	"github.com/ipfs/go-mfs"
 	"github.com/syndtr/goleveldb/leveldb"
+	"github.com/syndtr/goleveldb/leveldb/storage"
 	"sync"
 )
 
@@ -12,6 +13,7 @@ type aReceipt struct {
 	ReceiptsAPI
 	*mfs.Directory
 
+	mfsstorage storage.Storage
 	rawdb *leveldb.DB
 	RWLocker sync.RWMutex
 }
@@ -38,13 +40,13 @@ func (txs *aReceipt) DBKey()	string {
 	return DBPath
 }
 
-func CreateServices( mdir *mfs.Directory ) ReceiptsAPI {
+func CreateServices( mdir *mfs.Directory, rdonly bool ) ReceiptsAPI {
 
 	api := &aReceipt{
 		Directory:mdir,
 	}
 
-	api.rawdb = AVdbComm.OpenExistedDB(mdir, DBPath)
+	api.rawdb, api.mfsstorage = AVdbComm.OpenExistedDB(mdir, DBPath, rdonly)
 
 	return api
 }
@@ -65,5 +67,7 @@ func (api *aReceipt) Close() {
 	defer api.RWLocker.Unlock()
 
 	_ = api.rawdb.Close()
+	_ = api.mfsstorage.Close()
+	_ = api.Flush()
 
 }

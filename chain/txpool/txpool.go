@@ -80,14 +80,13 @@ const (
 type AtxThreadsName string
 
 const (
-	AtxThreadsAll					AtxThreadsName = "All"
-	AtxThreadsNameTxPackage 		AtxThreadsName = "MiningBlockPackageThread"
-	AtxThreadsNameBlockPackage		AtxThreadsName = "BlockConfirmPackageThread"
-	AtxThreadsNameReceiptListen 	AtxThreadsName = "MiningBlockReceiptListenThread"
-	AtxThreadsNameTransactionCommit AtxThreadsName = "TransactionCommitThread"
-	AtxThreadsNameMining			AtxThreadsName = "MiningThread"
-	AtxThreadsNameChannelListen		AtxThreadsName = "ChannelListenThread"
-	AtxThreadsNameExector			AtxThreadsName = "BlockExectorThread"
+	AtxThreadAll			AtxThreadsName = "All"
+	AtxThreadTxPackage 		AtxThreadsName = "thread.tx.package"
+	AtxThreadExecutor		AtxThreadsName = "thread.block.executor"
+	AtxThreadReceiptListen 	AtxThreadsName = "thread.receipt.listen"
+	AtxThreadTxCommit 		AtxThreadsName = "thread.tx.commit"
+	AtxThreadMining			AtxThreadsName = "thread.block.mining"
+	AtxThreadTopicsListen	AtxThreadsName = "thread.topics.listen"
 )
 
 type ATxPool struct {
@@ -116,7 +115,7 @@ type ATxPool struct {
 	threadChans map[AtxThreadsName] chan *AKeyStore.ASignedRawMsg
 
 	notary ACore.Notary
-	txwriteLocker sync.Locker
+	txLocker sync.Mutex
 }
 
 
@@ -265,40 +264,26 @@ func (pool *ATxPool) PowerOn() error {
 	case AtxPoolWorkModeOblivioned:
 
 		pool.runthreads(
-			AtxThreadsNameTxPackage,
-			AtxThreadsNameBlockPackage,
-			AtxThreadsNameReceiptListen,
-			AtxThreadsNameTransactionCommit,
-			AtxThreadsNameMining,
-			AtxThreadsNameChannelListen,
+			AtxThreadTxPackage,
+			AtxThreadExecutor,
+			AtxThreadReceiptListen,
+			AtxThreadTxCommit,
+			AtxThreadMining,
+			AtxThreadTopicsListen,
 		)
 
 	case AtxPoolWorkModeSuper:
 
-		pool.runthreads(
-			AtxThreadsNameChannelListen,
-			AtxThreadsNameTxPackage,
-			AtxThreadsNameBlockPackage,
-			AtxThreadsNameReceiptListen,
-			AtxThreadsNameTransactionCommit,
-			)
+
 
 
 	case AtxPoolWorkModeMaster:
 
-		pool.runthreads(
-			AtxThreadsNameChannelListen,
-			AtxThreadsNameReceiptListen,
-			AtxThreadsNameTransactionCommit,
-			AtxThreadsNameMining,
-		)
+
 
 	case AtxPoolWorkModeNormal:
 
-		pool.runthreads(
-			AtxThreadsNameChannelListen,
-			AtxThreadsNameTransactionCommit,
-		)
+
 
 	}
 
@@ -318,7 +303,7 @@ func (pool *ATxPool) runthreads( names ... AtxThreadsName ) {
 
 		switch n {
 
-		case AtxThreadsNameChannelListen:
+		case AtxThreadTopicsListen:
 
 			workCtx, cancel := context.WithCancel(pool.workctx)
 
@@ -328,7 +313,7 @@ func (pool *ATxPool) runthreads( names ... AtxThreadsName ) {
 			go pool.channelListening(workCtx)
 
 
-		case AtxThreadsNameTxPackage:
+		case AtxThreadTxPackage:
 
 			workCtx, cancel := context.WithCancel(pool.workctx)
 
@@ -338,7 +323,7 @@ func (pool *ATxPool) runthreads( names ... AtxThreadsName ) {
 			go pool.txPackageThread(workCtx)
 
 
-		case AtxThreadsNameReceiptListen:
+		case AtxThreadReceiptListen:
 
 			workCtx, cancel := context.WithCancel(pool.workctx)
 
@@ -348,17 +333,17 @@ func (pool *ATxPool) runthreads( names ... AtxThreadsName ) {
 			go pool.receiptListen(workCtx)
 
 
-		case AtxThreadsNameBlockPackage:
+		case AtxThreadExecutor:
 
 			workCtx, cancel := context.WithCancel(pool.workctx)
 
 			pool.threadCancels[n] = cancel
 			pool.threadChans[n] = make(chan *AKeyStore.ASignedRawMsg)
 
-			go pool.blockPackageThread(workCtx)
+			go pool.blockExecutorThread(workCtx)
 
 
-		case AtxThreadsNameMining:
+		case AtxThreadMining:
 
 			workCtx, cancel := context.WithCancel(pool.workctx)
 
@@ -368,7 +353,6 @@ func (pool *ATxPool) runthreads( names ... AtxThreadsName ) {
 			go pool.miningThread(workCtx)
 
 		}
-
 
 
 	}
@@ -398,9 +382,8 @@ func (pool *ATxPool) UpdateBestBlock( ) error {
 	toast, _ := pool.cvfs.Assetses().AssetsOf( EComm.HexToAddress("0x341f244DDd50f51187a6036b3BDB4FCA9cAFeE16").Bytes() )
 	if ast != nil {
 
-		//fmt.Printf("Avail:%d\tVote:%d\n", ast.Avail, ast.Vote)
-		fmt.Printf("Address:From:\tAvail:%v\tVote:%v\tLocked:%v\n", ast.Avail, ast.Vote, ast.Locked)
-		fmt.Printf("Address:To:\tAvail:%v\tVote:%v\tLocked:%v\n", toast.Avail, toast.Vote, toast.Locked)
+		fmt.Printf("Address From:\tAvail:%v\tVote:%v\tLocked:%v\n", ast.Avail, ast.Vote, ast.Locked)
+		fmt.Printf("Address To:\t\tAvail:%v\tVote:%v\tLocked:%v\n", toast.Avail, toast.Vote, toast.Locked)
 
 	}
 
@@ -530,8 +513,8 @@ func (pool *ATxPool) AddConfrimReceipt( mbhash EComm.Hash, retcid cid.Cid, from 
 
 func (pool *ATxPool) AddRawTransaction( tx *AKeyStore.ASignedRawMsg ) error {
 
-	pool.txwriteLocker.Lock()
-	defer pool.txwriteLocker.Unlock()
+	pool.txLocker.Lock()
+	defer pool.txLocker.Unlock()
 
 	if !tx.Verify() {
 		return ErrMessageVerifyExpected
@@ -547,10 +530,12 @@ func (pool *ATxPool) AddRawTransaction( tx *AKeyStore.ASignedRawMsg ) error {
 
 	if err := pool.storage.Put(TxCount, AvdbComm.BigEndianBytes(pool.Size() + 1), nil); err != nil {
 		pool.PowerOff(err)
+		return err
 	}
 
 	if err := pool.storage.Put(key, value, nil); err != nil {
 		pool.PowerOff(err)
+		return err
 	}
 
 	return nil
@@ -587,9 +572,9 @@ func (pool *ATxPool) Close() {
 
 }
 
-
-
-
+func (pool *ATxPool) ReadOnlyCVFS() vdb.CVFS {
+	return pool.cvfs
+}
 
 
 

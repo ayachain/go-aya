@@ -10,14 +10,14 @@ import (
 
 func (pool *ATxPool) receiptListen(ctx context.Context) {
 
-	fmt.Println("ATxPool minined receipt thread power on")
-	defer fmt.Println("ATxPool minined receipt thread power off")
+	fmt.Println("ATxPool Thread On : " + AtxThreadReceiptListen)
+	defer fmt.Println("ATxPool Thread Off : " + AtxThreadReceiptListen)
 
 	for {
 
 		select {
 
-		case rmsg := <- pool.threadChans[AtxThreadsNameReceiptListen] :
+		case rmsg := <- pool.threadChans[AtxThreadReceiptListen] :
 
 			//pool.packLocker.Lock()
 			//defer pool.packLocker.Unlock()

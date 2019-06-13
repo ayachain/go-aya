@@ -8,8 +8,8 @@ import (
 
 func (pool *ATxPool) channelListening(ctx context.Context) {
 
-	fmt.Println("ATxPool channel listening thread power on")
-	defer fmt.Println("ATxPool channel listening thread power off")
+	fmt.Println("ATxPool Thread On : " + AtxThreadTopicsListen)
+	defer fmt.Println("ATxPool Thread Off : " + AtxThreadTopicsListen)
 
 	subscribe, err := pool.ind.PubSub.Subscribe( pool.channelTopics )
 	if err != nil {
@@ -29,7 +29,7 @@ func (pool *ATxPool) channelListening(ctx context.Context) {
 			continue
 		}
 
-		if err := pool.RawMessageSwitch(rawmsg); err != nil {
+		if err := pool.rawMessageSwitch(rawmsg); err != nil {
 			continue
 		}
 

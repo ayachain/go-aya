@@ -24,8 +24,8 @@ var (
 
 func (pool *ATxPool) txPackageThread(ctx context.Context) {
 
-	fmt.Println("ATxPool txpackage thread power on")
-	defer fmt.Println("ATxPool txpackage thread power off")
+	fmt.Println("ATxPool Thread On : " + AtxThreadTxPackage)
+	defer fmt.Println("ATxPool Thread Off : " + AtxThreadTxPackage)
 
 	for {
 
@@ -122,21 +122,25 @@ func (pool *ATxPool) txPackageThread(ctx context.Context) {
 				mblk.Txc = count
 				mblk.Txs = iblk.Cid().String()
 
-				pool.txwriteLocker.Lock()
+				pool.txLocker.Lock()
 
 				if err := poolTransaction.Commit(); err != nil {
-					pool.txwriteLocker.Unlock()
+					pool.txLocker.Unlock()
 					break
 				}
-				pool.txwriteLocker.Unlock()
+
+				pool.txLocker.Unlock()
 
 				pool.miningBlock = mblk
+
 				if err := pool.DoBroadcast(mblk); err != nil {
 					break
 				}
 
 			} else {
+
 				time.Sleep(PackageThreadSleepTime)
+
 			}
 
 		}
