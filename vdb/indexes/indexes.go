@@ -17,6 +17,8 @@ import (
 	"time"
 )
 
+var LatestIndexKey = []byte("LATEST")
+
 type aIndexes struct {
 
 	IndexesAPI
@@ -29,7 +31,7 @@ type aIndexes struct {
 
 func CreateServices( ind *core.IpfsNode, chainId string ) IndexesAPI {
 
-	adbpath := "/aya/chain/indexes/" + chainId + "t0"
+	adbpath := "/aya/chain/indexes/" + chainId + "t1"
 
 	var nd *merkledag.ProtoNode
 	dsk := datastore.NewKey(adbpath)
@@ -99,8 +101,11 @@ func ( i *aIndexes ) PutIndex( index *Index ) error {
 		return err
 	}
 
-	return nil
+	if err := i.rawdb.Put( []byte(LatestIndexKey), value, nil ); err != nil {
+		return err
+	}
 
+	return nil
 }
 
 func ( i *aIndexes ) PutIndexBy( num uint64, bhash EComm.Hash, ci cid.Cid ) error {
@@ -116,7 +121,26 @@ func ( i *aIndexes ) PutIndexBy( num uint64, bhash EComm.Hash, ci cid.Cid ) erro
 		return err
 	}
 
+	if err := i.rawdb.Put( []byte(LatestIndexKey), value, nil ); err != nil {
+		return err
+	}
+
 	return nil
+}
+
+func ( i *aIndexes ) GetLatest() *Index {
+
+	bs, err := i.rawdb.Get([]byte(LatestIndexKey), nil)
+	if err != nil {
+		return nil
+	}
+
+	idx := &Index{}
+	if err := idx.Decode(bs); err != nil {
+		return nil
+	}
+
+	return idx
 }
 
 func ( i *aIndexes ) Close() error {

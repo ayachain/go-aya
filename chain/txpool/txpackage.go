@@ -45,14 +45,14 @@ func (pool *ATxPool) txPackageThread(ctx context.Context) {
 				}
 
 				rand.Seed(time.Now().UnixNano())
-				bestBlock := pool.cvfs.Blocks().BestBlock()
+				bindex := pool.cvfs.Indexes().GetLatest()
 
 				/// Because you need to wait for calculation, miningblock does not have a field for the final result.
 				mblk := &AMsgMBlock.MBlock{}
 				mblk.ExtraData = ""
-				mblk.Index = bestBlock.Index + 1
-				mblk.ChainID = bestBlock.ChainID
-				mblk.Parent = bestBlock.GetHash().Hex()
+				mblk.Index = bindex.BlockIndex + 1
+				mblk.ChainID = "aya"
+				mblk.Parent = bindex.Hash.String()
 				mblk.Timestamp = uint64(time.Now().Unix())
 				mblk.RandSeed = rand.Int31()
 

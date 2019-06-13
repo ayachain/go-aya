@@ -10,10 +10,7 @@ const DBPath = "/db/transactions"
 
 type TransactionAPI interface {
 	AVdbComm.VDBSerices
-
 	GetTxByHash( hash EComm.Hash ) (*Transaction, error)
-
 	GetTxByHashBs( hsbs []byte ) (*Transaction, error)
-
 	NewBlockTxIterator( bindex uint64 ) iterator.Iterator
 }

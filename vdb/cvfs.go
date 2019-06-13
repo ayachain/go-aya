@@ -3,7 +3,6 @@ package vdb
 import (
 	"context"
 	"errors"
-	"fmt"
 	AWrok "github.com/ayachain/go-aya/consensus/core/worker"
 	AAssetses "github.com/ayachain/go-aya/vdb/assets"
 	ABlock "github.com/ayachain/go-aya/vdb/block"
@@ -18,6 +17,7 @@ import (
 	"github.com/ipfs/go-mfs"
 	"github.com/ipfs/go-unixfs"
 	"github.com/syndtr/goleveldb/leveldb"
+	"github.com/syndtr/goleveldb/leveldb/opt"
 	"sync"
 )
 
@@ -258,54 +258,50 @@ func ( vfs *aCVFS ) WriteTaskGroup( group *AWrok.TaskBatchGroup) (cid.Cid, error
 
 	var err error
 
-	assetDir, err := AVdbComm.LookupDBPath(vfs.Root, AAssetses.DBPATH)
-	if err != nil {
-		return cid.Undef, err
-	}
+	bmap := group.GetBatchMap()
 
-	blockDir, err := AVdbComm.LookupDBPath(vfs.Root, ABlock.DBPath)
-	if err != nil {
-		return cid.Undef, err
-	}
-
-	txsDir, err := AVdbComm.LookupDBPath(vfs.Root, ATx.DBPath)
-	if err != nil {
-		return cid.Undef, err
-	}
-
-	receiptDir, err := AVdbComm.LookupDBPath(vfs.Root, AReceipts.DBPath)
-	if err != nil {
-		return cid.Undef, err
-	}
-
-	tx := &Transaction{
+	txs := &Transaction{
 		transactions:make(map[string]*leveldb.Transaction),
 		lockers: make(map[string]*sync.RWMutex),
 	}
 
-	writeServicse := map[string]AVdbComm.VDBSerices {
+	for dbkey, batch := range bmap {
 
-		AAssetses.DBPATH : AAssetses.CreateServices( assetDir, false ),
-		ABlock.DBPath : ABlock.CreateServices( blockDir, vfs.indexServices,false ),
-		ATx.DBPath : ATx.CreateServices( txsDir,false ),
-		AReceipts.DBPath : AReceipts.CreateServices( receiptDir,false ),
-
-	}
-
-	for k, v := range writeServicse {
-
-		tx.transactions[k], tx.lockers[k], err = v.OpenVDBTransaction()
+		dir ,err := AVdbComm.LookupDBPath(vfs.Root, dbkey)
 
 		if err != nil {
 			return cid.Undef, err
 		}
+
+		var services AVdbComm.VDBSerices
+
+		switch dbkey {
+
+		case AAssetses.DBPATH:
+			services = AAssetses.CreateServices( dir, false )
+
+		case ABlock.DBPath:
+			services = ABlock.CreateServices(dir, vfs.indexServices, false)
+
+		case ATx.DBPath:
+			services = ATx.CreateServices(dir, false)
+
+		case AReceipts.DBPath:
+			services = AReceipts.CreateServices(dir, false)
+		}
+
+		txs.transactions[dbkey], txs.lockers[dbkey], err = services.OpenVDBTransaction()
+		if err != nil {
+			return cid.Undef, nil
+		}
+
+		if err := txs.transactions[dbkey].Write(batch, &opt.WriteOptions{Sync:true}); err != nil {
+			return cid.Undef, nil
+		}
+
 	}
 
-	if err := tx.Write(group); err != nil {
-		return cid.Undef, err
-	}
-
-	if err := tx.Commit(); err != nil {
+	if err := txs.Commit(); err != nil {
 		return cid.Undef, err
 	}
 
@@ -323,6 +319,9 @@ func ( vfs *aCVFS ) Close() error {
 		return err
 	}
 
+	if err := vfs.indexServices.Close(); err != nil {
+		return err
+	}
 
 	return vfs.Root.Close()
 }
@@ -351,7 +350,7 @@ func newMFSRoot( ctx context.Context, c cid.Cid, ind *core.IpfsNode ) ( *mfs.Roo
 	}
 
 	mroot, err := mfs.NewRoot(ctx, ind.DAG, pbnd, func(i context.Context, i2 cid.Cid) error {
-		fmt.Println("CVFSPublishedCID : " + i2.String())
+		//fmt.Println("CVFSPublishedCID : " + i2.String())
 		return nil
 	})
 

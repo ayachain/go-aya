@@ -63,13 +63,18 @@ func (pool *ATxPool) blockExecutorThread(ctx context.Context) {
 					break
 				}
 
-
 				latestCid, err := pool.cvfs.WriteTaskGroup(group)
 				if err != nil {
 					fmt.Println(err)
 					break
 				}
-				fmt.Println("ChainLCID:"+latestCid.String())
+
+				prevBlockIdx, err := pool.cvfs.Indexes().GetIndex(cblock.Index - 1)
+				if err != nil {
+					fmt.Println(err)
+					break
+				}
+				fmt.Printf("NewBlock:%06d\t%v\tPrev:%v\n", cblock.Index, latestCid.String(), prevBlockIdx.FullCID )
 
 				if err := pool.cvfs.Indexes().PutIndexBy( cblock.Index, cblock.GetHash(), latestCid ); err != nil {
 					fmt.Println(err)

@@ -67,7 +67,7 @@ func (t *Transaction) Commit() error {
 
 	ctx.CancelWithErr(nil)
 
-	fmt.Println("CommitSuccess")
+	fmt.Println("\nCommitSuccess")
 
 	return nil
 }

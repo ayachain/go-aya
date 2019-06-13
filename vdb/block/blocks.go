@@ -12,9 +12,6 @@ import (
 	"sync"
 )
 
-
-var BestBlockKey = []byte("_BestBlock")
-
 type aBlocks struct {
 	BlocksAPI
 	*mfs.Directory
@@ -79,26 +76,6 @@ func (blks *aBlocks) GetBlocks( hashOrIndex...interface{} ) ([]*Block, error) {
 	return blist, nil
 }
 
-func (blks *aBlocks) BestBlock() *Block {
-
-	kbs, err := blks.rawdb.Get(BestBlockKey, nil)
-	if err != nil {
-		return nil
-	}
-
-	blkbs, err := blks.rawdb.Get(kbs, nil)
-	if err != nil {
-		return nil
-	}
-
-	bestBlock := &Block{}
-	if err := bestBlock.Decode(blkbs); err != nil {
-		return nil
-	}
-
-	return bestBlock
-}
-
 func (blks *aBlocks) OpenVDBTransaction() (*leveldb.Transaction, *sync.RWMutex, error) {
 
 	tx, err := blks.rawdb.OpenTransaction()
@@ -136,8 +113,6 @@ func (blks *aBlocks) AppendBlocks( group *AWork.TaskBatchGroup, blocks...*Block 
 		group.Put(DBPath, latesthash.Bytes(), rawvalue)
 	}
 
-	group.Put(DBPath, []byte(BestBlockKey), latesthash.Bytes())
-
 	return nil
 }
 
@@ -147,8 +122,5 @@ func (blks *aBlocks) WriteGenBlock( group *AWork.TaskBatchGroup, gen *GenBlock )
 
 	group.Put( DBPath, hash, gen.Encode() )
 
-	group.Put( DBPath, []byte(BestBlockKey), hash)
-
 	return nil
-
 }

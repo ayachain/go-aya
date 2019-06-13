@@ -13,8 +13,6 @@ type BlocksAPI interface {
 
 	GetBlocks( hashOrIndex...interface{} ) ([]*Block, error)
 
-	BestBlock()	*Block
-
 	AppendBlocks( group *AWork.TaskBatchGroup, blocks...*Block ) error
 
 	WriteGenBlock( group *AWork.TaskBatchGroup, gen *GenBlock ) error

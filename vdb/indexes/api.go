@@ -13,5 +13,7 @@ type IndexesAPI interface {
 
 	GetIndex( blockNumber uint64 ) (*Index, error)
 
+	GetLatest() *Index
+
 	Close() error
 }
