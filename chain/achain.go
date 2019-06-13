@@ -123,7 +123,7 @@ func (chain *aChain) Test() error {
 
 	tx := &ATransaction.Transaction{}
 	tx.BlockIndex = 0
-	tx.From = common.HexToAddress("0xfC8Bc1E33131Bd9586C8fB8d9E96955Eb1210C67")
+	tx.From = common.HexToAddress("0xc7eAb651B78954F038e3Aa885FFA8938CdAf89A8")
 	tx.To = common.HexToAddress("0x341f244DDd50f51187a6036b3BDB4FCA9cAFeE16")
 	tx.Value = 10000
 	tx.Data = nil
@@ -133,7 +133,7 @@ func (chain *aChain) Test() error {
 
 	tid ++
 
-	acc, err := AKeyStore.FindAccount("0xfC8Bc1E33131Bd9586C8fB8d9E96955Eb1210C67")
+	acc, err := AKeyStore.FindAccount("0xc7eAb651B78954F038e3Aa885FFA8938CdAf89A8")
 	if err != nil {
 		return err
 	}

@@ -29,7 +29,7 @@ func (pool *ATxPool) RawMessageSwitch( msg *AKeyStore.ASignedRawMsg ) error  {
 
 
 	case AMsgBlock.MessagePrefix:
-		pool.threadChans[AtxThreadsNameBlockPacage] <- msg
+		pool.threadChans[AtxThreadsNameBlockPackage] <- msg
 
 	case AMsgMinied.MessagePrefix:
 		pool.threadChans[AtxThreadsNameReceiptListen] <- msg

@@ -60,7 +60,6 @@ func (pool *ATxPool) txPackageThread(ctx context.Context) {
 				var txs []ATx.Transaction
 
 				it := poolTransaction.NewIterator(&util.Range{Start: TxHashIteratorStart, Limit: TxHashIteratorLimit}, nil)
-
 				loopCount := uint64(0)
 
 				for it.Next() {
@@ -123,9 +122,13 @@ func (pool *ATxPool) txPackageThread(ctx context.Context) {
 				mblk.Txc = count
 				mblk.Txs = iblk.Cid().String()
 
+				pool.txwriteLocker.Lock()
+
 				if err := poolTransaction.Commit(); err != nil {
+					pool.txwriteLocker.Unlock()
 					break
 				}
+				pool.txwriteLocker.Unlock()
 
 				pool.miningBlock = mblk
 				if err := pool.DoBroadcast(mblk); err != nil {

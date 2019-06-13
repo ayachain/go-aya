@@ -20,7 +20,7 @@ func (pool *ATxPool) blockPackageThread(ctx context.Context) {
 		case <-ctx.Done():
 			return
 
-		case msg := <- pool.threadChans[AtxThreadsNameBlockPacage] :
+		case msg := <- pool.threadChans[AtxThreadsNameBlockPackage] :
 
 			if pool.miningBlock != nil {
 
@@ -98,15 +98,10 @@ func (pool *ATxPool) blockPackageThread(ctx context.Context) {
 				}
 
 				if err := pool.UpdateBestBlock(); err != nil {
-
 					fmt.Println("UpdateBestBlockErr:" + err.Error())
-
 				} else {
-
-					fmt.Printf( "ConfirmBlock:%v FullCID:%v\n", cblock.Index, fllcid)
-
+					fmt.Printf( "\nConfirmBlock:%v FullCID:%v\n", cblock.Index, fllcid)
 				}
-
 			}
 
 		}

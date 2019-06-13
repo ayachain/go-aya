@@ -82,7 +82,7 @@ type AtxThreadsName string
 const (
 	AtxThreadsAll					AtxThreadsName = "All"
 	AtxThreadsNameTxPackage 		AtxThreadsName = "MiningBlockPackageThread"
-	AtxThreadsNameBlockPacage		AtxThreadsName = "BlockConfirmPackageThread"
+	AtxThreadsNameBlockPackage		AtxThreadsName = "BlockConfirmPackageThread"
 	AtxThreadsNameReceiptListen 	AtxThreadsName = "MiningBlockReceiptListenThread"
 	AtxThreadsNameTransactionCommit AtxThreadsName = "TransactionCommitThread"
 	AtxThreadsNameMining			AtxThreadsName = "MiningThread"
@@ -100,7 +100,6 @@ type ATxPool struct {
 	adbpath string
 	chainId string
 	channelTopics string
-
 	miningBlock *AMsgMBlock.MBlock
 
 	/// Top100 changes only when the block is updated. In order to reduce the reading and writing frequency
@@ -117,7 +116,7 @@ type ATxPool struct {
 	threadChans map[AtxThreadsName] chan *AKeyStore.ASignedRawMsg
 
 	notary ACore.Notary
-	packLocker sync.Mutex
+	txwriteLocker sync.Locker
 }
 
 
@@ -267,7 +266,7 @@ func (pool *ATxPool) PowerOn() error {
 
 		pool.runthreads(
 			AtxThreadsNameTxPackage,
-			AtxThreadsNameBlockPacage,
+			AtxThreadsNameBlockPackage,
 			AtxThreadsNameReceiptListen,
 			AtxThreadsNameTransactionCommit,
 			AtxThreadsNameMining,
@@ -279,7 +278,7 @@ func (pool *ATxPool) PowerOn() error {
 		pool.runthreads(
 			AtxThreadsNameChannelListen,
 			AtxThreadsNameTxPackage,
-			AtxThreadsNameBlockPacage,
+			AtxThreadsNameBlockPackage,
 			AtxThreadsNameReceiptListen,
 			AtxThreadsNameTransactionCommit,
 			)
@@ -349,7 +348,7 @@ func (pool *ATxPool) runthreads( names ... AtxThreadsName ) {
 			go pool.receiptListen(workCtx)
 
 
-		case AtxThreadsNameBlockPacage:
+		case AtxThreadsNameBlockPackage:
 
 			workCtx, cancel := context.WithCancel(pool.workctx)
 
@@ -395,8 +394,14 @@ func (pool *ATxPool) UpdateBestBlock( ) error {
 
 	ast, err := pool.cvfs.Assetses().AssetsOf(pool.ownerAccount.Address.Bytes())
 
+	//test
+	toast, _ := pool.cvfs.Assetses().AssetsOf( EComm.HexToAddress("0x341f244DDd50f51187a6036b3BDB4FCA9cAFeE16").Bytes() )
 	if ast != nil {
-		fmt.Printf("Avail:%d\tVote:%d\n", ast.Avail, ast.Vote)
+
+		//fmt.Printf("Avail:%d\tVote:%d\n", ast.Avail, ast.Vote)
+		fmt.Printf("Address:From:\tAvail:%v\tVote:%v\tLocked:%v\n", ast.Avail, ast.Vote, ast.Locked)
+		fmt.Printf("Address:To:\tAvail:%v\tVote:%v\tLocked:%v\n", toast.Avail, toast.Vote, toast.Locked)
+
 	}
 
 	if err != nil {
@@ -524,6 +529,9 @@ func (pool *ATxPool) AddConfrimReceipt( mbhash EComm.Hash, retcid cid.Cid, from 
 }
 
 func (pool *ATxPool) AddRawTransaction( tx *AKeyStore.ASignedRawMsg ) error {
+
+	pool.txwriteLocker.Lock()
+	defer pool.txwriteLocker.Unlock()
 
 	if !tx.Verify() {
 		return ErrMessageVerifyExpected

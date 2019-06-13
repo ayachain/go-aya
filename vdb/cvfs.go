@@ -186,7 +186,7 @@ func newMFSRoot( ctx context.Context, c cid.Cid, ind *core.IpfsNode ) ( *mfs.Roo
 	}
 
 	mroot, err := mfs.NewRoot(ctx, ind.DAG, pbnd, func(i context.Context, i2 cid.Cid) error {
-		//fmt.Println("CVFS Published New CID : " + i2.String())
+		fmt.Println("CVFSPublishedCID : " + i2.String())
 		return nil
 	})
 
