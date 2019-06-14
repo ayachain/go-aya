@@ -3,53 +3,53 @@ package assets
 import (
 	"bytes"
 	"encoding/binary"
-	"github.com/ayachain/go-aya/vdb/common"
+	AVdbComm "github.com/ayachain/go-aya/vdb/common"
 	EComm "github.com/ethereum/go-ethereum/common"
 	"github.com/ipfs/go-mfs"
 	"github.com/pkg/errors"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/storage"
 	"github.com/syndtr/goleveldb/leveldb/util"
-	"sync"
 )
 
 type aAssetes struct {
-	AssetsAPI
+
+	Services
+
 	*mfs.Directory
-	RWLocker sync.RWMutex
 	rawdb *leveldb.DB
 	mfsstorage storage.Storage
 }
 
-func CreateServices( mdir *mfs.Directory, rdOnly bool ) AssetsAPI {
+func CreateServices( mdir *mfs.Directory, rdOnly bool ) Services {
 
 	api := &aAssetes{
 		Directory:mdir,
 	}
 
-	api.rawdb, api.mfsstorage = common.OpenExistedDB( mdir, DBPATH, rdOnly )
+	api.rawdb, api.mfsstorage = AVdbComm.OpenExistedDB( mdir, DBPATH, rdOnly )
 
 	return api
 }
 
-func (api *aAssetes) DBKey() string {
-	return DBPATH
+func (api *aAssetes) Shutdown() error {
+
+	_ = api.rawdb.Close()
+	_ = api.mfsstorage.Close()
+
+	return api.Flush()
 }
 
-func (api *aAssetes) VotingCountOf( key []byte ) ( uint64, error ) {
+func (api *aAssetes) Close() {
 
-	ast, err := api.AssetsOf(key)
-	if err != nil {
-		return 0, err
-	}
-
-	return ast.Vote, nil
+	_ = api.rawdb.Close()
+	_ = api.mfsstorage.Close()
 
 }
 
-func (api *aAssetes) AssetsOf( key []byte ) ( *Assets, error ) {
+func (api *aAssetes) AssetsOf( addr EComm.Address ) ( *Assets, error ) {
 
-	bnc, err := api.rawdb.Get(key, nil)
+	bnc, err := api.rawdb.Get(addr.Bytes(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -60,28 +60,6 @@ func (api *aAssetes) AssetsOf( key []byte ) ( *Assets, error ) {
 	}
 
 	return rcd, nil
-}
-
-
-func (api *aAssetes) OpenVDBTransaction() (*leveldb.Transaction, *sync.RWMutex, error) {
-
-	tx, err := api.rawdb.OpenTransaction()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return tx, &api.RWLocker, nil
-}
-
-
-func (api *aAssetes) Close() {
-
-	api.RWLocker.Lock()
-	defer api.RWLocker.Unlock()
-
-	_ = api.rawdb.Close()
-	_ = api.mfsstorage.Close()
-	_ = api.Flush()
 }
 
 func (api *aAssetes) GetLockedTop100() ( []*SortAssets, error ) {
@@ -99,7 +77,7 @@ func (api *aAssetes) GetLockedTop100() ( []*SortAssets, error ) {
 
 	for topIt.Next() {
 
-		rcd, err := api.AssetsOf( topIt.Value() )
+		rcd, err := api.AssetsOf( EComm.BytesToAddress(topIt.Value()) )
 		if err != nil {
 			return nil, err
 		}
@@ -121,4 +99,19 @@ func (api *aAssetes) GetLockedTop100() ( []*SortAssets, error ) {
 	}
 
 	return list, nil
+}
+
+func (api *aAssetes) NewCache() (AVdbComm.VDBCacheServices, error) {
+	return newCache( api.rawdb )
+}
+
+func (api *aAssetes) OpenTransaction() (*leveldb.Transaction, error) {
+
+	tx, err := api.rawdb.OpenTransaction()
+
+	if err != nil {
+		return nil, err
+	}
+
+	return tx, nil
 }

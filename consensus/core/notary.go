@@ -18,6 +18,7 @@ package core
 
 import (
 	AGroup "github.com/ayachain/go-aya/consensus/core/worker"
+	"github.com/ayachain/go-aya/vdb"
 	AMsgMBlock "github.com/ayachain/go-aya/vdb/mblock"
 )
 
@@ -27,5 +28,5 @@ type Notary interface {
 
 	StartWorking()
 
-	MiningBlock( block *AMsgMBlock.MBlock ) (*AGroup.TaskBatchGroup, error)
+	MiningBlock( block *AMsgMBlock.MBlock, cvfs vdb.CacheCVFS ) (*AGroup.TaskBatchGroup, error)
 }

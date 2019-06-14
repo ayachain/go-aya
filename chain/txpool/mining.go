@@ -27,17 +27,23 @@ func (pool *ATxPool) miningThread(ctx context.Context) {
 			}
 
 			mblock := &AMsgMBlock.MBlock{}
-
 			if err := mblock.RawMessageDecode(msg.Content); err != nil {
 				break
 			}
-
 			pool.miningBlock = mblock
 
-			group, err := pool.notary.MiningBlock(mblock)
+
+			cVFS, err := pool.cvfs.NewCVFSCache()
+			if err != nil {
+				pool.PowerOff(err)
+			}
+			defer cVFS.Close()
+
+			group, err := pool.notary.MiningBlock(mblock, cVFS)
 			if err != nil {
 				break
 			}
+
 
 			groupbytes := group.Encode()
 			gblock := IBlocks.NewBlock(groupbytes)

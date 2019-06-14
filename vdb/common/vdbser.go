@@ -1,16 +1,22 @@
 package common
 
-import (
-	"github.com/syndtr/goleveldb/leveldb"
-	"sync"
-)
+import "github.com/syndtr/goleveldb/leveldb"
 
-type VDBSerices interface {
+
+type VDBCacheServices interface {
 
 	Close()
 
-	DBKey() string
-
-	OpenVDBTransaction() (*leveldb.Transaction, *sync.RWMutex, error)
-
+	MergerBatch() *leveldb.Batch
 }
+
+type VDBSerices interface {
+
+	Shutdown() error
+
+	NewCache() (VDBCacheServices, error)
+
+	OpenTransaction() (*leveldb.Transaction, error)
+}
+
+

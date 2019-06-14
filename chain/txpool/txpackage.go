@@ -9,6 +9,7 @@ import (
 	AMsgMBlock "github.com/ayachain/go-aya/vdb/mblock"
 	ATx "github.com/ayachain/go-aya/vdb/transaction"
 	blocks "github.com/ipfs/go-block-format"
+	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/util"
 	"math/rand"
 	"time"
@@ -37,12 +38,7 @@ func (pool *ATxPool) txPackageThread(ctx context.Context) {
 
 			if pool.miningBlock == nil && !pool.IsEmpty() {
 
-				poolTransaction, err := pool.storage.OpenTransaction()
-
-				if err != nil {
-					pool.PowerOff(err)
-					return
-				}
+				pool.txLocker.Lock()
 
 				rand.Seed(time.Now().UnixNano())
 				bindex := pool.cvfs.Indexes().GetLatest()
@@ -59,36 +55,36 @@ func (pool *ATxPool) txPackageThread(ctx context.Context) {
 				count := uint16(0)
 				var txs []ATx.Transaction
 
-				it := poolTransaction.NewIterator(&util.Range{Start: TxHashIteratorStart, Limit: TxHashIteratorLimit}, nil)
+				it := pool.storage.NewIterator(&util.Range{Start: TxHashIteratorStart, Limit: TxHashIteratorLimit}, nil)
+
 				loopCount := uint64(0)
+
+				batch := &leveldb.Batch{}
 
 				for it.Next() {
 
 					loopCount ++
 					signedmsg, err := AKeyStore.BytesToRawMsg(it.Value())
 					if err != nil {
-						poolTransaction.Delete(it.Key(), nil)
+						batch.Delete(it.Key())
 						continue
 					}
 
 					if signedmsg.Content[0] != ATx.MessagePrefix {
-						poolTransaction.Delete(it.Key(), nil)
+						batch.Delete(it.Key())
 						continue
 					}
 
 					subTx := ATx.Transaction{}
 					if err = subTx.Decode(signedmsg.Content[1:]); err != nil {
-						poolTransaction.Delete(it.Key(), nil)
+						batch.Delete(it.Key())
 						continue
 					}
 
 					txs = append(txs, subTx)
 					count++
 
-					err = poolTransaction.Delete(it.Key(), nil)
-					if err != nil {
-						pool.PowerOff(err)
-					}
+					batch.Delete(it.Key())
 
 					if count >= PackageTxsLimit {
 						break
@@ -98,16 +94,17 @@ func (pool *ATxPool) txPackageThread(ctx context.Context) {
 
 				newSize := pool.Size() - loopCount
 				if newSize <= 0 {
-					poolTransaction.Put(TxCount, common.BigEndianBytes( uint64(0) ), nil )
+					batch.Put(TxCount, common.BigEndianBytes( uint64(0) ))
 
 				} else {
-					poolTransaction.Put(TxCount, common.BigEndianBytes( newSize ), nil )
+					batch.Put(TxCount, common.BigEndianBytes( newSize ))
 				}
 
 				//commit block to ipfs block
 				txsblockcontent, err := json.Marshal(txs)
 				if err != nil {
 					pool.PowerOff(err)
+					pool.txLocker.Unlock()
 					return
 				}
 
@@ -115,6 +112,7 @@ func (pool *ATxPool) txPackageThread(ctx context.Context) {
 				err = pool.ind.Blocks.AddBlock(iblk)
 				if err != nil {
 					pool.PowerOff(err)
+					pool.txLocker.Unlock()
 					return
 				}
 
@@ -122,20 +120,19 @@ func (pool *ATxPool) txPackageThread(ctx context.Context) {
 				mblk.Txc = count
 				mblk.Txs = iblk.Cid().String()
 
-				pool.txLocker.Lock()
+				if err := pool.storage.Write(batch, nil); err != nil {
+					pool.txLocker.Unlock()
+					break
+				}
 
-				if err := poolTransaction.Commit(); err != nil {
+				pool.miningBlock = mblk
+
+				if err := pool.DoBroadcast(mblk); err != nil {
 					pool.txLocker.Unlock()
 					break
 				}
 
 				pool.txLocker.Unlock()
-
-				pool.miningBlock = mblk
-
-				if err := pool.DoBroadcast(mblk); err != nil {
-					break
-				}
 
 			} else {
 

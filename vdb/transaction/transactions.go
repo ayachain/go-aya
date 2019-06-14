@@ -7,19 +7,18 @@ import (
 	"github.com/ipfs/go-mfs"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/storage"
-	"sync"
 )
 
 type aTransactions struct {
-	TransactionAPI
+
+	Services
 	*mfs.Directory
 
 	mfsstorage storage.Storage
 	rawdb *leveldb.DB
-	RWLocker sync.RWMutex
 }
 
-func CreateServices( mdir *mfs.Directory, rdOnly bool ) TransactionAPI {
+func CreateServices( mdir *mfs.Directory, rdOnly bool ) Services {
 
 	api := &aTransactions{
 		Directory:mdir,
@@ -28,10 +27,6 @@ func CreateServices( mdir *mfs.Directory, rdOnly bool ) TransactionAPI {
 	api.rawdb, api.mfsstorage = AVdbComm.OpenExistedDB(mdir, DBPath, rdOnly)
 
 	return api
-}
-
-func (txs *aTransactions) DBKey()	string {
-	return DBPath
 }
 
 func (txs *aTransactions) GetTxByHash( hash EComm.Hash ) (*Transaction, error) {
@@ -50,7 +45,6 @@ func (txs *aTransactions) GetTxByHash( hash EComm.Hash ) (*Transaction, error) {
 	return tx, nil
 }
 
-
 func (txs *aTransactions) GetTxByHashBs( hsbs []byte ) (*Transaction, error) {
 
 	hash := EComm.BytesToHash(hsbs)
@@ -58,23 +52,32 @@ func (txs *aTransactions) GetTxByHashBs( hsbs []byte ) (*Transaction, error) {
 	return txs.GetTxByHash(hash)
 }
 
+func (txs *aTransactions) Close() {
 
-func (api *aTransactions) OpenVDBTransaction() (*leveldb.Transaction, *sync.RWMutex, error) {
-
-	tx, err := api.rawdb.OpenTransaction()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return tx, &api.RWLocker, nil
+	_ = txs.rawdb.Close()
+	_ = txs.mfsstorage.Close()
+	_ = txs.Flush()
 }
 
-func (api *aTransactions) Close() {
+func (txs *aTransactions) NewCache() (AVdbComm.VDBCacheServices, error) {
+	return newCache( txs.rawdb )
+}
 
-	api.RWLocker.Lock()
-	defer api.RWLocker.Unlock()
+func (txs *aTransactions) OpenTransaction() (*leveldb.Transaction, error) {
 
-	_ = api.rawdb.Close()
-	_ = api.mfsstorage.Close()
-	_ = api.Flush()
+	tx, err := txs.rawdb.OpenTransaction()
+
+	if err != nil {
+		return nil, err
+	}
+
+	return tx, nil
+}
+
+func (txs *aTransactions) Shutdown() error {
+
+	_ = txs.rawdb.Close()
+	_ = txs.mfsstorage.Close()
+
+	return txs.Flush()
 }

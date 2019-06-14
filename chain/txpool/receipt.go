@@ -31,7 +31,7 @@ func (pool *ATxPool) receiptListen(ctx context.Context) {
 				break
 			}
 
-			fromVoting, err := pool.cvfs.Assetses().VotingCountOf(from.Bytes())
+			fromAst, err := pool.cvfs.Assetses().AssetsOf(*from)
 			if err != nil {
 				break
 			}
@@ -70,13 +70,13 @@ func (pool *ATxPool) receiptListen(ctx context.Context) {
 
 				ocount, vexist := receiptMap[rcidstr]
 				if vexist {
-					receiptMap[rcidstr] = ocount + fromVoting
+					receiptMap[rcidstr] = ocount + fromAst.Vote
 				} else {
-					receiptMap[rcidstr] = fromVoting
+					receiptMap[rcidstr] = fromAst.Vote
 				}
 
 			} else {
-				receiptMap[rcidstr] = fromVoting
+				receiptMap[rcidstr] = fromAst.Vote
 			}
 
 

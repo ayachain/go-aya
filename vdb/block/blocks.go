@@ -2,35 +2,32 @@ package block
 
 import (
 	"errors"
-	AWork "github.com/ayachain/go-aya/consensus/core/worker"
-	"github.com/ayachain/go-aya/vdb/common"
+	AVdbComm "github.com/ayachain/go-aya/vdb/common"
 	AIndexes "github.com/ayachain/go-aya/vdb/indexes"
 	EComm "github.com/ethereum/go-ethereum/common"
 	"github.com/ipfs/go-mfs"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/storage"
-	"sync"
 )
 
 type aBlocks struct {
-	BlocksAPI
-	*mfs.Directory
-	headAPI AIndexes.IndexesAPI
 
+	reader
+	*mfs.Directory
+
+	headAPI AIndexes.IndexesServices
 	mfsstorage storage.Storage
 	rawdb *leveldb.DB
-
-	RWLocker sync.RWMutex
 }
 
-func CreateServices( mdir *mfs.Directory, hapi AIndexes.IndexesAPI, rdonly bool) BlocksAPI {
+func CreateServices( mdir *mfs.Directory, hapi AIndexes.IndexesServices, rdonly bool) Services {
 
 	api := &aBlocks{
 		Directory:mdir,
 		headAPI:hapi,
 	}
 
-	api.rawdb, api.mfsstorage = common.OpenExistedDB(mdir, DBPath, rdonly)
+	api.rawdb, api.mfsstorage = AVdbComm.OpenExistedDB(mdir, DBPath, rdonly)
 
 	return api
 }
@@ -76,51 +73,25 @@ func (blks *aBlocks) GetBlocks( hashOrIndex...interface{} ) ([]*Block, error) {
 	return blist, nil
 }
 
-func (blks *aBlocks) OpenVDBTransaction() (*leveldb.Transaction, *sync.RWMutex, error) {
-
-	tx, err := blks.rawdb.OpenTransaction()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return tx, &blks.RWLocker, nil
+func (blks *aBlocks) NewCache() (AVdbComm.VDBCacheServices, error) {
+	return newCache( blks.rawdb, blks.headAPI )
 }
 
-func (blks *aBlocks) Close() {
+func (blks *aBlocks) OpenTransaction() (*leveldb.Transaction, error) {
 
-	blks.RWLocker.Lock()
-	defer blks.RWLocker.Unlock()
+	tx, err := blks.rawdb.OpenTransaction()
+
+	if err != nil {
+		return nil, err
+	}
+
+	return tx, nil
+}
+
+func (blks *aBlocks) Shutdown() error {
 
 	_ = blks.rawdb.Close()
 	_ = blks.mfsstorage.Close()
-	_ = blks.Flush()
-}
 
-func (blks *aBlocks) AppendBlocks( group *AWork.TaskBatchGroup, blocks...*Block ) error {
-
-	if len(blocks) <= 0 {
-		return nil
-	}
-
-	var latesthash EComm.Hash
-
-	for _, v := range blocks {
-
-		latesthash = v.GetHash()
-
-		rawvalue := v.Encode()
-
-		group.Put(DBPath, latesthash.Bytes(), rawvalue)
-	}
-
-	return nil
-}
-
-func (blks *aBlocks) WriteGenBlock( group *AWork.TaskBatchGroup, gen *GenBlock ) error {
-
-	hash := gen.GetHash().Bytes()
-
-	group.Put( DBPath, hash, gen.Encode() )
-
-	return nil
+	return blks.Flush()
 }

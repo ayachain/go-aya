@@ -1,12 +1,8 @@
 package assets
 
 import (
-	"errors"
 	AVdbComm "github.com/ayachain/go-aya/vdb/common"
-)
-
-var (
-	notEnoughError = errors.New("not enough balance")
+	EComm "github.com/ethereum/go-ethereum/common"
 )
 
 const (
@@ -16,13 +12,33 @@ const (
 	DBTopIndexPrefix 	= "Top_"
 )
 
-type AssetsAPI interface {
+type reader interface {
 
-	AVdbComm.VDBSerices
-
-	VotingCountOf( key []byte ) ( uint64, error )
-
-	AssetsOf( key []byte ) ( *Assets, error )
+	AssetsOf( addr EComm.Address ) ( *Assets, error )
 
 	GetLockedTop100() ( []*SortAssets, error )
+
+}
+
+type writer interface {
+
+	PutNewAssets( addr EComm.Address, ast *Assets )
+
+	Put( addr EComm.Address, ast *Assets )
+}
+
+
+type Services interface {
+
+	AVdbComm.VDBSerices
+	reader
+}
+
+
+type Caches interface {
+
+	AVdbComm.VDBCacheServices
+
+	reader
+	writer
 }

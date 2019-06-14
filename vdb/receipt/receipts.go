@@ -10,12 +10,24 @@ import (
 )
 
 type aReceipt struct {
-	ReceiptsAPI
+
+	Services
 	*mfs.Directory
 
 	mfsstorage storage.Storage
 	rawdb *leveldb.DB
 	RWLocker sync.RWMutex
+}
+
+func CreateServices( mdir *mfs.Directory, rdonly bool ) Services {
+
+	api := &aReceipt{
+		Directory:mdir,
+	}
+
+	api.rawdb, api.mfsstorage = AVdbComm.OpenExistedDB(mdir, DBPath, rdonly)
+
+	return api
 }
 
 func (r *aReceipt) GetTransactionReceipt( txhs EComm.Hash ) (*Receipt, error) {
@@ -36,38 +48,37 @@ func (r *aReceipt) GetTransactionReceipt( txhs EComm.Hash ) (*Receipt, error) {
 	return rp, nil
 }
 
-func (txs *aReceipt) DBKey()	string {
-	return DBPath
+func (r *aReceipt) Close() {
+
+	_ = r.rawdb.Close()
+
+	_ = r.mfsstorage.Close()
+
+	_ = r.Flush()
+
 }
 
-func CreateServices( mdir *mfs.Directory, rdonly bool ) ReceiptsAPI {
+func (r *aReceipt) NewCache() (AVdbComm.VDBCacheServices, error) {
 
-	api := &aReceipt{
-		Directory:mdir,
-	}
+	return newCache( r.rawdb )
 
-	api.rawdb, api.mfsstorage = AVdbComm.OpenExistedDB(mdir, DBPath, rdonly)
-
-	return api
 }
 
-func (api *aReceipt) OpenVDBTransaction() (*leveldb.Transaction, *sync.RWMutex, error) {
+func (r *aReceipt) OpenTransaction() (*leveldb.Transaction, error) {
 
-	tx, err := api.rawdb.OpenTransaction()
+	tx, err := r.rawdb.OpenTransaction()
+
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	return tx, &api.RWLocker, nil
+	return tx, nil
 }
 
-func (api *aReceipt) Close() {
+func (r *aReceipt) Shutdown() error {
 
-	api.RWLocker.Lock()
-	defer api.RWLocker.Unlock()
+	_ = r.rawdb.Close()
+	_ = r.mfsstorage.Close()
 
-	_ = api.rawdb.Close()
-	_ = api.mfsstorage.Close()
-	_ = api.Flush()
-
+	return r.Flush()
 }

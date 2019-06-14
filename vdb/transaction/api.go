@@ -8,9 +8,32 @@ import (
 
 const DBPath = "/db/transactions"
 
-type TransactionAPI interface {
-	AVdbComm.VDBSerices
+type reader interface {
+
 	GetTxByHash( hash EComm.Hash ) (*Transaction, error)
+
 	GetTxByHashBs( hsbs []byte ) (*Transaction, error)
+
 	NewBlockTxIterator( bindex uint64 ) iterator.Iterator
+}
+
+
+type writer interface {
+
+}
+
+
+type Services interface {
+
+	AVdbComm.VDBSerices
+	reader
+}
+
+
+type Caches interface {
+
+	AVdbComm.VDBCacheServices
+
+	reader
+	writer
 }

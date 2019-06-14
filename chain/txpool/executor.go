@@ -58,10 +58,7 @@ func (pool *ATxPool) blockExecutorThread(ctx context.Context) {
 				}
 
 				// Append Block
-				if err := pool.cvfs.Blocks().AppendBlocks(group, cblock ); err != nil {
-					fmt.Println(err)
-					break
-				}
+				group.Put(AMsgBlock.DBPath, cblock.GetHash().Bytes(), cblock.Encode() )
 
 				latestCid, err := pool.cvfs.WriteTaskGroup(group)
 				if err != nil {

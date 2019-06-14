@@ -95,3 +95,51 @@ func LookupDBPath( root *mfs.Root, path string ) (*mfs.Directory, error) {
 
 	return dir, nil
 }
+
+func CacheHas( originDB *leveldb.DB, cacheDB *leveldb.DB, key []byte ) (bool, error) {
+
+	exist, err := cacheDB.Has(key, nil)
+	if err != nil {
+		return false, err
+	}
+
+	if !exist {
+
+		oexist, err := originDB.Has(key,nil)
+		if err != nil {
+			return false, err
+		}
+
+		return oexist, nil
+	}
+
+	return exist, nil
+}
+
+func CacheGet( originDB *leveldb.DB, cacheDB *leveldb.DB, key []byte ) ([]byte, error) {
+
+	exist, err := cacheDB.Has(key, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if !exist {
+
+		v, err := originDB.Get(key, nil)
+		if err != nil {
+			return nil, err
+		}
+
+		if err := cacheDB.Put(key, v, nil); err != nil {
+			return nil, err
+		}
+
+		return v, nil
+
+	} else {
+
+		return cacheDB.Get(key, nil)
+
+	}
+
+}

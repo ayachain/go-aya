@@ -3,7 +3,6 @@ package block
 import (
 	"context"
 	"encoding/json"
-	AWork "github.com/ayachain/go-aya/consensus/core/worker"
 	"github.com/ayachain/go-aya/consensus/impls/APOS/in/block/workflow"
 	APosComm "github.com/ayachain/go-aya/consensus/impls/APOS/in/common"
 	Avdb "github.com/ayachain/go-aya/vdb"
@@ -13,7 +12,7 @@ import (
 	"github.com/ipfs/go-ipfs/core"
 )
 
-func WokerSwitcher( msg interface{}, vdb Avdb.CVFS, ind *core.IpfsNode, group *AWork.TaskBatchGroup ) (interface{}, error) {
+func WokerSwitcher( msg interface{}, vdb Avdb.CacheCVFS, ind *core.IpfsNode ) (interface{}, error) {
 
 	rawblock, ok := msg.(*AMsgMBlock.MBlock)
 	if !ok {
@@ -39,17 +38,17 @@ func WokerSwitcher( msg interface{}, vdb Avdb.CVFS, ind *core.IpfsNode, group *A
 
 		switch string(tx.Data) {
 
-		case "UNLOCK", "LOCK":
-			if err := workflow.DoLockAmount(tx, group, vdb); err != nil {
-				return nil, err
-			}
+		//case "UNLOCK", "LOCK":
+		//	if err := workflow.DoLockAmount(tx, group, vdb); err != nil {
+		//		return nil, err
+		//	}
 
 		default:
-			if err := workflow.DoTransfer(tx, group, vdb); err != nil {
+			if err := workflow.DoTransfer(tx, vdb); err != nil {
 				return nil, err
 			}
 		}
 	}
 
-	return group, nil
+	return msg, nil
 }

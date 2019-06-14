@@ -13,7 +13,6 @@ import (
 	"github.com/ipfs/go-unixfs"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/storage"
-	"sync"
 	"time"
 )
 
@@ -21,15 +20,17 @@ var LatestIndexKey = []byte("LATEST")
 
 type aIndexes struct {
 
-	IndexesAPI
+	IndexesServices
+
 	*mfs.Directory
-	RWLocker sync.RWMutex
+	AVdbComm.VDBSerices
+
 	mfsstorage storage.Storage
 	rawdb *leveldb.DB
 	mfsroot *mfs.Root
 }
 
-func CreateServices( ind *core.IpfsNode, chainId string ) IndexesAPI {
+func CreateServices( ind *core.IpfsNode, chainId string ) IndexesServices {
 
 	adbpath := "/aya/chain/indexes/" + chainId + "t1"
 
@@ -92,6 +93,52 @@ func CreateServices( ind *core.IpfsNode, chainId string ) IndexesAPI {
 	return api
 }
 
+func ( i *aIndexes ) GetLatest() *Index {
+
+	bs, err := i.rawdb.Get([]byte(LatestIndexKey), nil)
+	if err != nil {
+		return nil
+	}
+
+	idx := &Index{}
+	if err := idx.Decode(bs); err != nil {
+		return nil
+	}
+
+	return idx
+}
+
+func ( i *aIndexes ) GetIndex( blockNumber uint64 ) (*Index, error) {
+
+	key := common.BigEndianBytes(blockNumber)
+
+	bs, err := i.rawdb.Get(key, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	idx := &Index{}
+	if err := idx.Decode(bs); err != nil {
+		return nil, err
+	}
+
+	return idx,nil
+
+}
+
+func ( i *aIndexes ) Close() error {
+
+	if err := i.rawdb.Close(); err != nil {
+		return err
+	}
+
+	if err := i.mfsroot.Close(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func ( i *aIndexes ) PutIndex( index *Index ) error {
 
 	key := common.BigEndianBytes(index.BlockIndex)
@@ -127,50 +174,3 @@ func ( i *aIndexes ) PutIndexBy( num uint64, bhash EComm.Hash, ci cid.Cid ) erro
 
 	return nil
 }
-
-func ( i *aIndexes ) GetLatest() *Index {
-
-	bs, err := i.rawdb.Get([]byte(LatestIndexKey), nil)
-	if err != nil {
-		return nil
-	}
-
-	idx := &Index{}
-	if err := idx.Decode(bs); err != nil {
-		return nil
-	}
-
-	return idx
-}
-
-func ( i *aIndexes ) Close() error {
-
-	if err := i.rawdb.Close(); err != nil {
-		return err
-	}
-
-	if err := i.mfsroot.Close(); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func ( i *aIndexes ) GetIndex( blockNumber uint64 ) (*Index, error) {
-
-	key := common.BigEndianBytes(blockNumber)
-
-	bs, err := i.rawdb.Get(key, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	idx := &Index{}
-	if err := idx.Decode(bs); err != nil {
-		return nil, err
-	}
-
-	return idx,nil
-
-}
-

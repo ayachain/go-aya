@@ -27,17 +27,21 @@ var (
 
 type CVFS interface {
 
-	Close()						error
-	SeekToBlock( bcid cid.Cid )  error
+	Close() error
 
-	Blocks() 					ABlock.BlocksAPI		/// Body
-	Receipts() 					AReceipts.ReceiptsAPI	/// Receipt
-	Assetses() 					AAssetses.AssetsAPI		/// Asset
-	Transactions() 				ATx.TransactionAPI		/// Transaction
-	Indexes()					AIndexes.IndexesAPI
+	// In Data storage
+	Indexes() AIndexes.IndexesServices
 
-	WriteTaskGroup( group *AWrok.TaskBatchGroup) (cid.Cid, error)
+	// In IPFS DAG
+	Blocks() ABlock.Services
+	Assetses() AAssetses.Services
+	Receipts() AReceipts.Services
+	Transactions() ATx.Services
 
+	SeekToBlock( bcid cid.Cid ) error
+	WriteTaskGroup( group *AWrok.TaskBatchGroup ) ( cid.Cid, error )
+
+	NewCVFSCache() (CacheCVFS, error)
 }
 
 type aCVFS struct {
@@ -51,7 +55,8 @@ type aCVFS struct {
 	ctxCancel context.CancelFunc
 
 	servies map[string]AVdbComm.VDBSerices
-	indexServices AIndexes.IndexesAPI
+
+	indexServices AIndexes.IndexesServices
 	chainId string
 
 	rwmutex sync.RWMutex
@@ -62,27 +67,34 @@ func CreateVFS( block *ABlock.GenBlock, ind *core.IpfsNode ) (cid.Cid, error) {
 	var err error
 
 	cvfs, err := LinkVFS(block.ChainID, cid.Undef, ind)
+
 	if err != nil {
 		return cid.Undef, err
 	}
 	defer cvfs.Close()
 
-	genBatchGroup := AWrok.NewGroup()
 
-	// Award
-	for addr, amount := range block.Award {
-		assetBn := AAssetses.NewAssets( amount, amount, 0 ).Encode()
-		genBatchGroup.Put( cvfs.Assetses().DBKey(), EComm.HexToAddress(addr).Bytes(), assetBn )
-	}
-
-	// Block
-	err = cvfs.Blocks().WriteGenBlock( genBatchGroup, block )
+	writer, err := cvfs.NewCVFSCache()
 	if err != nil {
 		return cid.Undef, err
 	}
 
+	// Award
+	for addr, amount := range block.Award {
+
+		assetBn := AAssetses.NewAssets( amount, amount, 0 )
+
+		writer.Assetses().PutNewAssets( EComm.HexToAddress(addr), assetBn )
+
+	}
+
+	// Block
+	writer.Blocks().WriteGenBlock( block )
+
+	group := writer.MergeGroup()
+
 	// Group Write
-	baseCid, err := cvfs.WriteTaskGroup(genBatchGroup)
+	baseCid, err := cvfs.WriteTaskGroup(group)
 	if err != nil {
 		return cid.Undef, err
 	}
@@ -91,11 +103,12 @@ func CreateVFS( block *ABlock.GenBlock, ind *core.IpfsNode ) (cid.Cid, error) {
 		return cid.Undef, err
 	}
 
+	_ = writer.Close()
 	_ = cvfs.Close()
 
 	return baseCid, nil
-}
 
+}
 
 func LinkVFS( chainId string, baseCid cid.Cid, ind *core.IpfsNode ) (CVFS, error) {
 
@@ -142,7 +155,7 @@ func ( vfs *aCVFS ) SeekToBlock( bcid cid.Cid ) error {
 	return nil
 }
 
-func ( vfs *aCVFS ) Assetses() AAssetses.AssetsAPI {
+func ( vfs *aCVFS ) Assetses() AAssetses.Services {
 
 	vfs.rwmutex.Lock()
 	defer vfs.rwmutex.Unlock()
@@ -162,11 +175,11 @@ func ( vfs *aCVFS ) Assetses() AAssetses.AssetsAPI {
 		vfs.servies[ AAssetses.DBPATH ] = v
 	}
 
-	return v.(AAssetses.AssetsAPI)
+	return v.(AAssetses.Services)
 
 }
 
-func ( vfs *aCVFS ) Blocks() ABlock.BlocksAPI {
+func ( vfs *aCVFS ) Blocks() ABlock.Services {
 
 	vfs.rwmutex.Lock()
 	defer vfs.rwmutex.Unlock()
@@ -187,10 +200,10 @@ func ( vfs *aCVFS ) Blocks() ABlock.BlocksAPI {
 
 	}
 
-	return v.(ABlock.BlocksAPI)
+	return v.(ABlock.Services)
 }
 
-func ( vfs *aCVFS ) Transactions() ATx.TransactionAPI {
+func ( vfs *aCVFS ) Transactions() ATx.Services {
 
 	vfs.rwmutex.Lock()
 	defer vfs.rwmutex.Unlock()
@@ -211,10 +224,10 @@ func ( vfs *aCVFS ) Transactions() ATx.TransactionAPI {
 
 	}
 
-	return v.(ATx.TransactionAPI)
+	return v.(ATx.Services)
 }
 
-func ( vfs *aCVFS ) Receipts() AReceipts.ReceiptsAPI {
+func ( vfs *aCVFS ) Receipts() AReceipts.Services {
 
 	vfs.rwmutex.Lock()
 	defer vfs.rwmutex.Unlock()
@@ -235,15 +248,21 @@ func ( vfs *aCVFS ) Receipts() AReceipts.ReceiptsAPI {
 
 	}
 
-	return v.(AReceipts.ReceiptsAPI)
+	return v.(AReceipts.Services)
 }
 
-func ( vfs *aCVFS ) Indexes() AIndexes.IndexesAPI {
+func ( vfs *aCVFS ) Indexes() AIndexes.IndexesServices {
 
 	vfs.rwmutex.Lock()
 	defer vfs.rwmutex.Unlock()
 
 	return vfs.indexServices
+}
+
+func ( vfs *aCVFS ) NewCVFSCache() (CacheCVFS, error) {
+
+	return NewCacheCVFS(vfs)
+
 }
 
 func ( vfs *aCVFS ) WriteTaskGroup( group *AWrok.TaskBatchGroup) (cid.Cid, error) {
@@ -252,7 +271,7 @@ func ( vfs *aCVFS ) WriteTaskGroup( group *AWrok.TaskBatchGroup) (cid.Cid, error
 	defer vfs.rwmutex.RUnlock()
 
 	for k, v := range vfs.servies {
-		v.Close()
+		_ = v.Shutdown()
 		delete(vfs.servies, k)
 	}
 
@@ -262,7 +281,6 @@ func ( vfs *aCVFS ) WriteTaskGroup( group *AWrok.TaskBatchGroup) (cid.Cid, error
 
 	txs := &Transaction{
 		transactions:make(map[string]*leveldb.Transaction),
-		lockers: make(map[string]*sync.RWMutex),
 	}
 
 	for dbkey, batch := range bmap {
@@ -290,7 +308,11 @@ func ( vfs *aCVFS ) WriteTaskGroup( group *AWrok.TaskBatchGroup) (cid.Cid, error
 			services = AReceipts.CreateServices(dir, false)
 		}
 
-		txs.transactions[dbkey], txs.lockers[dbkey], err = services.OpenVDBTransaction()
+		if services == nil {
+			return cid.Undef, errors.New("DBKey nout found")
+		}
+
+		txs.transactions[dbkey], err = services.OpenTransaction()
 		if err != nil {
 			return cid.Undef, nil
 		}
@@ -319,8 +341,9 @@ func ( vfs *aCVFS ) Close() error {
 		return err
 	}
 
-	if err := vfs.indexServices.Close(); err != nil {
-		return err
+	for k, v := range vfs.servies {
+		_ = v.Shutdown()
+		delete(vfs.servies, k)
 	}
 
 	return vfs.Root.Close()

@@ -164,7 +164,7 @@ func NewTxPool( ctx context.Context, ind *core.IpfsNode, chainId string, cvfs vd
 		tops = []*AAssets.SortAssets{}
 	}
 
-	oast, err := cvfs.Assetses().AssetsOf(acc.Address.Bytes())
+	oast, err := cvfs.Assetses().AssetsOf(acc.Address)
 	if err != nil {
 		oast = &AAssets.Assets{
 			Version:AAssets.DRVer,
@@ -376,10 +376,10 @@ func (pool *ATxPool) UpdateBestBlock( ) error {
 		return err
 	}
 
-	ast, err := pool.cvfs.Assetses().AssetsOf(pool.ownerAccount.Address.Bytes())
+	ast, err := pool.cvfs.Assetses().AssetsOf( pool.ownerAccount.Address )
 
 	//test
-	toast, _ := pool.cvfs.Assetses().AssetsOf( EComm.HexToAddress("0x341f244DDd50f51187a6036b3BDB4FCA9cAFeE16").Bytes() )
+	toast, _ := pool.cvfs.Assetses().AssetsOf( EComm.HexToAddress("0x341f244DDd50f51187a6036b3BDB4FCA9cAFeE16") )
 	if ast != nil {
 
 		fmt.Printf("Address From:\tAvail:%v\tVote:%v\tLocked:%v\n", ast.Avail, ast.Vote, ast.Locked)
@@ -442,11 +442,11 @@ func (pool *ATxPool) DoBroadcast( coder AvdbComm.AMessageEncode ) error {
 /// used to prove the receipts is more than N times the number of coins held by the node
 /// itself, it is admitted that this is the same for both the primary node and the ordinary
 /// node.
-func (pool *ATxPool) AddConfrimReceipt( mbhash EComm.Hash, retcid cid.Cid, from *EComm.Address) {
+func (pool *ATxPool) AddConfrimReceipt( mbhash EComm.Hash, retcid cid.Cid, from EComm.Address) {
 
 	/// If it is not possible to obtain the proof of "VoteRight" from the source, it means
 	/// that the result has no reference value and is discarded directly.
-	fromVoting, err := pool.cvfs.Assetses().VotingCountOf(from.Bytes())
+	ast, err := pool.cvfs.Assetses().AssetsOf( from )
 	if err != nil {
 		return
 	}
@@ -475,13 +475,13 @@ func (pool *ATxPool) AddConfrimReceipt( mbhash EComm.Hash, retcid cid.Cid, from 
 
 		ocount, vexist := receiptMap[rcidstr]
 		if vexist {
-			receiptMap[rcidstr] = ocount + fromVoting
+			receiptMap[rcidstr] = ocount + ast.Vote
 		} else {
-			receiptMap[rcidstr] = fromVoting
+			receiptMap[rcidstr] = ast.Vote
 		}
 
 	} else {
-		receiptMap[rcidstr] = fromVoting
+		receiptMap[rcidstr] = ast.Vote
 	}
 
 	defer func() {
@@ -537,6 +537,8 @@ func (pool *ATxPool) AddRawTransaction( tx *AKeyStore.ASignedRawMsg ) error {
 		pool.PowerOff(err)
 		return err
 	}
+
+	//fmt.Printf("NewTxHash:%v size:%v\n", key, pool.Size())
 
 	return nil
 }
@@ -600,7 +602,7 @@ func (pool *ATxPool) judgingMode() {
 		return
 	}
 
-	oasset, err := pool.cvfs.Assetses().AssetsOf( pool.ownerAccount.Address.Bytes() )
+	oasset, err := pool.cvfs.Assetses().AssetsOf( pool.ownerAccount.Address )
 	if err != nil {
 		pool.workmode = AtxPoolWorkModeNormal
 		return

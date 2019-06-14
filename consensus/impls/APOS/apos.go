@@ -19,27 +19,27 @@ var (
 )
 
 type APOSConsensusNotary struct {
+
 	ACore.Notary
-	mainCVFS vdb.CVFS
 	workInd	*core.IpfsNode
 	workctx    context.Context
 	workCancel context.CancelFunc
 	ccmap map[byte]*ACStep.AConsensusStep
+
 }
 
-func NewAPOSConsensusNotary( m vdb.CVFS, ind *core.IpfsNode ) *APOSConsensusNotary {
+func NewAPOSConsensusNotary( ind *core.IpfsNode ) *APOSConsensusNotary {
 
 	ctx, cancel := context.WithCancel(context.Background())
 
 	notary := &APOSConsensusNotary{
-		mainCVFS:m,
 		workInd:ind,
 		workctx:ctx,
 		workCancel:cancel,
 		ccmap:make(map[byte]*ACStep.AConsensusStep),
 	}
 
-	notary.ccmap[AMsgMBlock.MessagePrefix] = APOSInBlock.NewConsensusStep(m, ind)
+	notary.ccmap[AMsgMBlock.MessagePrefix] = APOSInBlock.NewConsensusStep(ind)
 
 	return notary
 }
@@ -50,7 +50,7 @@ func (n *APOSConsensusNotary) FireYou() {
 }
 
 
-func (n *APOSConsensusNotary) MiningBlock( block *AMsgMBlock.MBlock ) (*AGroup.TaskBatchGroup, error) {
+func (n *APOSConsensusNotary) MiningBlock( block *AMsgMBlock.MBlock, cvfs vdb.CacheCVFS ) (*AGroup.TaskBatchGroup, error) {
 
 	subcc, exist := n.ccmap[AMsgMBlock.MessagePrefix]
 
@@ -62,14 +62,11 @@ func (n *APOSConsensusNotary) MiningBlock( block *AMsgMBlock.MBlock ) (*AGroup.T
 
 	defer cancel()
 
-
-	group := AGroup.NewGroup()
-	ret := <- subcc.DoConsultation(ctx, block, group)
+	ret := <- subcc.DoConsultation(ctx, block, cvfs)
 
 	if ret.Err != nil {
 		return nil, ret.Err
 	}
 
-	return group, nil
-
+	return cvfs.MergeGroup(), nil
 }

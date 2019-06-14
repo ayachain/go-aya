@@ -1,20 +1,35 @@
 package block
 
-import (
-	AWork "github.com/ayachain/go-aya/consensus/core/worker"
-	AVdbComm "github.com/ayachain/go-aya/vdb/common"
-)
+import AVdbComm "github.com/ayachain/go-aya/vdb/common"
 
 const DBPath = "/db/blocks"
 
-type BlocksAPI interface {
 
-	AVdbComm.VDBSerices
+type reader interface {
 
 	GetBlocks( hashOrIndex...interface{} ) ([]*Block, error)
 
-	AppendBlocks( group *AWork.TaskBatchGroup, blocks...*Block ) error
+}
 
-	WriteGenBlock( group *AWork.TaskBatchGroup, gen *GenBlock ) error
+type writer interface {
 
+	AppendBlocks( blocks...*Block )
+
+	WriteGenBlock( gen *GenBlock )
+}
+
+
+type Services interface {
+
+	AVdbComm.VDBSerices
+	reader
+}
+
+
+type Caches interface {
+
+	AVdbComm.VDBCacheServices
+
+	reader
+	writer
 }

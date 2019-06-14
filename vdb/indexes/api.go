@@ -5,15 +5,15 @@ import (
 	"github.com/ipfs/go-cid"
 )
 
-type IndexesAPI interface {
-
-	PutIndex( index *Index ) error
-
-	PutIndexBy( num uint64, bhash EComm.Hash, cid cid.Cid ) error
+type IndexesServices interface {
 
 	GetIndex( blockNumber uint64 ) (*Index, error)
 
 	GetLatest() *Index
+
+	PutIndex( index *Index ) error
+
+	PutIndexBy( num uint64, bhash EComm.Hash, cid cid.Cid ) error
 
 	Close() error
 }

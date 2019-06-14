@@ -16,10 +16,7 @@ var (
 )
 
 type Transaction struct {
-
 	transactions map[string]*leveldb.Transaction
-	lockers map[string]*sync.RWMutex
-
 }
 
 func (t *Transaction) Commit() error {
@@ -28,14 +25,11 @@ func (t *Transaction) Commit() error {
 
 	var waiterLock sync.WaitGroup
 
-	for k, vtx := range t.transactions {
+	for _, vtx := range t.transactions {
 
 		waiterLock.Add(1)
 
-		go func( commitTx *leveldb.Transaction, lock *sync.RWMutex ) {
-
-			lock.RLock()
-			defer lock.RUnlock()
+		go func( commitTx *leveldb.Transaction ) {
 
 			err := commitTx.Commit()
 			waiterLock.Done()
@@ -55,7 +49,7 @@ func (t *Transaction) Commit() error {
 				return
 			}
 
-		}( vtx, t.lockers[k] )
+		}( vtx )
 
 	}
 
@@ -76,20 +70,14 @@ func (t *Transaction) Discard() {
 
 	var waiterLock sync.WaitGroup
 
-	for k, tx := range t.transactions {
+	for _, tx := range t.transactions {
 
 		waiterLock.Add(1)
-		go func( tx *leveldb.Transaction, mutex *sync.RWMutex ) {
-
-			mutex.RLock()
-			defer func() {
-				mutex.Unlock()
-				waiterLock.Done()
-			}()
+		go func( tx *leveldb.Transaction ) {
 
 			tx.Discard()
 
-		}(tx, t.lockers[k])
+		}(tx)
 
 	}
 
