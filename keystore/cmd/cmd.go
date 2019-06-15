@@ -30,7 +30,7 @@ func findAccount( hexAddr string ) (accounts.Account, error) {
 }
 
 
-var WalletCMDS = &cmds.Command{
+var KeystoreCMDS = &cmds.Command{
 
 	Helptext:cmds.HelpText{
 		Tagline: "AyaChain keystore commands.",

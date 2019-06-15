@@ -10,7 +10,7 @@ import (
 )
 
 type Assets struct {
-	common.RawDBCoder
+	common.RawDBCoder	`json:"-"`
 	Version 	uint8
 	Avail		uint64
 	Vote		uint64

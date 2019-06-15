@@ -36,6 +36,15 @@ func WokerSwitcher( msg interface{}, vdb Avdb.CacheCVFS, ind *core.IpfsNode ) (i
 
 	for _, tx := range txlist {
 
+		txc, err := vdb.Transactions().GetTxCount(tx.From)
+		if err != nil {
+			continue
+		}
+
+		if txc != tx.Tid - 1 {
+			continue
+		}
+
 		switch string(tx.Data) {
 
 		//case "UNLOCK", "LOCK":
@@ -44,10 +53,14 @@ func WokerSwitcher( msg interface{}, vdb Avdb.CacheCVFS, ind *core.IpfsNode ) (i
 		//	}
 
 		default:
+
 			if err := workflow.DoTransfer(tx, vdb); err != nil {
 				return nil, err
 			}
+
 		}
+
+		vdb.Transactions().Put(tx, rawblock.Index)
 	}
 
 	return msg, nil

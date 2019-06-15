@@ -292,73 +292,6 @@ func (pool *ATxPool) PowerOn() error {
 	return nil
 }
 
-func (pool *ATxPool) runthreads( names ... AtxThreadsName ) {
-
-	for _, n := range names {
-
-		cancel, exist := pool.threadCancels[n]
-		if exist && cancel != nil {
-			cancel()
-		}
-
-		switch n {
-
-		case AtxThreadTopicsListen:
-
-			workCtx, cancel := context.WithCancel(pool.workctx)
-
-			pool.threadCancels[n] = cancel
-			pool.threadChans[n] = make(chan *AKeyStore.ASignedRawMsg)
-
-			go pool.channelListening(workCtx)
-
-
-		case AtxThreadTxPackage:
-
-			workCtx, cancel := context.WithCancel(pool.workctx)
-
-			pool.threadCancels[n] = cancel
-			pool.threadChans[n] = make(chan *AKeyStore.ASignedRawMsg)
-
-			go pool.txPackageThread(workCtx)
-
-
-		case AtxThreadReceiptListen:
-
-			workCtx, cancel := context.WithCancel(pool.workctx)
-
-			pool.threadCancels[n] = cancel
-			pool.threadChans[n] = make(chan *AKeyStore.ASignedRawMsg)
-
-			go pool.receiptListen(workCtx)
-
-
-		case AtxThreadExecutor:
-
-			workCtx, cancel := context.WithCancel(pool.workctx)
-
-			pool.threadCancels[n] = cancel
-			pool.threadChans[n] = make(chan *AKeyStore.ASignedRawMsg)
-
-			go pool.blockExecutorThread(workCtx)
-
-
-		case AtxThreadMining:
-
-			workCtx, cancel := context.WithCancel(pool.workctx)
-
-			pool.threadCancels[n] = cancel
-			pool.threadChans[n] = make(chan *AKeyStore.ASignedRawMsg)
-
-			go pool.miningThread(workCtx)
-
-		}
-
-
-	}
-
-}
-
 func (pool *ATxPool) PowerOff(err error) {
 	fmt.Println(err)
 	pool.workcancel()
@@ -401,18 +334,6 @@ func (pool *ATxPool) UpdateBestBlock( ) error {
 	pool.miningBlock = nil
 
 	return nil
-}
-
-
-func (pool *ATxPool) sign( coder AvdbComm.AMessageEncode ) (*AKeyStore.ASignedRawMsg, error) {
-
-	cbs := coder.RawMessageEncode()
-
-	if len(cbs) <= 0 {
-		return nil, ErrRawDBEndoedZeroLen
-	}
-
-	return AKeyStore.CreateMsg(cbs, pool.ownerAccount)
 }
 
 /// Send a transaction by signing with the identity of the current node
@@ -578,9 +499,6 @@ func (pool *ATxPool) ReadOnlyCVFS() vdb.CVFS {
 	return pool.cvfs
 }
 
-
-
-
 /// private method
 /// Judging working mode
 func (pool *ATxPool) judgingMode() {
@@ -616,6 +534,8 @@ func (pool *ATxPool) judgingMode() {
 	pool.workmode = AtxPoolWorkModeNormal
 	return
 }
+
+
 
 func (pool *ATxPool) reduction() {
 
@@ -655,6 +575,84 @@ func (pool *ATxPool) reduction() {
 		if err := dbtransaction.Commit(); err != nil {
 			pool.PowerOff(err)
 		}
+
+	}
+
+}
+
+func (pool *ATxPool) sign( coder AvdbComm.AMessageEncode ) (*AKeyStore.ASignedRawMsg, error) {
+
+	cbs := coder.RawMessageEncode()
+
+	if len(cbs) <= 0 {
+		return nil, ErrRawDBEndoedZeroLen
+	}
+
+	return AKeyStore.CreateMsg(cbs, pool.ownerAccount)
+}
+
+func (pool *ATxPool) runthreads( names ... AtxThreadsName ) {
+
+	for _, n := range names {
+
+		cancel, exist := pool.threadCancels[n]
+		if exist && cancel != nil {
+			cancel()
+		}
+
+		switch n {
+
+		case AtxThreadTopicsListen:
+
+			workCtx, cancel := context.WithCancel(pool.workctx)
+
+			pool.threadCancels[n] = cancel
+			pool.threadChans[n] = make(chan *AKeyStore.ASignedRawMsg)
+
+			go pool.channelListening(workCtx)
+
+
+		case AtxThreadTxPackage:
+
+			workCtx, cancel := context.WithCancel(pool.workctx)
+
+			pool.threadCancels[n] = cancel
+			pool.threadChans[n] = make(chan *AKeyStore.ASignedRawMsg)
+
+			go pool.txPackageThread(workCtx)
+
+
+		case AtxThreadReceiptListen:
+
+			workCtx, cancel := context.WithCancel(pool.workctx)
+
+			pool.threadCancels[n] = cancel
+			pool.threadChans[n] = make(chan *AKeyStore.ASignedRawMsg)
+
+			go pool.receiptListen(workCtx)
+
+
+		case AtxThreadExecutor:
+
+			workCtx, cancel := context.WithCancel(pool.workctx)
+
+			pool.threadCancels[n] = cancel
+			pool.threadChans[n] = make(chan *AKeyStore.ASignedRawMsg)
+
+			go pool.blockExecutorThread(workCtx)
+
+
+		case AtxThreadMining:
+
+			workCtx, cancel := context.WithCancel(pool.workctx)
+
+			pool.threadCancels[n] = cancel
+			pool.threadChans[n] = make(chan *AKeyStore.ASignedRawMsg)
+
+			go pool.miningThread(workCtx)
+
+		}
+
 
 	}
 

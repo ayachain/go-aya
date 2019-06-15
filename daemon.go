@@ -4,6 +4,7 @@ import (
 	"errors"
 	_ "expvar"
 	"fmt"
+	"github.com/ipfs/go-ipfs/core/commands/cmdenv"
 	"net"
 	"net/http"
 	_ "net/http/pprof"
@@ -189,8 +190,6 @@ func defaultMux(path string) corehttp.ServeOption {
 }
 
 func daemonFunc(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) (_err error) {
-
-	DaemonAyaChaine()
 
 	// Inject metrics before we do anything
 	err := mprome.Inject()
@@ -429,6 +428,12 @@ func daemonFunc(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment
 		fmt.Println("Received interrupt signal, shutting down...")
 		fmt.Println("(Hit ctrl-c again to force-shutdown the daemon.)")
 	}()
+
+	ind, err := cmdenv.GetNode(env)
+	if err != nil {
+		return err
+	}
+	DaemonAyaChaine( ind )
 
 	// collect long-running errors and block for shutdown
 	// TODO(cryptix): our fuse currently doesnt follow this pattern for graceful shutdown

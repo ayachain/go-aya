@@ -6,7 +6,7 @@ import (
 )
 
 type Receipt struct {
-	ArawdbComm.RawDBCoder
+	ArawdbComm.RawDBCoder `json:"-"`
 	Code int16		`json:"code"`
 	Body []byte		`json:"body"`
 	Event []string	`json:"events"`

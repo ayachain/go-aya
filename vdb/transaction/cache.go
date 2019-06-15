@@ -1,6 +1,7 @@
 package transaction
 
 import (
+	"encoding/binary"
 	"fmt"
 	AvdbComm "github.com/ayachain/go-aya/vdb/common"
 	EComm "github.com/ethereum/go-ethereum/common"
@@ -34,6 +35,37 @@ func newCache( sourceDB *leveldb.DB ) (Caches, error) {
 	return c, nil
 }
 
+func (cache *aCache) Put(tx *Transaction, bidx uint64) {
+
+	countKey := append(TxCountPrefix, tx.From.Bytes()... )
+
+	exist, err := AvdbComm.CacheHas(cache.source, cache.cdb, countKey)
+	if err != nil {
+		panic(err)
+	}
+
+	var txcount uint64 = 0
+	if exist {
+
+		cbs, err := AvdbComm.CacheGet(cache.source, cache.cdb, countKey)
+		if err != nil {
+			panic(err)
+		}
+
+		txcount = binary.BigEndian.Uint64(cbs)
+	}
+
+	key := append(tx.GetHash256().Bytes(), AvdbComm.BigEndianBytes(bidx)...)
+	if err := cache.cdb.Put(key, tx.Encode(), nil); err != nil {
+		panic(err)
+	}
+
+	txcount ++
+	if err := cache.cdb.Put( countKey, AvdbComm.BigEndianBytes(txcount), nil ); err != nil {
+		panic(err)
+	}
+
+}
 
 func (cache *aCache) GetTxByHash( hash EComm.Hash ) (*Transaction, error) {
 

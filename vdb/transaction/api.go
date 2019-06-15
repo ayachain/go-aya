@@ -14,12 +14,14 @@ type reader interface {
 
 	GetTxByHashBs( hsbs []byte ) (*Transaction, error)
 
+	GetTxCount( address EComm.Address ) (uint64, error)
+
 	NewBlockTxIterator( bindex uint64 ) iterator.Iterator
 }
 
 
 type writer interface {
-
+	Put(tx *Transaction, bidx uint64)
 }
 
 

@@ -47,7 +47,7 @@ func (pool *ATxPool) txPackageThread(ctx context.Context) {
 				mblk := &AMsgMBlock.MBlock{}
 				mblk.ExtraData = ""
 				mblk.Index = bindex.BlockIndex + 1
-				mblk.ChainID = "aya"
+				mblk.ChainID = pool.chainId
 				mblk.Parent = bindex.Hash.String()
 				mblk.Timestamp = uint64(time.Now().Unix())
 				mblk.RandSeed = rand.Int31()
@@ -81,6 +81,17 @@ func (pool *ATxPool) txPackageThread(ctx context.Context) {
 						continue
 					}
 
+					txcount, err := pool.cvfs.Transactions().GetTxCount(subTx.From)
+					if err != nil {
+						it.Release()
+						panic(err)
+					}
+
+					if subTx.Tid - txcount != 1 {
+						// need waiting join then queue
+						continue
+					}
+
 					txs = append(txs, subTx)
 					count++
 
@@ -91,6 +102,8 @@ func (pool *ATxPool) txPackageThread(ctx context.Context) {
 					}
 
 				}
+
+				it.Release()
 
 				newSize := pool.Size() - loopCount
 				if newSize <= 0 {

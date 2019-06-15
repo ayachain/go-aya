@@ -28,12 +28,13 @@ var(
 
 type AyaChain interface {
 
+	Test() error
 	OpenChannel() error
 	ChainIdentifier() string
-	SendRawMessage( coder AvdbComm.AMessageEncode ) error
 	Disslink()
+	CVFServices() vdb.CVFS
 	IndexOf( idx uint64 ) (*indexes.Index, error)
-	Test() error
+	SendRawMessage( coder AvdbComm.AMessageEncode ) error
 
 }
 
@@ -106,20 +107,17 @@ func AddChainLink( genBlock *ABlock.GenBlock, ind *core.IpfsNode, acc EAccount.A
 	return nil
 }
 
-func (chain *aChain) OpenChannel() error {
-	return chain.TxPool.PowerOn()
-}
-
-
 func GetChainByIdentifier(chainId string) AyaChain{
 	return chains[chainId]
 }
 
+func (chain *aChain) OpenChannel() error {
+	return chain.TxPool.PowerOn()
+}
 
 func (chain *aChain) SendRawMessage( coder AvdbComm.AMessageEncode ) error {
 	return chain.TxPool.DoBroadcast( coder )
 }
-
 
 func (chain *aChain) IndexOf( idx uint64 ) (*indexes.Index, error) {
 
@@ -130,6 +128,10 @@ func (chain *aChain) IndexOf( idx uint64 ) (*indexes.Index, error) {
 	}
 
 	return index, nil
+}
+
+func (chain *aChain) CVFServices() vdb.CVFS {
+	return chain.TxPool.ReadOnlyCVFS()
 }
 
 var tid uint64 = 0
