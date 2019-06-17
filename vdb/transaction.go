@@ -1,7 +1,6 @@
 package vdb
 
 import (
-	"context"
 	"fmt"
 	"github.com/ayachain/go-aya/consensus/core/worker"
 	"github.com/pkg/errors"
@@ -21,33 +20,19 @@ type Transaction struct {
 
 func (t *Transaction) Commit() error {
 
-	ctx := WithCancel(context.TODO())
-
 	var waiterLock sync.WaitGroup
 
-	for _, vtx := range t.transactions {
+	errs := make(map[string]error)
+
+	for k, vtx := range t.transactions {
 
 		waiterLock.Add(1)
 
 		go func( commitTx *leveldb.Transaction ) {
 
-			err := commitTx.Commit()
+			errs[k] = commitTx.Commit()
+
 			waiterLock.Done()
-
-			if err != nil {
-				ctx.CancelWithErr(err)
-				return
-			}
-
-			select {
-			case <- ctx.Done():
-
-				if ctx.HasError() != nil {
-					commitTx.Discard()
-				}
-
-				return
-			}
 
 		}( vtx )
 
@@ -55,15 +40,38 @@ func (t *Transaction) Commit() error {
 
 	waiterLock.Wait()
 
-	if ctx.HasError() != nil {
-		return ErrCommitRolledBack
-	}
 
-	ctx.CancelWithErr(nil)
+	for _, err := range errs {
+
+		if err != nil {
+			goto rollback
+		}
+
+	}
 
 	fmt.Println("\nCommitSuccess")
 
 	return nil
+
+rollback :
+
+	var rollbackgroup sync.WaitGroup
+
+	for _, vtx := range t.transactions {
+
+		rollbackgroup.Add(1)
+
+		go func( commitTx *leveldb.Transaction ) {
+
+			commitTx.Discard()
+
+			rollbackgroup.Done()
+
+		}( vtx )
+
+	}
+
+	return ErrCommitRolledBack
 }
 
 func (t *Transaction) Discard() {
@@ -85,7 +93,6 @@ func (t *Transaction) Discard() {
 
 	fmt.Println("DiscardSuccess")
 }
-
 
 func (t *Transaction) Write( group *worker.TaskBatchGroup ) error {
 

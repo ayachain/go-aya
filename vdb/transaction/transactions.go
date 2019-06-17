@@ -34,6 +34,25 @@ func CreateServices( mdir *mfs.Directory, rdOnly bool ) Services {
 	return api
 }
 
+func (txs *aTransactions) NewCache() (AVdbComm.VDBCacheServices, error) {
+	return newCache( txs.rawdb )
+}
+
+func (txs *aTransactions) Close() {
+
+	_ = txs.rawdb.Close()
+	_ = txs.mfsstorage.Close()
+	_ = txs.Flush()
+}
+
+func (txs *aTransactions) Shutdown() error {
+
+	_ = txs.rawdb.Close()
+	_ = txs.mfsstorage.Close()
+
+	return txs.Flush()
+}
+
 func (txs *aTransactions) GetTxCount( address EComm.Address ) (uint64, error) {
 
 	key := append(TxCountPrefix, address.Bytes()... )
@@ -82,10 +101,6 @@ func (txs *aTransactions) GetTxByHashBs( hsbs []byte ) (*Transaction, error) {
 	return txs.GetTxByHash(hash)
 }
 
-func (txs *aTransactions) NewCache() (AVdbComm.VDBCacheServices, error) {
-	return newCache( txs.rawdb )
-}
-
 func (txs *aTransactions) OpenTransaction() (*leveldb.Transaction, error) {
 
 	tx, err := txs.rawdb.OpenTransaction()
@@ -95,19 +110,4 @@ func (txs *aTransactions) OpenTransaction() (*leveldb.Transaction, error) {
 	}
 
 	return tx, nil
-}
-
-func (txs *aTransactions) Close() {
-
-	_ = txs.rawdb.Close()
-	_ = txs.mfsstorage.Close()
-	_ = txs.Flush()
-}
-
-func (txs *aTransactions) Shutdown() error {
-
-	_ = txs.rawdb.Close()
-	_ = txs.mfsstorage.Close()
-
-	return txs.Flush()
 }

@@ -2,12 +2,14 @@ package APOS
 
 import (
 	"context"
+	"encoding/json"
 	ACore "github.com/ayachain/go-aya/consensus/core"
-	ACStep "github.com/ayachain/go-aya/consensus/core/step"
 	AGroup "github.com/ayachain/go-aya/consensus/core/worker"
-	APOSInBlock "github.com/ayachain/go-aya/consensus/impls/APOS/in/block"
+	"github.com/ayachain/go-aya/consensus/impls/APOS/workflow"
 	"github.com/ayachain/go-aya/vdb"
 	AMsgMBlock "github.com/ayachain/go-aya/vdb/mblock"
+	ATx "github.com/ayachain/go-aya/vdb/transaction"
+	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-ipfs/core"
 	"github.com/pkg/errors"
 )
@@ -21,11 +23,12 @@ var (
 type APOSConsensusNotary struct {
 
 	ACore.Notary
-	workInd	*core.IpfsNode
-	workctx    context.Context
-	workCancel context.CancelFunc
-	ccmap map[byte]*ACStep.AConsensusStep
 
+	workctx    context.Context
+
+	workCancel context.CancelFunc
+
+	ind *core.IpfsNode
 }
 
 func NewAPOSConsensusNotary( ind *core.IpfsNode ) *APOSConsensusNotary {
@@ -33,39 +36,59 @@ func NewAPOSConsensusNotary( ind *core.IpfsNode ) *APOSConsensusNotary {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	notary := &APOSConsensusNotary{
-		workInd:ind,
 		workctx:ctx,
 		workCancel:cancel,
-		ccmap:make(map[byte]*ACStep.AConsensusStep),
+		ind:ind,
 	}
-
-	notary.ccmap[AMsgMBlock.MessagePrefix] = APOSInBlock.NewConsensusStep(ind)
 
 	return notary
 }
 
-
-func (n *APOSConsensusNotary) FireYou() {
-	n.workCancel()
-}
-
-
 func (n *APOSConsensusNotary) MiningBlock( block *AMsgMBlock.MBlock, cvfs vdb.CacheCVFS ) (*AGroup.TaskBatchGroup, error) {
 
-	subcc, exist := n.ccmap[AMsgMBlock.MessagePrefix]
-
-	if !exist {
-		return nil, ErrNotExistConsensusRule
+	txsCid, err := cid.Decode(block.Txs)
+	if err != nil {
+		return nil, err
 	}
 
-	ctx, cancel := context.WithCancel(n.workctx)
+	iblock, err := n.ind.Blocks.GetBlock(context.TODO(), txsCid)
+	if err != nil {
+		return nil, err
+	}
 
-	defer cancel()
+	txlist := make([]*ATx.Transaction, block.Txc)
+	if err := json.Unmarshal(iblock.RawData(), &txlist); err != nil {
+		return nil, err
+	}
 
-	ret := <- subcc.DoConsultation(ctx, block, cvfs)
+	for _, tx := range txlist {
 
-	if ret.Err != nil {
-		return nil, ret.Err
+		txc, err := cvfs.Transactions().GetTxCount(tx.From)
+		if err != nil {
+			continue
+		}
+
+		if txc != tx.Tid - 1 {
+			continue
+		}
+
+		cvfs.Transactions().Put(tx, block.Index)
+
+		switch string(tx.Data) {
+
+		//case "UNLOCK", "LOCK":
+		//	if err := workflow.DoLockAmount(tx, group, vdb); err != nil {
+		//		return nil, err
+		//	}
+
+		default:
+
+			if err := workflow.DoTransfer(tx, cvfs); err != nil {
+				return nil, err
+			}
+
+		}
+
 	}
 
 	return cvfs.MergeGroup(), nil

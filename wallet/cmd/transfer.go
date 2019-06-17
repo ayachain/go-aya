@@ -87,7 +87,7 @@ var transaferDoLock = &cmds.Command{
 			return ARsponse.EmitErrorResponse(re, err)
 		}
 
-		tx := ATxUtils.MakeTransferAvail(acc.Address, EComm.HexToAddress(req.Arguments[1]), vnumber, txcount)
+		tx := ATxUtils.MakeTransferAvail(acc.Address, EComm.HexToAddress(req.Arguments[1]), vnumber, txcount + 1)
 
 		if err := AKeyStore.SignTransaction(tx, acc); err != nil {
 			return ARsponse.EmitErrorResponse(re, err)
@@ -132,7 +132,7 @@ var transferCMD = &cmds.Command{
 			return ARsponse.EmitErrorResponse(re, err)
 		}
 
-		tx := ATxUtils.MakeTransferAvail(acc.Address, EComm.HexToAddress(req.Arguments[1]), vnumber, txcount)
+		tx := ATxUtils.MakeTransferAvail(acc.Address, EComm.HexToAddress(req.Arguments[1]), vnumber, txcount + 1)
 
 		if err := AKeyStore.SignTransaction(tx, acc); err != nil {
 			return ARsponse.EmitErrorResponse(re, err)

@@ -83,12 +83,30 @@ func (cache *aCache) GetTxByHash( hash EComm.Hash ) (*Transaction, error) {
 	return tx, nil
 }
 
-
 func (cache *aCache) GetTxByHashBs( hsbs []byte ) (*Transaction, error) {
 
 	hash := EComm.BytesToHash(hsbs)
 
 	return cache.GetTxByHash(hash)
+}
+
+func (cache *aCache) GetTxCount( address EComm.Address ) (uint64, error) {
+
+	key := append(TxCountPrefix, address.Bytes()... )
+
+	v, err := AvdbComm.CacheGet( cache.source, cache.cdb, key )
+
+	if err != nil {
+
+		if err == leveldb.ErrNotFound {
+			return 0, nil
+		} else {
+			return 0, err
+		}
+
+	}
+
+	return binary.BigEndian.Uint64(v), nil
 }
 
 func (cache *aCache) MergerBatch() *leveldb.Batch {

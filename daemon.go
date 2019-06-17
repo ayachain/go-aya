@@ -4,7 +4,7 @@ import (
 	"errors"
 	_ "expvar"
 	"fmt"
-	"github.com/ipfs/go-ipfs/core/commands/cmdenv"
+	//"github.com/ipfs/go-ipfs/core/commands/cmdenv"
 	"net"
 	"net/http"
 	_ "net/http/pprof"
@@ -348,6 +348,8 @@ func daemonFunc(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment
 
 	printSwarmAddrs(node)
 
+	DaemonAyaChain( node )
+
 	defer func() {
 		// We wait for the node to close first, as the node has children
 		// that it will wait for before closing, such as the API server.
@@ -428,12 +430,6 @@ func daemonFunc(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment
 		fmt.Println("Received interrupt signal, shutting down...")
 		fmt.Println("(Hit ctrl-c again to force-shutdown the daemon.)")
 	}()
-
-	ind, err := cmdenv.GetNode(env)
-	if err != nil {
-		return err
-	}
-	DaemonAyaChaine( ind )
 
 	// collect long-running errors and block for shutdown
 	// TODO(cryptix): our fuse currently doesnt follow this pattern for graceful shutdown

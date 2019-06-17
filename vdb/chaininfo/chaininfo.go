@@ -74,5 +74,4 @@ func (info *ChainInfo) RawMessageDecode( bs []byte ) error {
 
 	return info.Decode(bs[1:])
 
-
 }

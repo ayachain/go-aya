@@ -14,5 +14,4 @@ var WalletCMDS = &cmds.Command{
 		"transfer"			: transferCMD,
 		"balanceOf"			: balanceOfCMD,
 	},
-
 }

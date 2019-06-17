@@ -19,14 +19,20 @@ package core
 import (
 	AGroup "github.com/ayachain/go-aya/consensus/core/worker"
 	"github.com/ayachain/go-aya/vdb"
+	ABlock "github.com/ayachain/go-aya/vdb/block"
 	AMsgMBlock "github.com/ayachain/go-aya/vdb/mblock"
+	ATx "github.com/ayachain/go-aya/vdb/transaction"
 )
 
 type Notary interface {
 
-	FireYou()
-
-	StartWorking()
-
 	MiningBlock( block *AMsgMBlock.MBlock, cvfs vdb.CacheCVFS ) (*AGroup.TaskBatchGroup, error)
+
+	WhenTransactionIn( transaction *ATx.Transaction, vfs vdb.CVFS ) bool
+
+	WhenTransactionOut( transaction *ATx.Transaction, vfs vdb.CVFS ) bool
+
+	WhenBlockIn( block *ABlock.Block, vfs vdb.CVFS ) bool
+
+	WhenBlockOut( block *ABlock.Block, vfs vdb.CVFS ) bool
 }

@@ -9,7 +9,6 @@ import (
 	walletcmd "github.com/ayachain/go-aya/wallet/cmd"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	"github.com/ipfs/go-ipfs/core"
-	"github.com/whyrusleeping/go-logging"
 )
 
 var ayacmd = &cmds.Command {
@@ -28,18 +27,6 @@ var ayacmd = &cmds.Command {
 }
 
 
-var format = logging.MustStringFormatter(
-	`%{color}%{time:05:11:22} %{shortfunc} : %{level} %{color:reset} : %{message}`,
-)
-
-func DaemonAyaChaine( ind *core.IpfsNode ) {
-
-	//backend1 := logging.NewLogBackend(os.Stderr, "", 0)
-	//backend2 := logging.NewLogBackend(os.Stderr, "", 0)
-	//backend2Formatter := logging.NewBackendFormatter(backend2, format)
-	//backend1Leveled := logging.AddModuleLevel(backend1)
-	//backend1Leveled.SetLevel(logging.ERROR, "")
-	//logging.SetBackend(backend1Leveled, backend2Formatter)
-
+func DaemonAyaChain( ind *core.IpfsNode ) {
 	keystore.Init("/Users/apple/.aya/keystore", ind)
 }

@@ -59,7 +59,7 @@ type aCVFS struct {
 	indexServices AIndexes.IndexesServices
 	chainId string
 
-	rwmutex sync.RWMutex
+	rwmutex *sync.RWMutex
 }
 
 func CreateVFS( block *ABlock.GenBlock, ind *core.IpfsNode ) (cid.Cid, error) {
@@ -126,8 +126,8 @@ func LinkVFS( chainId string, baseCid cid.Cid, ind *core.IpfsNode ) (CVFS, error
 		Root:root,
 		inode:ind,
 		chainId:chainId,
-		servies: map[string]AVdbComm.VDBSerices{
-		},
+		servies: make(map[string]AVdbComm.VDBSerices),
+		rwmutex: &sync.RWMutex{},
 	}
 
 	vfs.indexServices = AIndexes.CreateServices(vfs.inode, vfs.chainId)
@@ -157,8 +157,8 @@ func ( vfs *aCVFS ) SeekToBlock( bcid cid.Cid ) error {
 
 func ( vfs *aCVFS ) Assetses() AAssetses.Services {
 
-	vfs.rwmutex.Lock()
-	defer vfs.rwmutex.Unlock()
+	vfs.rwmutex.RLock()
+	defer vfs.rwmutex.RUnlock()
 
 	v, exist := vfs.servies[ AAssetses.DBPATH ]
 
@@ -181,8 +181,8 @@ func ( vfs *aCVFS ) Assetses() AAssetses.Services {
 
 func ( vfs *aCVFS ) Blocks() ABlock.Services {
 
-	vfs.rwmutex.Lock()
-	defer vfs.rwmutex.Unlock()
+	vfs.rwmutex.RLock()
+	defer vfs.rwmutex.RUnlock()
 
 	v, exist := vfs.servies[ ABlock.DBPath ]
 
@@ -205,8 +205,8 @@ func ( vfs *aCVFS ) Blocks() ABlock.Services {
 
 func ( vfs *aCVFS ) Transactions() ATx.Services {
 
-	vfs.rwmutex.Lock()
-	defer vfs.rwmutex.Unlock()
+	vfs.rwmutex.RLock()
+	defer vfs.rwmutex.RUnlock()
 
 	v, exist := vfs.servies[ ATx.DBPath ]
 
@@ -229,8 +229,8 @@ func ( vfs *aCVFS ) Transactions() ATx.Services {
 
 func ( vfs *aCVFS ) Receipts() AReceipts.Services {
 
-	vfs.rwmutex.Lock()
-	defer vfs.rwmutex.Unlock()
+	vfs.rwmutex.RLock()
+	defer vfs.rwmutex.RUnlock()
 
 	v, exist := vfs.servies[ AReceipts.DBPath ]
 
@@ -253,8 +253,8 @@ func ( vfs *aCVFS ) Receipts() AReceipts.Services {
 
 func ( vfs *aCVFS ) Indexes() AIndexes.IndexesServices {
 
-	vfs.rwmutex.Lock()
-	defer vfs.rwmutex.Unlock()
+	vfs.rwmutex.RLock()
+	defer vfs.rwmutex.RUnlock()
 
 	return vfs.indexServices
 }
@@ -267,8 +267,8 @@ func ( vfs *aCVFS ) NewCVFSCache() (CacheCVFS, error) {
 
 func ( vfs *aCVFS ) WriteTaskGroup( group *AWrok.TaskBatchGroup) (cid.Cid, error) {
 
-	vfs.rwmutex.RLock()
-	defer vfs.rwmutex.RUnlock()
+	vfs.rwmutex.Lock()
+	defer vfs.rwmutex.Unlock()
 
 	for k, v := range vfs.servies {
 		_ = v.Shutdown()
@@ -336,6 +336,9 @@ func ( vfs *aCVFS ) WriteTaskGroup( group *AWrok.TaskBatchGroup) (cid.Cid, error
 }
 
 func ( vfs *aCVFS ) Close() error {
+
+	vfs.rwmutex.Lock()
+	defer vfs.rwmutex.Unlock()
 
 	if err := vfs.indexServices.Close(); err != nil {
 		return err

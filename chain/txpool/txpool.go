@@ -2,7 +2,6 @@ package txpool
 
 import (
 	"context"
-	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -13,6 +12,7 @@ import (
 	AAssets "github.com/ayachain/go-aya/vdb/assets"
 	AvdbComm "github.com/ayachain/go-aya/vdb/common"
 	AMsgMBlock "github.com/ayachain/go-aya/vdb/mblock"
+	ATx "github.com/ayachain/go-aya/vdb/transaction"
 	EAccount "github.com/ethereum/go-ethereum/accounts"
 	EComm "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -25,7 +25,6 @@ import (
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/util"
 	"github.com/whyrusleeping/go-logging"
-	"sync"
 	"time"
 )
 
@@ -43,7 +42,7 @@ var(
 	TxHashIteratorStart 	= []byte{0}
 	TxHashIteratorLimit		= []byte{0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF}
 	TxReceiptPrefix			= []byte{0xAE,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00}
-	TxCount					= TxHashIteratorLimit
+	//TxCount					= TxHashIteratorLimit
 )
 
 
@@ -115,7 +114,6 @@ type ATxPool struct {
 	threadChans map[AtxThreadsName] chan *AKeyStore.ASignedRawMsg
 
 	notary ACore.Notary
-	txLocker sync.Mutex
 }
 
 
@@ -217,6 +215,7 @@ func NewTxPool( ctx context.Context, ind *core.IpfsNode, chainId string, cvfs vd
 			ownerAccount:acc,
 			ownerAsset:oast,
 			notary:miner,
+			chainId:chainId,
 		}
 	}
 
@@ -264,26 +263,49 @@ func (pool *ATxPool) PowerOn() error {
 	case AtxPoolWorkModeOblivioned:
 
 		pool.runthreads(
-			AtxThreadTxPackage,
-			AtxThreadExecutor,
-			AtxThreadReceiptListen,
-			AtxThreadTxCommit,
-			AtxThreadMining,
 			AtxThreadTopicsListen,
+			AtxThreadTxCommit,
+			AtxThreadTxPackage,
+			AtxThreadMining,
+			AtxThreadReceiptListen,
+			AtxThreadExecutor,
 		)
 
 	case AtxPoolWorkModeSuper:
 
+		pool.runthreads(
+			AtxThreadTopicsListen,
+			//AtxThreadTxCommit,
+			AtxThreadTxPackage,
+			//AtxThreadMining,
+			AtxThreadReceiptListen,
+			AtxThreadExecutor,
+		)
 
 
 
 	case AtxPoolWorkModeMaster:
 
+		pool.runthreads(
+			AtxThreadTopicsListen,
+			AtxThreadTxCommit,
+			//AtxThreadTxPackage,
+			AtxThreadMining,
+			//AtxThreadReceiptListen,
+			AtxThreadExecutor,
+		)
 
 
 	case AtxPoolWorkModeNormal:
 
-
+		pool.runthreads(
+			AtxThreadTopicsListen,
+			AtxThreadTxCommit,
+			//AtxThreadTxPackage,
+			//AtxThreadMining,
+			//AtxThreadReceiptListen,
+			AtxThreadExecutor,
+		)
 
 	}
 
@@ -434,55 +456,27 @@ func (pool *ATxPool) AddConfrimReceipt( mbhash EComm.Hash, retcid cid.Cid, from 
 
 func (pool *ATxPool) AddRawTransaction( tx *AKeyStore.ASignedRawMsg ) error {
 
-	pool.txLocker.Lock()
-	defer pool.txLocker.Unlock()
-
 	if !tx.Verify() {
 		return ErrMessageVerifyExpected
 	}
 
-	txraw, err := tx.Bytes()
-	if err != nil {
+	subTx := ATx.Transaction{}
+	if err := subTx.Decode(tx.Content[1:]); err != nil {
 		return err
+	}
+
+	txraw := subTx.Encode()
+	if len(txraw) <= 0 {
+		return ErrMessageVerifyExpected
 	}
 
 	key := crypto.Keccak256(txraw)
-	value := txraw
-
-	if err := pool.storage.Put(TxCount, AvdbComm.BigEndianBytes(pool.Size() + 1), nil); err != nil {
+	if err := pool.storage.Put(key, txraw, nil); err != nil {
 		pool.PowerOff(err)
 		return err
 	}
-
-	if err := pool.storage.Put(key, value, nil); err != nil {
-		pool.PowerOff(err)
-		return err
-	}
-
-	//fmt.Printf("NewTxHash:%v size:%v\n", key, pool.Size())
 
 	return nil
-}
-
-func (pool *ATxPool) Size() uint64 {
-
-	if exist, err := pool.storage.Has(TxCount, nil); err != nil || !exist {
-		return 0
-	}
-
-	indexbs, err := pool.storage.Get(TxCount, nil)
-
-	if err != nil {
-		panic(ErrStorageLowAPIExpected)
-	}
-
-	return binary.BigEndian.Uint64(indexbs)
-}
-
-func (pool *ATxPool) IsEmpty() bool {
-
-	return pool.Size() == 0
-
 }
 
 func (pool *ATxPool) Close() {
@@ -534,7 +528,6 @@ func (pool *ATxPool) judgingMode() {
 	pool.workmode = AtxPoolWorkModeNormal
 	return
 }
-
 
 
 func (pool *ATxPool) reduction() {

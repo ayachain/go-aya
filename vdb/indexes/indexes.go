@@ -12,8 +12,8 @@ import (
 	"github.com/ipfs/go-mfs"
 	"github.com/ipfs/go-unixfs"
 	"github.com/syndtr/goleveldb/leveldb"
+	"github.com/syndtr/goleveldb/leveldb/opt"
 	"github.com/syndtr/goleveldb/leveldb/storage"
-	"time"
 )
 
 var LatestIndexKey = []byte("LATEST")
@@ -50,10 +50,7 @@ func CreateServices( ind *core.IpfsNode, chainId string ) IndexesServices {
 			nd = unixfs.EmptyDirNode()
 		}
 
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second  * 5 )
-		defer cancel()
-
-		rnd, err := ind.DAG.Get(ctx, c)
+		rnd, err := ind.DAG.Get(context.TODO(), c)
 		if err != nil {
 			nd = unixfs.EmptyDirNode()
 		}
@@ -144,11 +141,11 @@ func ( i *aIndexes ) PutIndex( index *Index ) error {
 	key := common.BigEndianBytes(index.BlockIndex)
 	value := index.Encode()
 
-	if err := i.rawdb.Put(key, value, nil); err != nil {
+	if err := i.rawdb.Put(key, value, &opt.WriteOptions{Sync:true}); err != nil {
 		return err
 	}
 
-	if err := i.rawdb.Put( []byte(LatestIndexKey), value, nil ); err != nil {
+	if err := i.rawdb.Put( []byte(LatestIndexKey), value, &opt.WriteOptions{Sync:true} ); err != nil {
 		return err
 	}
 

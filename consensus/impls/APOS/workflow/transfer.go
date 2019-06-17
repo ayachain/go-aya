@@ -1,7 +1,7 @@
 package workflow
 
 import (
-	APosComm "github.com/ayachain/go-aya/consensus/impls/APOS/in/common"
+	APosComm "github.com/ayachain/go-aya/consensus/impls/APOS/common"
 	ARsp "github.com/ayachain/go-aya/response"
 	"github.com/ayachain/go-aya/vdb"
 	AAsset "github.com/ayachain/go-aya/vdb/assets"
@@ -30,7 +30,7 @@ func DoTransfer( tx *ATx.Transaction, base vdb.CacheCVFS ) error {
 		// expected
 		if astfrom.Avail < tx.Value || astfrom.Vote < tx.Value {
 
-			base.Receipts().Put( txHash, tx.BlockIndex, ARsp.RawExpectedResponse(APosComm.TxReceiptsNotenough) )
+			base.Receipts().Put( txHash, tx.BlockIndex, ARsp.RawExpectedResponse(APosComm.TxInsufficientFunds) )
 
 			return nil
 		}
