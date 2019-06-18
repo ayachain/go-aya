@@ -50,6 +50,22 @@ func BigEndianBytesUint16 ( n uint16 ) []byte {
 	return enc
 }
 
+func OpenDB( dir *mfs.Directory ) (*leveldb.DB, storage.Storage, error) {
+
+	dbstroage := ADB.NewMFSStorage(dir)
+	if dbstroage == nil {
+		panic("create adb storage expected")
+	}
+
+	db, err := leveldb.Open(dbstroage, &opt.Options{})
+
+	if err != nil {
+		return nil,nil,err
+	}
+
+	return db, dbstroage, nil
+}
+
 func OpenExistedDB( dir *mfs.Directory, path string, rdonly bool ) (*leveldb.DB, storage.Storage) {
 
 	dbstroage := ADB.NewMFSStorage(dir)

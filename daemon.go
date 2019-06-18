@@ -426,7 +426,8 @@ func daemonFunc(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment
 
 	// Give the user some immediate feedback when they hit C-c
 	go func() {
-		<-req.Context.Done()
+		<- req.Context.Done()
+		<- ShutdownAyaChain()
 		fmt.Println("Received interrupt signal, shutting down...")
 		fmt.Println("(Hit ctrl-c again to force-shutdown the daemon.)")
 	}()

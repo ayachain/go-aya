@@ -9,7 +9,9 @@ type IndexesServices interface {
 
 	GetIndex( blockNumber uint64 ) (*Index, error)
 
-	GetLatest() *Index
+	GetLatest() (*Index, error)
+
+	Flush() cid.Cid
 
 	PutIndex( index *Index ) error
 

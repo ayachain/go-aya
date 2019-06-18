@@ -27,7 +27,5 @@ func(i *Index) Encode() []byte {
 }
 
 func(i *Index) Decode(bs []byte) error {
-
 	return json.Unmarshal(bs, i)
-
 }

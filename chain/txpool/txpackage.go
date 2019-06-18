@@ -34,16 +34,20 @@ func (pool *ATxPool) txPackageThread(ctx context.Context) {
 
 		default:
 
-			if pool.miningBlock == nil {
+			if pool.miningBlock == nil && pool.enablePackTxThread {
 
 				rand.Seed(time.Now().UnixNano())
-				bindex := pool.cvfs.Indexes().GetLatest()
+				bindex, err := pool.cvfs.Indexes().GetLatest()
+				if err != nil {
+					pool.PowerOff(err)
+					return
+				}
 
 				/// Because you need to wait for calculation, miningblock does not have a field for the final result.
 				mblk := &AMsgMBlock.MBlock{}
 				mblk.ExtraData = ""
 				mblk.Index = bindex.BlockIndex + 1
-				mblk.ChainID = pool.chainId
+				mblk.ChainID = pool.genBlock.ChainID
 				mblk.Parent = bindex.Hash.String()
 				mblk.Timestamp = uint64(time.Now().Unix())
 				mblk.RandSeed = rand.Int31()
@@ -114,8 +118,12 @@ func (pool *ATxPool) txPackageThread(ctx context.Context) {
 					break
 				}
 
+				pool.enablePackTxThread = false
+
 			} else {
+
 				time.Sleep(PackageThreadSleepTime)
+
 			}
 
 		}

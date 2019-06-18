@@ -2,6 +2,7 @@ package main
 
 import (
 	aappcmd "github.com/ayachain/go-aya/aapp/cmd"
+	"github.com/ayachain/go-aya/chain"
 	chancmd "github.com/ayachain/go-aya/chain/cmd"
 	"github.com/ayachain/go-aya/keystore"
 	keystorecmd "github.com/ayachain/go-aya/keystore/cmd"
@@ -29,4 +30,9 @@ var ayacmd = &cmds.Command {
 
 func DaemonAyaChain( ind *core.IpfsNode ) {
 	keystore.Init("/Users/apple/.aya/keystore", ind)
+}
+
+
+func ShutdownAyaChain() <- chan bool {
+	return chain.DisconnectionAll()
 }

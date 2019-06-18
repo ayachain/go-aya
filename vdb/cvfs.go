@@ -16,6 +16,7 @@ import (
 	"github.com/ipfs/go-merkledag"
 	"github.com/ipfs/go-mfs"
 	"github.com/ipfs/go-unixfs"
+	"github.com/prometheus/common/log"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/opt"
 	"sync"
@@ -59,7 +60,7 @@ type aCVFS struct {
 	indexServices AIndexes.IndexesServices
 	chainId string
 
-	rwmutex *sync.RWMutex
+	writeWaiter *sync.WaitGroup
 }
 
 func CreateVFS( block *ABlock.GenBlock, ind *core.IpfsNode ) (cid.Cid, error) {
@@ -72,7 +73,6 @@ func CreateVFS( block *ABlock.GenBlock, ind *core.IpfsNode ) (cid.Cid, error) {
 		return cid.Undef, err
 	}
 	defer cvfs.Close()
-
 
 	writer, err := cvfs.NewCVFSCache()
 	if err != nil {
@@ -127,7 +127,7 @@ func LinkVFS( chainId string, baseCid cid.Cid, ind *core.IpfsNode ) (CVFS, error
 		inode:ind,
 		chainId:chainId,
 		servies: make(map[string]AVdbComm.VDBSerices),
-		rwmutex: &sync.RWMutex{},
+		writeWaiter: &sync.WaitGroup{},
 	}
 
 	vfs.indexServices = AIndexes.CreateServices(vfs.inode, vfs.chainId)
@@ -136,6 +136,26 @@ func LinkVFS( chainId string, baseCid cid.Cid, ind *core.IpfsNode ) (CVFS, error
 }
 
 func ( vfs *aCVFS ) SeekToBlock( bcid cid.Cid ) error {
+
+	vfs.writeWaiter.Wait()
+	vfs.writeWaiter.Add(1)
+	defer vfs.writeWaiter.Done()
+
+	lcid, err := mfs.FlushPath(context.TODO(), vfs.Root, "/")
+	if err != nil {
+		return err
+	}
+
+	if lcid.Cid().Equals( bcid ) {
+		return nil
+	}
+
+	for k, v := range vfs.servies {
+		if err := v.Shutdown(); err != nil {
+			panic(err)
+		}
+		delete(vfs.servies, k)
+	}
 
 	if err := vfs.Root.Close(); err != nil {
 		return err
@@ -157,8 +177,7 @@ func ( vfs *aCVFS ) SeekToBlock( bcid cid.Cid ) error {
 
 func ( vfs *aCVFS ) Assetses() AAssetses.Services {
 
-	vfs.rwmutex.RLock()
-	defer vfs.rwmutex.RUnlock()
+	vfs.writeWaiter.Wait()
 
 	v, exist := vfs.servies[ AAssetses.DBPATH ]
 
@@ -181,8 +200,7 @@ func ( vfs *aCVFS ) Assetses() AAssetses.Services {
 
 func ( vfs *aCVFS ) Blocks() ABlock.Services {
 
-	vfs.rwmutex.RLock()
-	defer vfs.rwmutex.RUnlock()
+	vfs.writeWaiter.Wait()
 
 	v, exist := vfs.servies[ ABlock.DBPath ]
 
@@ -205,8 +223,7 @@ func ( vfs *aCVFS ) Blocks() ABlock.Services {
 
 func ( vfs *aCVFS ) Transactions() ATx.Services {
 
-	vfs.rwmutex.RLock()
-	defer vfs.rwmutex.RUnlock()
+	vfs.writeWaiter.Wait()
 
 	v, exist := vfs.servies[ ATx.DBPath ]
 
@@ -217,6 +234,7 @@ func ( vfs *aCVFS ) Transactions() ATx.Services {
 		if err != nil {
 			return nil
 		}
+
 
 		v =  ATx.CreateServices(atxDir, true)
 
@@ -229,8 +247,7 @@ func ( vfs *aCVFS ) Transactions() ATx.Services {
 
 func ( vfs *aCVFS ) Receipts() AReceipts.Services {
 
-	vfs.rwmutex.RLock()
-	defer vfs.rwmutex.RUnlock()
+	vfs.writeWaiter.Wait()
 
 	v, exist := vfs.servies[ AReceipts.DBPath ]
 
@@ -253,8 +270,7 @@ func ( vfs *aCVFS ) Receipts() AReceipts.Services {
 
 func ( vfs *aCVFS ) Indexes() AIndexes.IndexesServices {
 
-	vfs.rwmutex.RLock()
-	defer vfs.rwmutex.RUnlock()
+	vfs.writeWaiter.Wait()
 
 	return vfs.indexServices
 }
@@ -267,11 +283,14 @@ func ( vfs *aCVFS ) NewCVFSCache() (CacheCVFS, error) {
 
 func ( vfs *aCVFS ) WriteTaskGroup( group *AWrok.TaskBatchGroup) (cid.Cid, error) {
 
-	vfs.rwmutex.Lock()
-	defer vfs.rwmutex.Unlock()
+	vfs.writeWaiter.Add(1)
+
+	defer vfs.writeWaiter.Done()
 
 	for k, v := range vfs.servies {
-		_ = v.Shutdown()
+		if err := v.Shutdown(); err != nil {
+			panic(err)
+		}
 		delete(vfs.servies, k)
 	}
 
@@ -282,6 +301,19 @@ func ( vfs *aCVFS ) WriteTaskGroup( group *AWrok.TaskBatchGroup) (cid.Cid, error
 	txs := &Transaction{
 		transactions:make(map[string]*leveldb.Transaction),
 	}
+
+	var closeServices []AVdbComm.VDBSerices
+	defer func() {
+
+		for _, ser := range closeServices {
+
+			if err := ser.Shutdown(); err != nil {
+
+				log.Errorf("VDB Services closed error : %v", err)
+			}
+		}
+
+	}()
 
 	for dbkey, batch := range bmap {
 
@@ -312,6 +344,8 @@ func ( vfs *aCVFS ) WriteTaskGroup( group *AWrok.TaskBatchGroup) (cid.Cid, error
 			return cid.Undef, errors.New("DBKey nout found")
 		}
 
+		closeServices = append(closeServices, services)
+
 		txs.transactions[dbkey], err = services.OpenTransaction()
 		if err != nil {
 			return cid.Undef, nil
@@ -320,7 +354,6 @@ func ( vfs *aCVFS ) WriteTaskGroup( group *AWrok.TaskBatchGroup) (cid.Cid, error
 		if err := txs.transactions[dbkey].Write(batch, &opt.WriteOptions{Sync:true}); err != nil {
 			return cid.Undef, nil
 		}
-
 	}
 
 	if err := txs.Commit(); err != nil {
@@ -337,8 +370,13 @@ func ( vfs *aCVFS ) WriteTaskGroup( group *AWrok.TaskBatchGroup) (cid.Cid, error
 
 func ( vfs *aCVFS ) Close() error {
 
-	vfs.rwmutex.Lock()
-	defer vfs.rwmutex.Unlock()
+	vfs.writeWaiter.Wait()
+
+	vfs.writeWaiter.Add(1)
+	defer vfs.writeWaiter.Done()
+
+	vfs.ctxCancel()
+	<- vfs.ctx.Done()
 
 	if err := vfs.indexServices.Close(); err != nil {
 		return err

@@ -10,9 +10,8 @@ var ChainCMDS = &cmds.Command{
 		Tagline: "AyaChain Chain Commands.",
 	},
 	Subcommands: map[string]*cmds.Command{
-		"conn" 	: 	connCmd,
-		"test"  :	testCmd,
-		"indexof" : indexOfCmd,
+		"connect" 		: 	connCmd,
+		"disconnect" 	: 	dissConnectCmd,
 	},
 
 }

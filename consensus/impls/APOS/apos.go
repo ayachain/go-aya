@@ -5,19 +5,14 @@ import (
 	"encoding/json"
 	ACore "github.com/ayachain/go-aya/consensus/core"
 	AGroup "github.com/ayachain/go-aya/consensus/core/worker"
+	APosComm "github.com/ayachain/go-aya/consensus/impls/APOS/common"
 	"github.com/ayachain/go-aya/consensus/impls/APOS/workflow"
+	ARsp "github.com/ayachain/go-aya/response"
 	"github.com/ayachain/go-aya/vdb"
 	AMsgMBlock "github.com/ayachain/go-aya/vdb/mblock"
 	ATx "github.com/ayachain/go-aya/vdb/transaction"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-ipfs/core"
-	"github.com/pkg/errors"
-)
-
-
-var (
-	ErrNotSupportMessageTypeExpected = errors.New("not support message type")
-	ErrNotExistConsensusRule = errors.New("not found rule")
 )
 
 type APOSConsensusNotary struct {
@@ -63,12 +58,15 @@ func (n *APOSConsensusNotary) MiningBlock( block *AMsgMBlock.MBlock, cvfs vdb.Ca
 
 	for _, tx := range txlist {
 
+
+		// is transaction override
 		txc, err := cvfs.Transactions().GetTxCount(tx.From)
 		if err != nil {
 			continue
 		}
 
-		if txc != tx.Tid - 1 {
+		if tx.Tid < txc {
+			cvfs.Receipts().Put(tx.GetHash256(), block.Index, ARsp.RawSusccessResponse(APosComm.TxOverrided))
 			continue
 		}
 

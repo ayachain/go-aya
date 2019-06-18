@@ -43,6 +43,7 @@ func (txs *aTransactions) Close() {
 	_ = txs.rawdb.Close()
 	_ = txs.mfsstorage.Close()
 	_ = txs.Flush()
+
 }
 
 func (txs *aTransactions) Shutdown() error {

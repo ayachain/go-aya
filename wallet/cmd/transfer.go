@@ -42,7 +42,7 @@ var transaferAvail = &cmds.Command{
 			return ARsponse.EmitErrorResponse(re, err)
 		}
 
-		tx := ATxUtils.MakeTransferAvail(acc.Address, EComm.HexToAddress(req.Arguments[1]), vnumber, txcount + 1)
+		tx := ATxUtils.MakeTransferAvail(acc.Address, EComm.HexToAddress(req.Arguments[1]), vnumber, txcount)
 
 		if err := AKeyStore.SignTransaction(tx, acc); err != nil {
 			return ARsponse.EmitErrorResponse(re, err)
@@ -87,7 +87,7 @@ var transaferDoLock = &cmds.Command{
 			return ARsponse.EmitErrorResponse(re, err)
 		}
 
-		tx := ATxUtils.MakeTransferAvail(acc.Address, EComm.HexToAddress(req.Arguments[1]), vnumber, txcount + 1)
+		tx := ATxUtils.MakeTransferAvail(acc.Address, EComm.HexToAddress(req.Arguments[1]), vnumber, txcount)
 
 		if err := AKeyStore.SignTransaction(tx, acc); err != nil {
 			return ARsponse.EmitErrorResponse(re, err)
@@ -119,7 +119,6 @@ var transferCMD = &cmds.Command{
 			return ARsponse.EmitErrorResponse(re, errors.New("not exist chain connection") )
 		}
 
-
 		acc := AKeyStore.GetCoinBaseAddress()
 
 		vnumber, err := strconv.ParseUint(req.Arguments[2], 10, 64)
@@ -132,7 +131,7 @@ var transferCMD = &cmds.Command{
 			return ARsponse.EmitErrorResponse(re, err)
 		}
 
-		tx := ATxUtils.MakeTransferAvail(acc.Address, EComm.HexToAddress(req.Arguments[1]), vnumber, txcount + 1)
+		tx := ATxUtils.MakeTransferAvail(acc.Address, EComm.HexToAddress(req.Arguments[1]), vnumber, txcount)
 
 		if err := AKeyStore.SignTransaction(tx, acc); err != nil {
 			return ARsponse.EmitErrorResponse(re, err)

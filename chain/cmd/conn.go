@@ -5,12 +5,10 @@ import (
 	AKeyStore "github.com/ayachain/go-aya/keystore"
 	ARsponse "github.com/ayachain/go-aya/response"
 	ABlock "github.com/ayachain/go-aya/vdb/block"
-	EAccount "github.com/ethereum/go-ethereum/accounts"
 	"github.com/ipfs/go-ipfs-cmds"
 	"github.com/ipfs/go-ipfs/core/commands/cmdenv"
 	"github.com/pkg/errors"
 	"io/ioutil"
-	"strings"
 )
 
 var connCmd = &cmds.Command {
@@ -58,20 +56,25 @@ var connCmd = &cmds.Command {
 }
 
 
+var dissConnectCmd = &cmds.Command {
 
+	Helptext:cmds.HelpText{
+		Tagline: "dissconnect chain",
+	},
+	Arguments: []cmds.Argument {
+		cmds.StringArg("chainid", true, false, "aya chainid"),
+	},
+	Run:func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 
-func findAccount( hexAddr string ) (*EAccount.Account, error) {
+		cc := AChain.GetChainByIdentifier( req.Arguments[0] )
 
-	aks := AKeyStore.ShareInstance()
-	if aks == nil {
-		return nil, errors.New( "AKeyStore services expected" )
-	}
-
-	for _, acc := range aks.Accounts() {
-		if strings.EqualFold( acc.Address.String(), hexAddr ) {
-			return &acc, nil
+		if cc == nil {
+			return ARsponse.EmitErrorResponse(re, errors.New("chain not connection") )
 		}
-	}
 
-	return nil, errors.New("address not found")
+		cc.Disconnect()
+
+		return ARsponse.EmitSuccessResponse(re, ARsponse.SimpleSuccessBody)
+	},
+
 }

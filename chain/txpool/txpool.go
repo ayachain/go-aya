@@ -10,6 +10,7 @@ import (
 	AKeyStore "github.com/ayachain/go-aya/keystore"
 	"github.com/ayachain/go-aya/vdb"
 	AAssets "github.com/ayachain/go-aya/vdb/assets"
+	"github.com/ayachain/go-aya/vdb/block"
 	AvdbComm "github.com/ayachain/go-aya/vdb/common"
 	AMsgMBlock "github.com/ayachain/go-aya/vdb/mblock"
 	ATx "github.com/ayachain/go-aya/vdb/transaction"
@@ -96,12 +97,10 @@ type ATxPool struct {
 	ownerAsset *AAssets.Assets
 
 	adbpath string
-	chainId string
 	channelTopics string
 	miningBlock *AMsgMBlock.MBlock
+	genBlock *block.GenBlock
 
-	/// Top100 changes only when the block is updated. In order to reduce the reading and writing frequency
-	/// of the database, we cache this information here and update it when the block is actually out.
 	topAssets []*AAssets.SortAssets
 	workmode AtxPoolWorkMode
 	ind *core.IpfsNode
@@ -114,18 +113,19 @@ type ATxPool struct {
 	threadChans map[AtxThreadsName] chan *AKeyStore.ASignedRawMsg
 
 	notary ACore.Notary
+	enablePackTxThread bool
 }
 
 
-func NewTxPool( ctx context.Context, ind *core.IpfsNode, chainId string, cvfs vdb.CVFS, miner ACore.Notary, acc EAccount.Account) *ATxPool {
+func NewTxPool( ctx context.Context, ind *core.IpfsNode, gblk *block.GenBlock, cvfs vdb.CVFS, miner ACore.Notary, acc EAccount.Account) *ATxPool {
 
-	adbpath := "/atxpool/" + chainId
+	adbpath := "/atxpool/" + gblk.ChainID
 	var nd *merkledag.ProtoNode
 	dsk := datastore.NewKey(adbpath)
 	val, err := ind.Repo.Datastore().Get(dsk)
 
 	// create channel topices string
-	topic := crypto.Keccak256Hash( []byte( AtxPoolVersion + chainId ) )
+	topic := crypto.Keccak256Hash( []byte( AtxPoolVersion + gblk.ChainID ) )
 
 	switch {
 	case err == datastore.ErrNotFound || val == nil:
@@ -184,10 +184,10 @@ func NewTxPool( ctx context.Context, ind *core.IpfsNode, chainId string, cvfs vd
 		},
 	)
 
-	dbnode, err := mfs.Lookup(root, "/" + chainId)
+	dbnode, err := mfs.Lookup(root, "/" + gblk.ChainID)
 	if err != nil {
 
-		if err := mfs.Mkdir(root, "/" + chainId, mfs.MkdirOpts{Flush:false, Mkparents:true}); err != nil {
+		if err := mfs.Mkdir(root, "/" + gblk.ChainID, mfs.MkdirOpts{Flush:false, Mkparents:true}); err != nil {
 			panic(err)
 		}
 
@@ -215,13 +215,13 @@ func NewTxPool( ctx context.Context, ind *core.IpfsNode, chainId string, cvfs vd
 			ownerAccount:acc,
 			ownerAsset:oast,
 			notary:miner,
-			chainId:chainId,
+			genBlock:gblk,
 		}
 	}
 
 configNewDir :
 
-	newnode, err := mfs.Lookup(root, "/" + chainId)
+	newnode, err := mfs.Lookup(root, "/" + gblk.ChainID)
 	newdir, ok := newnode.(*mfs.Directory)
 	if !ok {
 		panic(mfs.ErrDirExists)
@@ -244,19 +244,22 @@ configNewDir :
 		ownerAccount:acc,
 		ownerAsset:oast,
 		notary:miner,
+		genBlock:gblk,
 	}
 
 }
 
-func (pool *ATxPool) PowerOn() error {
+func (pool *ATxPool) PowerOn( pctx context.Context ) error {
 
 	if pool.poweron {
-		return fmt.Errorf("%v ATxPool is already power on", pool.chainId)
+		return fmt.Errorf("%v ATxPool is already power on", pool.genBlock.ChainID)
 	}
 
 	pool.judgingMode()
 
-	pool.workctx, pool.workcancel = context.WithCancel(context.Background())
+	pool.workctx, pool.workcancel = context.WithCancel(pctx)
+
+	fmt.Println("Waiting Thread Starting ...")
 
 	switch pool.workmode {
 
@@ -315,8 +318,15 @@ func (pool *ATxPool) PowerOn() error {
 }
 
 func (pool *ATxPool) PowerOff(err error) {
+
 	fmt.Println(err)
+
 	pool.workcancel()
+
+	if err := pool.storage.Close(); err != nil {
+		log.Error(err)
+	}
+
 	pool.poweron = false
 }
 
@@ -333,15 +343,6 @@ func (pool *ATxPool) UpdateBestBlock( ) error {
 
 	ast, err := pool.cvfs.Assetses().AssetsOf( pool.ownerAccount.Address )
 
-	//test
-	toast, _ := pool.cvfs.Assetses().AssetsOf( EComm.HexToAddress("0x341f244DDd50f51187a6036b3BDB4FCA9cAFeE16") )
-	if ast != nil {
-
-		fmt.Printf("Address From:\tAvail:%v\tVote:%v\tLocked:%v\n", ast.Avail, ast.Vote, ast.Locked)
-		fmt.Printf("Address To:\t\tAvail:%v\tVote:%v\tLocked:%v\n", toast.Avail, toast.Vote, toast.Locked)
-
-	}
-
 	if err != nil {
 		return err
 	}
@@ -351,9 +352,8 @@ func (pool *ATxPool) UpdateBestBlock( ) error {
 		tops = []*AAssets.SortAssets{}
 	}
 
-	pool.topAssets = tops
 	pool.ownerAsset = ast
-	pool.miningBlock = nil
+	pool.topAssets = tops
 
 	return nil
 }
@@ -368,7 +368,9 @@ func (pool *ATxPool) DoBroadcast( coder AvdbComm.AMessageEncode ) error {
 	}
 
 	if signmsg, err := AKeyStore.CreateMsg(cbs, pool.ownerAccount); err != nil {
+
 		return err
+
 	} else {
 
 		rawsmsg, err := signmsg.Bytes()
@@ -476,15 +478,17 @@ func (pool *ATxPool) AddRawTransaction( tx *AKeyStore.ASignedRawMsg ) error {
 		return err
 	}
 
+	pool.enablePackTxThread = true
+
 	return nil
 }
 
 func (pool *ATxPool) Close() {
 
-	err := pool.storage.Close()
+	pool.PowerOff(nil)
 
-	if err != nil {
-		log.Warning(err)
+	if err := pool.cvfs.Close(); err != nil {
+		log.Error(err)
 	}
 
 }
@@ -645,7 +649,6 @@ func (pool *ATxPool) runthreads( names ... AtxThreadsName ) {
 			go pool.miningThread(workCtx)
 
 		}
-
 
 	}
 

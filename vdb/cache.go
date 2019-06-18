@@ -95,7 +95,6 @@ func (cache *aCacheCVFS) Assetses() AAssetses.Caches {
 		}
 
 		cache.cacheSers[AAssetses.DBPATH] = ser
-
 	}
 
 	wt, ok := ser.(AAssetses.Caches)

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	ATaskGroup "github.com/ayachain/go-aya/consensus/core/worker"
 	AMsgBlock "github.com/ayachain/go-aya/vdb/block"
+	AChainInfo "github.com/ayachain/go-aya/vdb/chaininfo"
 	"github.com/ipfs/go-cid"
 	"time"
 )
@@ -78,9 +79,26 @@ func (pool *ATxPool) blockExecutorThread(ctx context.Context) {
 					break
 				}
 
-				pool.UpdateBestBlock()
-			}
+				indexCid := pool.cvfs.Indexes().Flush()
 
+				if !indexCid.Equals(cid.Undef) {
+
+					// broadcast chain info
+					info := &AChainInfo.ChainInfo {
+						GenHash:pool.genBlock.GetHash(),
+						VDBRoot:latestCid,
+						LatestBlock:cblock,
+						Indexes:indexCid,
+					}
+
+					_ = pool.DoBroadcast(info)
+				}
+
+				_ = pool.UpdateBestBlock()
+
+				pool.miningBlock = nil
+				pool.enablePackTxThread = true
+			}
 		}
 	}
 }

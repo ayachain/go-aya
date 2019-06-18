@@ -3,6 +3,7 @@ package chain
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/ayachain/go-aya/chain/txpool"
 	ACore "github.com/ayachain/go-aya/consensus/core"
 	ACIMPL "github.com/ayachain/go-aya/consensus/impls"
@@ -13,6 +14,7 @@ import (
 	EAccount "github.com/ethereum/go-ethereum/accounts"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-ipfs/core"
+	"sync"
 )
 
 const BroadCastChanSize = 128
@@ -26,12 +28,9 @@ var(
 
 type AyaChain interface {
 
-	Test() error
-	OpenChannel() error
-	ChainIdentifier() string
-	Disslink()
+	Connect() error
+	Disconnect()
 	CVFServices() vdb.CVFS
-	IndexOf( idx uint64 ) (*indexes.Index, error)
 	SendRawMessage( coder AvdbComm.AMessageEncode ) error
 
 }
@@ -69,17 +68,18 @@ func AddChainLink( genBlock *ABlock.GenBlock, ind *core.IpfsNode, acc EAccount.A
 		return ErrAlreadyExistConnected
 	}
 
-	idxs := indexes.CreateServices(ind, genBlock.ChainID)
-
-	idx := idxs.GetLatest()
-
-	_ = idxs.Close()
-
 	var baseCid cid.Cid
 	var err error
-	if idx.BlockIndex > 0 {
+
+	idxs := indexes.CreateServices(ind, genBlock.ChainID)
+	idx, err := idxs.GetLatest()
+	_ = idxs.Close()
+
+	if err == nil && idx.BlockIndex > 0 {
 
 		baseCid = idx.FullCID
+
+		fmt.Printf("Readed LatestIndex:%v CID:%v", idx.BlockIndex, idx.FullCID)
 
 	} else {
 
@@ -109,9 +109,9 @@ func AddChainLink( genBlock *ABlock.GenBlock, ind *core.IpfsNode, acc EAccount.A
 
 	// config txpool
 	tpctx, _ := context.WithCancel(ctx)
-	ac.TxPool = txpool.NewTxPool( tpctx, ind, genBlock.ChainID, vdbfs, notary, acc)
+	ac.TxPool = txpool.NewTxPool( tpctx, ind, genBlock, vdbfs, notary, acc)
 
-	if err := ac.OpenChannel(); err != nil {
+	if err := ac.Connect(); err != nil {
 		return err
 	}
 
@@ -124,23 +124,52 @@ func GetChainByIdentifier(chainId string) AyaChain{
 	return chains[chainId]
 }
 
-func (chain *aChain) OpenChannel() error {
-	return chain.TxPool.PowerOn()
+func DisconnectionAll() <- chan bool {
+
+	var rchan chan bool
+
+	go func() {
+
+		fmt.Println("Waiting Disconnection")
+
+		wg := sync.WaitGroup{}
+		wg.Add(len(chains))
+
+		for _, chain := range chains {
+
+			chain.Disconnect()
+			wg.Done()
+		}
+
+		wg.Wait()
+
+		fmt.Println("Waiting Disconnection Done")
+
+		rchan <- true
+
+	}()
+
+	return rchan
+}
+
+func (chain *aChain) Connect() error {
+
+	return chain.TxPool.PowerOn(chain.ctx)
+}
+
+func (chain *aChain) Disconnect() {
+
+	chain.ctxCancel()
+
+	<- chain.ctx.Done()
+
+	chain.TxPool.Close()
+
+	return
 }
 
 func (chain *aChain) SendRawMessage( coder AvdbComm.AMessageEncode ) error {
 	return chain.TxPool.DoBroadcast( coder )
-}
-
-func (chain *aChain) IndexOf( idx uint64 ) (*indexes.Index, error) {
-
-	index, err := chain.TxPool.ReadOnlyCVFS().Indexes().GetIndex(idx)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return index, nil
 }
 
 func (chain *aChain) CVFServices() vdb.CVFS {
