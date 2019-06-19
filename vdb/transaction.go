@@ -49,8 +49,6 @@ func (t *Transaction) Commit() error {
 
 	}
 
-	fmt.Println("\nCommitSuccess")
-
 	return nil
 
 rollback :

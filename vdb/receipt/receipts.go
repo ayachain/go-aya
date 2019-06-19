@@ -6,6 +6,7 @@ import (
 	"github.com/ipfs/go-mfs"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/storage"
+	"github.com/syndtr/goleveldb/leveldb/util"
 	"sync"
 )
 
@@ -30,17 +31,37 @@ func CreateServices( mdir *mfs.Directory, rdonly bool ) Services {
 	return api
 }
 
+func (r *aReceipt) HasTransactionReceipt( txhs EComm.Hash ) bool {
+
+	st := append(txhs.Bytes(), AVdbComm.BigEndianBytes(0)... )
+	ed := append(txhs.Bytes(), AVdbComm.BigEndianBytes((uint64(1) << 63) -1)... )
+
+	s, err := r.rawdb.SizeOf([]util.Range{{Start:st,Limit:ed}})
+	if err != nil {
+		return false
+	}
+
+	return s.Sum() > 0
+}
+
 func (r *aReceipt) GetTransactionReceipt( txhs EComm.Hash ) (*Receipt, error) {
 
-	vbs, err := r.rawdb.Get( txhs.Bytes(), nil)
+	if !r.HasTransactionReceipt(txhs) {
+		return nil, leveldb.ErrNotFound
+	}
 
-	if err != nil {
-		return nil, err
+	st := append(txhs.Bytes(), AVdbComm.BigEndianBytes(0)... )
+	ed := append(txhs.Bytes(), AVdbComm.BigEndianBytes((uint64(1) << 63) -1)... )
+
+	it := r.rawdb.NewIterator(&util.Range{Start:st,Limit:ed}, nil)
+
+	if !it.Next() {
+		return nil, leveldb.ErrNotFound
 	}
 
 	rp := &Receipt{}
 
-	err = rp.Decode( vbs )
+	err := rp.Decode( it.Value() )
 	if err != nil {
 		return nil, err
 	}

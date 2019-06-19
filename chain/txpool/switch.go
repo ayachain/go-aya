@@ -30,17 +30,34 @@ func (pool *ATxPool) rawMessageSwitch( msg *AKeyStore.ASignedRawMsg ) error  {
 
 	case AMsgBlock.MessagePrefix:
 
-		pool.threadChans[AtxThreadExecutor] <- msg
+		cc, exist := pool.threadChans[AtxThreadExecutor]
 
+		if !exist {
+			return nil
+		}
+
+		cc <- msg
 
 	case AMsgMinied.MessagePrefix:
 
-		pool.threadChans[AtxThreadReceiptListen] <- msg
+		cc, exist := pool.threadChans[AtxThreadReceiptListen]
+
+		if !exist {
+			return nil
+		}
+
+		cc <- msg
 
 
 	case AMsgMBlock.MessagePrefix:
 
-		pool.threadChans[AtxThreadMining] <- msg
+		cc, exist := pool.threadChans[AtxThreadMining]
+
+		if !exist {
+			return nil
+		}
+
+		cc <- msg
 
 
 	case AMsgInfo.MessagePrefix :

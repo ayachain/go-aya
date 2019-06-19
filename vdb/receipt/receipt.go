@@ -6,10 +6,12 @@ import (
 )
 
 type Receipt struct {
-	ArawdbComm.RawDBCoder `json:"-"`
-	Code int16		`json:"code"`
-	Body []byte		`json:"body"`
-	Event []string	`json:"events"`
+
+	ArawdbComm.RawDBCoder 	`json:"-"`
+
+	Stat int				`json:"Stat"`
+	Message string			`json:"Msg"`
+	Event 	[]string		`json:"Events"`
 }
 
 func (r *Receipt) Encode() []byte {
@@ -28,3 +30,21 @@ func (r *Receipt) Decode(bs []byte) error {
 	return json.Unmarshal(bs, r)
 }
 
+func ConfirmReceipt( msg string, events []string ) *Receipt {
+
+	return &Receipt{
+		Stat:0,
+		Message:msg,
+		Event:events,
+	}
+
+}
+
+func ExpectedReceipt( msg string, events []string ) *Receipt {
+
+	return &Receipt{
+		Stat:-1,
+		Message:msg,
+		Event:events,
+	}
+}

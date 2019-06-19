@@ -10,45 +10,70 @@ import (
 
 func (pool *ATxPool) miningThread(ctx context.Context) {
 
-	fmt.Println("ATxPool Thread On : " + AtxThreadMining)
-	defer fmt.Println("ATxPool Thread Off : " + AtxThreadMining)
+	fmt.Println("ATxPool Thread On: " + AtxThreadMining)
+
+	tctx, cancel := context.WithCancel(ctx)
+
+	pool.threadClosewg.Add(1)
 
 	for {
 
 		select {
 
-		case <-ctx.Done():
+		case <-tctx.Done():
+
+			fmt.Println("ATxPool Thread Off: " + AtxThreadMining)
+
+			pool.threadClosewg.Done()
+
 			return
 
-		case msg := <- pool.threadChans[AtxThreadMining] :
+		case msg, isOpen := <- pool.threadChans[AtxThreadMining] :
+
+			if !isOpen {
+				continue
+			}
 
 			if !msg.Verify() {
-				break
+				continue
 			}
 
 			mblock := &AMsgMBlock.MBlock{}
 			if err := mblock.RawMessageDecode(msg.Content); err != nil {
-				break
+				log.Error(err)
+				continue
 			}
-			pool.miningBlock = mblock
-
 
 			cVFS, err := pool.cvfs.NewCVFSCache()
 			if err != nil {
-				pool.PowerOff(err)
+				log.Error(err)
+				cancel()
+				continue
 			}
-			defer cVFS.Close()
 
 			group, err := pool.notary.MiningBlock(mblock, cVFS)
 			if err != nil {
-				break
+
+				if err := cVFS.Close(); err != nil {
+					log.Error(err)
+					cancel()
+				}
+
+				continue
 			}
 
+			if err := cVFS.Close(); err != nil {
+				log.Error(err)
+				cancel()
+				continue
+			}
 
 			groupbytes := group.Encode()
 			gblock := IBlocks.NewBlock(groupbytes)
 			if err := pool.ind.Blocks.AddBlock(gblock); err != nil {
-				break
+				log.Error(err)
+				cancel()
+				continue
 			}
 
 			mRet := &AMsgMined.Minined{
@@ -57,8 +82,9 @@ func (pool *ATxPool) miningThread(ctx context.Context) {
 			}
 
 			if err := pool.DoBroadcast(mRet); err != nil {
-				pool.PowerOff(err)
-				return
+				log.Error(err)
+				cancel()
+				continue
 			}
 
 		}

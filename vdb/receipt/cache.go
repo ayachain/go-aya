@@ -5,6 +5,7 @@ import (
 	EComm "github.com/ethereum/go-ethereum/common"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/storage"
+	"github.com/syndtr/goleveldb/leveldb/util"
 )
 
 type aCache struct {
@@ -35,18 +36,37 @@ func newCache( sourceDB *leveldb.DB ) (Caches, error) {
 }
 
 
+func (cache *aCache) HasTransactionReceipt( txhs EComm.Hash ) bool {
+
+	st := append(txhs.Bytes(), AvdbComm.BigEndianBytes(0)... )
+	ed := append(txhs.Bytes(), AvdbComm.BigEndianBytes((uint64(1) << 63) -1)... )
+
+	s, err := cache.source.SizeOf([]util.Range{{Start:st,Limit:ed}})
+	if err != nil {
+		return false
+	}
+
+	return s.Sum() > 0
+}
 
 func (cache *aCache) GetTransactionReceipt( txhs EComm.Hash ) (*Receipt, error) {
 
-	vbs, err := AvdbComm.CacheGet(cache.source, cache.cdb, txhs.Bytes())
+	if !cache.HasTransactionReceipt(txhs) {
+		return nil, leveldb.ErrNotFound
+	}
 
-	if err != nil {
-		return nil, err
+	st := append(txhs.Bytes(), AvdbComm.BigEndianBytes(0)... )
+	ed := append(txhs.Bytes(), AvdbComm.BigEndianBytes((uint64(1) << 63) -1)... )
+
+	it := cache.source.NewIterator(&util.Range{Start:st,Limit:ed}, nil)
+
+	if !it.Next() {
+		return nil, leveldb.ErrNotFound
 	}
 
 	rp := &Receipt{}
 
-	err = rp.Decode( vbs )
+	err := rp.Decode( it.Value() )
 	if err != nil {
 		return nil, err
 	}
@@ -77,4 +97,8 @@ func (cache *aCache) Put( txhs EComm.Hash, bindex uint64, receipt []byte ) {
 		panic(err)
 	}
 
+}
+
+func (cache *aCache) Close() {
+	_ = cache.cdb.Close()
 }

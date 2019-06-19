@@ -14,10 +14,7 @@ import (
 	EAccount "github.com/ethereum/go-ethereum/accounts"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-ipfs/core"
-	"sync"
 )
-
-const BroadCastChanSize = 128
 
 var(
 	ErrAlreadyExistConnected				= errors.New("chan already exist connected")
@@ -53,10 +50,11 @@ type aChain struct {
 	/// When you want to close the link of this example, use it. All threads will listen
 	/// for the end and then enter the terminator.generally, it is called in Disslink in the
 	/// AChain interface.
-	ctx context.Context
 	ctxCancel context.CancelFunc
 
 	TxPool* txpool.ATxPool
+
+	ChainId string
 }
 
 var chains = make(map[string]AyaChain)
@@ -79,7 +77,7 @@ func AddChainLink( genBlock *ABlock.GenBlock, ind *core.IpfsNode, acc EAccount.A
 
 		baseCid = idx.FullCID
 
-		fmt.Printf("Readed LatestIndex:%v CID:%v", idx.BlockIndex, idx.FullCID)
+		fmt.Printf("LatestIndex:%06d CID:%v\n", idx.BlockIndex, idx.FullCID)
 
 	} else {
 
@@ -99,17 +97,14 @@ func AddChainLink( genBlock *ABlock.GenBlock, ind *core.IpfsNode, acc EAccount.A
 		return err
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
 	ac := &aChain{
 		INode:ind,
 		Notary:notary,
-		ctx:ctx,
-		ctxCancel:cancel,
+		ChainId:genBlock.ChainID,
 	}
 
 	// config txpool
-	tpctx, _ := context.WithCancel(ctx)
-	ac.TxPool = txpool.NewTxPool( tpctx, ind, genBlock, vdbfs, notary, acc)
+	ac.TxPool = txpool.NewTxPool( ind, genBlock, vdbfs, notary, acc)
 
 	if err := ac.Connect(); err != nil {
 		return err
@@ -124,48 +119,33 @@ func GetChainByIdentifier(chainId string) AyaChain{
 	return chains[chainId]
 }
 
-func DisconnectionAll() <- chan bool {
+func DisconnectionAll() {
 
-	var rchan chan bool
+	for _, chain := range chains {
+		chain.Disconnect()
+	}
 
-	go func() {
-
-		fmt.Println("Waiting Disconnection")
-
-		wg := sync.WaitGroup{}
-		wg.Add(len(chains))
-
-		for _, chain := range chains {
-
-			chain.Disconnect()
-			wg.Done()
-		}
-
-		wg.Wait()
-
-		fmt.Println("Waiting Disconnection Done")
-
-		rchan <- true
-
-	}()
-
-	return rchan
 }
 
 func (chain *aChain) Connect() error {
 
-	return chain.TxPool.PowerOn(chain.ctx)
+	ctx, cancel := context.WithCancel(chain.INode.Context())
+
+	chain.ctxCancel = cancel
+
+	go func() {
+
+		select {
+		case <- ctx.Done():
+			delete(chains, chain.ChainId)
+		}
+	}()
+
+	return chain.TxPool.PowerOn(ctx)
 }
 
 func (chain *aChain) Disconnect() {
-
 	chain.ctxCancel()
-
-	<- chain.ctx.Done()
-
-	chain.TxPool.Close()
-
-	return
 }
 
 func (chain *aChain) SendRawMessage( coder AvdbComm.AMessageEncode ) error {

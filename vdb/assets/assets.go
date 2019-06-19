@@ -11,10 +11,10 @@ import (
 
 type Assets struct {
 	common.RawDBCoder	`json:"-"`
-	Version 	uint8
-	Avail		uint64
-	Vote		uint64
-	Locked		uint64
+	Version 	uint8	`json:"Version"`
+	Avail		uint64	`json:"Avail"`
+	Vote		uint64	`json:"Vote"`
+	Locked		uint64	`json:"Locked"`
 }
 
 type SortAssets struct {

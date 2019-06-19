@@ -7,55 +7,68 @@ import (
 	AMsgBlock "github.com/ayachain/go-aya/vdb/block"
 	AChainInfo "github.com/ayachain/go-aya/vdb/chaininfo"
 	"github.com/ipfs/go-cid"
-	"time"
 )
 
 func (pool *ATxPool) blockExecutorThread(ctx context.Context) {
 
-	fmt.Println("ATxPool Thread On : " + AtxThreadExecutor)
-	defer fmt.Println("ATxPool Thread Off : " + AtxThreadExecutor)
+	fmt.Println("ATxPool Thread On: " + AtxThreadExecutor)
+
+	tctx, cancel := context.WithCancel(ctx)
+
+	pool.threadClosewg.Add(1)
 
 	for {
 
 		select {
-		case <-ctx.Done():
+		case <- tctx.Done():
+
+			close(pool.threadChans[AtxThreadExecutor])
+
+			delete(pool.threadChans, AtxThreadExecutor)
+
+			fmt.Println("ATxPool Thread Off: " + AtxThreadExecutor)
+
+			pool.threadClosewg.Done()
+
 			return
 
-		case msg := <- pool.threadChans[AtxThreadExecutor] :
+		case msg, isOpen := <- pool.threadChans[AtxThreadExecutor] :
+
+			if !isOpen {
+				continue
+			}
 
 			if pool.miningBlock != nil {
 
 				if !msg.Verify() {
-					break
+					continue
 				}
 
 				cblock := &AMsgBlock.Block{}
 				if err := cblock.RawMessageDecode(msg.Content); err != nil {
-					break
+					log.Error(err)
+					continue
 				}
 
 
 				bcid, err := cid.Decode(cblock.ExtraData)
 				if err != nil {
-					break
+					log.Error(err)
+					continue
 				}
 
 
-				bctx, cancel := context.WithTimeout(context.TODO(), time.Second  * 60)
-				defer cancel()
-
-
-				batchBlock, err := pool.ind.Blocks.GetBlock( bctx, bcid )
+				batchBlock, err := pool.ind.Blocks.GetBlock( tctx, bcid )
 				if err != nil {
-					fmt.Println(err)
-					break
+					log.Error(err)
+					continue
 				}
 
 
 				group := ATaskGroup.NewGroup()
 				if err := group.Decode(batchBlock.RawData()); err != nil {
-					fmt.Println(err)
-					break
+					log.Error(err)
+					continue
 				}
 
 				// Append Block
@@ -63,20 +76,15 @@ func (pool *ATxPool) blockExecutorThread(ctx context.Context) {
 
 				latestCid, err := pool.cvfs.WriteTaskGroup(group)
 				if err != nil {
-					fmt.Println(err)
-					break
+					log.Error(err)
+					cancel()
+					continue
 				}
-
-				prevBlockIdx, err := pool.cvfs.Indexes().GetIndex(cblock.Index - 1)
-				if err != nil {
-					fmt.Println(err)
-					break
-				}
-				fmt.Printf("NewBlock:%06d\t%v\tPrev:%v\n", cblock.Index, latestCid.String(), prevBlockIdx.FullCID )
 
 				if err := pool.cvfs.Indexes().PutIndexBy( cblock.Index, cblock.GetHash(), latestCid ); err != nil {
-					fmt.Println(err)
-					break
+					log.Error(err)
+					cancel()
+					continue
 				}
 
 				indexCid := pool.cvfs.Indexes().Flush()
@@ -91,13 +99,25 @@ func (pool *ATxPool) blockExecutorThread(ctx context.Context) {
 						Indexes:indexCid,
 					}
 
-					_ = pool.DoBroadcast(info)
+					if err := pool.DoBroadcast(info); err != nil {
+						log.Error(err)
+						cancel()
+						continue
+					}
+
+				} else {
+
+					cancel()
+					continue
 				}
 
 				_ = pool.UpdateBestBlock()
 
 				pool.miningBlock = nil
-				pool.enablePackTxThread = true
+
+				pool.DoPackMBlock()
+
+				fmt.Printf("Confrim Block %06d:\tCID:%v\n", cblock.Index, latestCid.String())
 			}
 		}
 	}

@@ -7,9 +7,9 @@ import (
 	AGroup "github.com/ayachain/go-aya/consensus/core/worker"
 	APosComm "github.com/ayachain/go-aya/consensus/impls/APOS/common"
 	"github.com/ayachain/go-aya/consensus/impls/APOS/workflow"
-	ARsp "github.com/ayachain/go-aya/response"
 	"github.com/ayachain/go-aya/vdb"
 	AMsgMBlock "github.com/ayachain/go-aya/vdb/mblock"
+	ARsp "github.com/ayachain/go-aya/vdb/receipt"
 	ATx "github.com/ayachain/go-aya/vdb/transaction"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-ipfs/core"
@@ -66,7 +66,7 @@ func (n *APOSConsensusNotary) MiningBlock( block *AMsgMBlock.MBlock, cvfs vdb.Ca
 		}
 
 		if tx.Tid < txc {
-			cvfs.Receipts().Put(tx.GetHash256(), block.Index, ARsp.RawSusccessResponse(APosComm.TxOverrided))
+			cvfs.Receipts().Put(tx.GetHash256(), block.Index, ARsp.ExpectedReceipt(APosComm.TxOverrided, nil).Encode())
 			continue
 		}
 

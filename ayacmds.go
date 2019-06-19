@@ -10,6 +10,7 @@ import (
 	walletcmd "github.com/ayachain/go-aya/wallet/cmd"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	"github.com/ipfs/go-ipfs/core"
+	"sync"
 )
 
 var ayacmd = &cmds.Command {
@@ -24,15 +25,26 @@ var ayacmd = &cmds.Command {
 		"wallet"	:	walletcmd.WalletCMDS,
 		"tx"		:	txcmd.TxCMDS,
 	},
-
 }
 
-
 func DaemonAyaChain( ind *core.IpfsNode ) {
+
 	keystore.Init("/Users/apple/.aya/keystore", ind)
 }
 
+func ShutdownAyaChain() {
 
-func ShutdownAyaChain() <- chan bool {
-	return chain.DisconnectionAll()
+	wg := sync.WaitGroup{}
+
+	wg.Add(1)
+
+	go func() {
+
+		chain.DisconnectionAll()
+
+		wg.Done()
+
+	}()
+
+	wg.Wait()
 }

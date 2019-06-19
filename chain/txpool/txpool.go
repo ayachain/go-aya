@@ -26,6 +26,7 @@ import (
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/util"
 	"github.com/whyrusleeping/go-logging"
+	"sync"
 	"time"
 )
 
@@ -45,7 +46,6 @@ var(
 	TxReceiptPrefix			= []byte{0xAE,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00}
 	//TxCount					= TxHashIteratorLimit
 )
-
 
 var log = logging.MustGetLogger("ATxPool")
 
@@ -105,19 +105,18 @@ type ATxPool struct {
 	workmode AtxPoolWorkMode
 	ind *core.IpfsNode
 
-	poweron bool
 	workctx context.Context
 	workcancel context.CancelFunc
 
-	threadCancels map[AtxThreadsName]context.CancelFunc
 	threadChans map[AtxThreadsName] chan *AKeyStore.ASignedRawMsg
 
 	notary ACore.Notary
-	enablePackTxThread bool
+
+	threadClosewg sync.WaitGroup
 }
 
 
-func NewTxPool( ctx context.Context, ind *core.IpfsNode, gblk *block.GenBlock, cvfs vdb.CVFS, miner ACore.Notary, acc EAccount.Account) *ATxPool {
+func NewTxPool( ind *core.IpfsNode, gblk *block.GenBlock, cvfs vdb.CVFS, miner ACore.Notary, acc EAccount.Account) *ATxPool {
 
 	adbpath := "/atxpool/" + gblk.ChainID
 	var nd *merkledag.ProtoNode
@@ -138,10 +137,7 @@ func NewTxPool( ctx context.Context, ind *core.IpfsNode, gblk *block.GenBlock, c
 			nd = unixfs.EmptyDirNode()
 		}
 
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second  * 5 )
-		defer cancel()
-
-		rnd, err := ind.DAG.Get(ctx, c)
+		rnd, err := ind.DAG.Get(context.TODO(), c)
 		if err != nil {
 			nd = unixfs.EmptyDirNode()
 		}
@@ -172,11 +168,8 @@ func NewTxPool( ctx context.Context, ind *core.IpfsNode, gblk *block.GenBlock, c
 		}
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second  * 5 )
-	defer cancel()
-
 	root, err := mfs.NewRoot(
-		ctx,
+		context.TODO(),
 		ind.DAG,
 		nd,
 		func(ctx context.Context, fcid cid.Cid) error {
@@ -210,7 +203,6 @@ func NewTxPool( ctx context.Context, ind *core.IpfsNode, gblk *block.GenBlock, c
 			workmode:AtxPoolWorkModeNormal,
 			ind:ind,
 			channelTopics:topic.String(),
-			threadCancels:make(map[AtxThreadsName]context.CancelFunc),
 			threadChans:make(map[AtxThreadsName] chan *AKeyStore.ASignedRawMsg),
 			ownerAccount:acc,
 			ownerAsset:oast,
@@ -239,7 +231,6 @@ configNewDir :
 		workmode:AtxPoolWorkModeNormal,
 		ind:ind,
 		channelTopics:topic.String(),
-		threadCancels:make(map[AtxThreadsName]context.CancelFunc),
 		threadChans:make(map[AtxThreadsName] chan *AKeyStore.ASignedRawMsg),
 		ownerAccount:acc,
 		ownerAsset:oast,
@@ -250,10 +241,6 @@ configNewDir :
 }
 
 func (pool *ATxPool) PowerOn( pctx context.Context ) error {
-
-	if pool.poweron {
-		return fmt.Errorf("%v ATxPool is already power on", pool.genBlock.ChainID)
-	}
 
 	pool.judgingMode()
 
@@ -312,22 +299,40 @@ func (pool *ATxPool) PowerOn( pctx context.Context ) error {
 
 	}
 
-	pool.poweron = true
+	go func() {
+
+		select {
+		case <- pool.workctx.Done():
+
+			pool.threadClosewg.Wait()
+
+			for k, cc := range pool.threadChans {
+				close(cc)
+				delete(pool.threadChans, k)
+			}
+
+			if err := pool.cvfs.Close(); err != nil {
+				log.Error(err)
+			}
+
+			if err := pool.storage.Close(); err != nil {
+				log.Error(err)
+			}
+
+		}
+
+	}()
 
 	return nil
 }
 
 func (pool *ATxPool) PowerOff(err error) {
 
-	fmt.Println(err)
-
-	pool.workcancel()
-
-	if err := pool.storage.Close(); err != nil {
+	if err != nil {
 		log.Error(err)
 	}
 
-	pool.poweron = false
+	pool.workcancel()
 }
 
 func (pool *ATxPool) UpdateBestBlock( ) error {
@@ -356,6 +361,23 @@ func (pool *ATxPool) UpdateBestBlock( ) error {
 	pool.topAssets = tops
 
 	return nil
+}
+
+func (pool *ATxPool) DoPackMBlock() {
+
+	if pool.miningBlock != nil {
+		return
+	}
+
+	cc, exist := pool.threadChans[AtxThreadTxPackage]
+
+	if !exist {
+		return
+	}
+
+	cc <- nil
+
+	return
 }
 
 /// Send a transaction by signing with the identity of the current node
@@ -401,7 +423,6 @@ func (pool *ATxPool) AddConfrimReceipt( mbhash EComm.Hash, retcid cid.Cid, from 
 
 	exist, err := pool.storage.Has(receiptKey, nil)
 	if err != nil {
-		pool.Close()
 		pool.PowerOff(ErrStorageLowAPIExpected)
 	}
 
@@ -478,19 +499,9 @@ func (pool *ATxPool) AddRawTransaction( tx *AKeyStore.ASignedRawMsg ) error {
 		return err
 	}
 
-	pool.enablePackTxThread = true
+	pool.DoPackMBlock()
 
 	return nil
-}
-
-func (pool *ATxPool) Close() {
-
-	pool.PowerOff(nil)
-
-	if err := pool.cvfs.Close(); err != nil {
-		log.Error(err)
-	}
-
 }
 
 func (pool *ATxPool) ReadOnlyCVFS() vdb.CVFS {
@@ -592,64 +603,33 @@ func (pool *ATxPool) runthreads( names ... AtxThreadsName ) {
 
 	for _, n := range names {
 
-		cancel, exist := pool.threadCancels[n]
-		if exist && cancel != nil {
-			cancel()
-		}
+		pool.threadChans[n] = make(chan *AKeyStore.ASignedRawMsg)
 
 		switch n {
 
 		case AtxThreadTopicsListen:
-
-			workCtx, cancel := context.WithCancel(pool.workctx)
-
-			pool.threadCancels[n] = cancel
-			pool.threadChans[n] = make(chan *AKeyStore.ASignedRawMsg)
-
-			go pool.channelListening(workCtx)
+			go pool.channelListening(pool.workctx)
 
 
 		case AtxThreadTxPackage:
-
-			workCtx, cancel := context.WithCancel(pool.workctx)
-
-			pool.threadCancels[n] = cancel
-			pool.threadChans[n] = make(chan *AKeyStore.ASignedRawMsg)
-
-			go pool.txPackageThread(workCtx)
+			go pool.txPackageThread(pool.workctx)
 
 
 		case AtxThreadReceiptListen:
-
-			workCtx, cancel := context.WithCancel(pool.workctx)
-
-			pool.threadCancels[n] = cancel
-			pool.threadChans[n] = make(chan *AKeyStore.ASignedRawMsg)
-
-			go pool.receiptListen(workCtx)
+			go pool.receiptListen(pool.workctx)
 
 
 		case AtxThreadExecutor:
-
-			workCtx, cancel := context.WithCancel(pool.workctx)
-
-			pool.threadCancels[n] = cancel
-			pool.threadChans[n] = make(chan *AKeyStore.ASignedRawMsg)
-
-			go pool.blockExecutorThread(workCtx)
+			go pool.blockExecutorThread(pool.workctx)
 
 
 		case AtxThreadMining:
-
-			workCtx, cancel := context.WithCancel(pool.workctx)
-
-			pool.threadCancels[n] = cancel
-			pool.threadChans[n] = make(chan *AKeyStore.ASignedRawMsg)
-
-			go pool.miningThread(workCtx)
+			go pool.miningThread(pool.workctx)
 
 		}
 
 	}
+
+	time.Sleep(time.Microsecond * 100)
 
 }

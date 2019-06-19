@@ -56,9 +56,15 @@ func (cache *aCache) Put(tx *Transaction, bidx uint64) {
 	}
 
 	key := append(tx.GetHash256().Bytes(), AvdbComm.BigEndianBytes(bidx)...)
+
+	tx.BlockIndex = bidx
+
 	if err := cache.cdb.Put(key, tx.Encode(), nil); err != nil {
 		panic(err)
 	}
+
+	// Block index resolve
+	tx.BlockIndex = 0
 
 	txcount ++
 	if err := cache.cdb.Put( countKey, AvdbComm.BigEndianBytes(txcount), nil ); err != nil {
@@ -107,6 +113,10 @@ func (cache *aCache) GetTxCount( address EComm.Address ) (uint64, error) {
 	}
 
 	return binary.BigEndian.Uint64(v), nil
+}
+
+func (cache *aCache) Close() {
+	_ = cache.cdb.Close()
 }
 
 func (cache *aCache) MergerBatch() *leveldb.Batch {

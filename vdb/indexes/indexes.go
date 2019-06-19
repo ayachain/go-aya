@@ -2,6 +2,7 @@ package indexes
 
 import (
 	"context"
+	"fmt"
 	"github.com/ayachain/go-aya/vdb/common"
 	AVdbComm "github.com/ayachain/go-aya/vdb/common"
 	EComm "github.com/ethereum/go-ethereum/common"
@@ -34,7 +35,7 @@ type aIndexes struct {
 	rawdb *leveldb.DB
 	mfsroot *mfs.Root
 
-	writeWaiter *sync.WaitGroup
+	mu *sync.Mutex
 }
 
 func CreateServices( ind *core.IpfsNode, chainId string ) IndexesServices {
@@ -131,7 +132,7 @@ func CreateServices( ind *core.IpfsNode, chainId string ) IndexesServices {
 		rawdb:mfsdb,
 		mfsroot:root,
 		mfsstorage:mfsstorage,
-		writeWaiter:&sync.WaitGroup{},
+		mu:&sync.Mutex{},
 	}
 
 	return api
@@ -139,7 +140,8 @@ func CreateServices( ind *core.IpfsNode, chainId string ) IndexesServices {
 
 func ( i *aIndexes ) GetLatest() (*Index, error) {
 
-	i.writeWaiter.Wait()
+	i.mu.Lock()
+	defer i.mu.Unlock()
 
 	bs, err := i.rawdb.Get([]byte(LatestIndexKey), nil)
 	if err != nil {
@@ -156,7 +158,8 @@ func ( i *aIndexes ) GetLatest() (*Index, error) {
 
 func ( i *aIndexes ) GetIndex( blockNumber uint64 ) (*Index, error) {
 
-	i.writeWaiter.Wait()
+	i.mu.Lock()
+	defer i.mu.Unlock()
 
 	key := common.BigEndianBytes(blockNumber)
 
@@ -176,10 +179,9 @@ func ( i *aIndexes ) GetIndex( blockNumber uint64 ) (*Index, error) {
 
 func ( i *aIndexes ) Close() error {
 
-	i.writeWaiter.Wait()
+	i.mu.Lock()
+	defer i.mu.Unlock()
 
-	i.writeWaiter.Add(1)
-	defer i.writeWaiter.Done()
 	if err := i.rawdb.Close(); err != nil {
 		return err
 	}
@@ -188,34 +190,52 @@ func ( i *aIndexes ) Close() error {
 		return err
 	}
 
+	if err := i.mfsroot.Flush(); err != nil {
+		return err
+	}
+
 	if err := i.mfsroot.Close(); err != nil {
 		return err
 	}
+
+	fmt.Println("Save Block indexes success.")
 
 	return nil
 }
 
 func ( i *aIndexes ) PutIndex( index *Index ) error {
 
-	i.writeWaiter.Wait()
+	i.mu.Lock()
+	defer i.mu.Unlock()
 
 	key := common.BigEndianBytes(index.BlockIndex)
+
 	value := index.Encode()
 
-	if err := i.rawdb.Put( key, value, SyncWriteOpt); err != nil {
+	dbtx, err := i.rawdb.OpenTransaction()
+	if err != nil {
 		return err
 	}
 
-	if err := i.rawdb.Put( []byte(LatestIndexKey), value, SyncWriteOpt ); err != nil {
+	if err := dbtx.Put(key, value, SyncWriteOpt); err != nil {
 		return err
 	}
 
-	return nil
+	if err := dbtx.Put( []byte(LatestIndexKey), value, SyncWriteOpt ); err != nil {
+		return err
+	}
+
+	if err := i.mfsroot.Flush(); err != nil {
+		return err
+	}
+
+	return dbtx.Commit()
 }
 
 func ( i *aIndexes ) PutIndexBy( num uint64, bhash EComm.Hash, ci cid.Cid ) error {
 
-	//i.writeWaiter.Wait()
+	i.mu.Lock()
+	defer i.mu.Unlock()
 
 	key := common.BigEndianBytes(num)
 	value := (&Index{
@@ -224,22 +244,30 @@ func ( i *aIndexes ) PutIndexBy( num uint64, bhash EComm.Hash, ci cid.Cid ) erro
 		FullCID:ci,
 	}).Encode()
 
-	if err := i.rawdb.Put( key, value, SyncWriteOpt); err != nil {
+	dbtx, err := i.rawdb.OpenTransaction()
+	if err != nil {
 		return err
 	}
 
-	if err := i.rawdb.Put( []byte(LatestIndexKey), value, SyncWriteOpt ); err != nil {
+	if err := dbtx.Put( key, value, SyncWriteOpt); err != nil {
 		return err
 	}
 
-	return nil
+	if err := dbtx.Put( []byte(LatestIndexKey), value, SyncWriteOpt ); err != nil {
+		return err
+	}
+
+	if err := i.mfsroot.Flush(); err != nil {
+		return err
+	}
+
+	return dbtx.Commit()
 }
 
 func ( i *aIndexes ) Flush() cid.Cid {
 
-	i.writeWaiter.Wait()
-	i.writeWaiter.Add(1)
-	defer i.writeWaiter.Done()
+	i.mu.Lock()
+	defer i.mu.Unlock()
 
 	nd, err := mfs.FlushPath(context.TODO(), i.mfsroot, "/")
 

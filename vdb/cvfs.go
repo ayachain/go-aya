@@ -52,9 +52,6 @@ type aCVFS struct {
 
 	inode *core.IpfsNode
 
-	ctx context.Context
-	ctxCancel context.CancelFunc
-
 	servies map[string]AVdbComm.VDBSerices
 
 	indexServices AIndexes.IndexesServices
@@ -112,17 +109,13 @@ func CreateVFS( block *ABlock.GenBlock, ind *core.IpfsNode ) (cid.Cid, error) {
 
 func LinkVFS( chainId string, baseCid cid.Cid, ind *core.IpfsNode ) (CVFS, error) {
 
-	ctx, cancel := context.WithCancel( context.Background() )
-
-	root, err := newMFSRoot( ctx, baseCid, ind )
+	root, err := newMFSRoot( context.TODO(), baseCid, ind )
 
 	if err != nil {
 		return nil, err
 	}
 
 	vfs := &aCVFS{
-		ctx:ctx,
-		ctxCancel:cancel,
 		Root:root,
 		inode:ind,
 		chainId:chainId,
@@ -161,16 +154,13 @@ func ( vfs *aCVFS ) SeekToBlock( bcid cid.Cid ) error {
 		return err
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	root, err := newMFSRoot(ctx, bcid, vfs.inode)
+	root, err := newMFSRoot(context.TODO(), bcid, vfs.inode)
 
 	if err != nil {
 		return err
 	}
 
 	vfs.Root = root
-	vfs.ctxCancel = cancel
-	vfs.ctx = ctx
 
 	return nil
 }
@@ -375,16 +365,13 @@ func ( vfs *aCVFS ) Close() error {
 	vfs.writeWaiter.Add(1)
 	defer vfs.writeWaiter.Done()
 
-	vfs.ctxCancel()
-	<- vfs.ctx.Done()
-
-	if err := vfs.indexServices.Close(); err != nil {
-		return err
-	}
-
 	for k, v := range vfs.servies {
 		_ = v.Shutdown()
 		delete(vfs.servies, k)
+	}
+
+	if err := vfs.indexServices.Close(); err != nil {
+		return err
 	}
 
 	return vfs.Root.Close()

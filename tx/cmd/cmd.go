@@ -9,6 +9,7 @@ var TxCMDS = &cmds.Command{
 	},
 	Subcommands: map[string]*cmds.Command{
 		"get"	 		: getCMD,
+		"receipt"		: receiptCMD,
 	},
 
 }

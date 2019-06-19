@@ -10,40 +10,54 @@ import (
 
 func (pool *ATxPool) receiptListen(ctx context.Context) {
 
-	fmt.Println("ATxPool Thread On : " + AtxThreadReceiptListen)
-	defer fmt.Println("ATxPool Thread Off : " + AtxThreadReceiptListen)
+	fmt.Println("ATxPool Thread On: " + AtxThreadReceiptListen)
+
+	tctx, cancel := context.WithCancel(ctx)
+
+	pool.threadClosewg.Add(1)
 
 	for {
 
 		select {
+		case <- tctx.Done():
 
-		case rmsg := <- pool.threadChans[AtxThreadReceiptListen] :
+			fmt.Println("ATxPool Thread Off: " + AtxThreadReceiptListen)
 
-			//pool.packLocker.Lock()
-			//defer pool.packLocker.Unlock()
+			pool.threadClosewg.Done()
+
+			return
+
+		case rmsg, isOpen := <- pool.threadChans[AtxThreadReceiptListen] :
+
+			if !isOpen {
+				continue
+			}
 
 			if rmsg.Content[0] != AMsgMinied.MessagePrefix {
-				break
+				continue
 			}
 
 			from, err := rmsg.ECRecover()
 			if err != nil {
-				break
+				log.Error(err)
+				continue
 			}
 
 			fromAst, err := pool.cvfs.Assetses().AssetsOf(*from)
 			if err != nil {
-				break
+				log.Error(err)
+				continue
 			}
 
 			rcp := &AMsgMinied.Minined{}
 			err = rcp.RawMessageDecode( rmsg.Content )
 			if err != nil {
-				break
+				log.Error(err)
+				continue
 			}
 
 			if pool.miningBlock.GetHash() != rcp.MBlockHash {
-				break
+				continue
 			}
 
 			receiptKey := []byte(TxReceiptPrefix)
@@ -51,8 +65,9 @@ func (pool *ATxPool) receiptListen(ctx context.Context) {
 
 			exist, err := pool.storage.Has(receiptKey, nil)
 			if err != nil {
-				pool.Close()
-				pool.PowerOff(ErrStorageLowAPIExpected)
+				log.Error(ErrStorageLowAPIExpected)
+				cancel()
+				continue
 			}
 
 			rcidstr := rcp.RetCID.String()
@@ -61,11 +76,15 @@ func (pool *ATxPool) receiptListen(ctx context.Context) {
 
 				value, err := pool.storage.Get(receiptKey, nil)
 				if err != nil {
-					pool.PowerOff(ErrStorageLowAPIExpected)
+					log.Error(ErrStorageLowAPIExpected)
+					cancel()
+					continue
 				}
 
 				if json.Unmarshal(value, receiptMap) != nil {
-					pool.PowerOff(ErrStorageRawDataDecodeExpected)
+					log.Error(ErrStorageRawDataDecodeExpected)
+					cancel()
+					continue
 				}
 
 				ocount, vexist := receiptMap[rcidstr]
@@ -82,13 +101,14 @@ func (pool *ATxPool) receiptListen(ctx context.Context) {
 
 			rmapbs, err := json.Marshal(receiptMap)
 			if err != nil {
-				pool.PowerOff(ErrStorageLowAPIExpected)
-				return
+				log.Error(ErrStorageLowAPIExpected)
+				cancel()
+				continue
 			}
 
 			if err := pool.storage.Put( receiptKey, rmapbs, nil ); err != nil {
-				pool.PowerOff(ErrStorageLowAPIExpected)
-				return
+				log.Error(ErrStorageLowAPIExpected)
+				cancel()
 			}
 
 
@@ -99,28 +119,20 @@ func (pool *ATxPool) receiptListen(ctx context.Context) {
 				batch.Delete(rcp.MBlockHash.Bytes())
 
 				if err := pool.storage.Write(batch, nil); err != nil {
-					pool.PowerOff(err)
-					return
+					log.Error(err)
+					cancel()
+					continue
 				}
 
 
 				cblock := pool.miningBlock.Confirm(rcidstr)
 
 				if err := pool.DoBroadcast(cblock); err != nil {
-					break
+					log.Error(err)
+					cancel()
+					continue
 				}
 
-				//c, exist := pool.threadChans[AtxThreadsNameBlockPacage]
-				//if exist {
-				//
-				//	signmsg, err := pool.sign(cblock)
-				//
-				//	if err != nil {
-				//		break
-				//	}
-				//
-				//	c <- signmsg
-				//}
 			}
 
 		}

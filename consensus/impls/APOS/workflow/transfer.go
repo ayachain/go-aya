@@ -2,9 +2,9 @@ package workflow
 
 import (
 	APosComm "github.com/ayachain/go-aya/consensus/impls/APOS/common"
-	ARsp "github.com/ayachain/go-aya/response"
 	"github.com/ayachain/go-aya/vdb"
 	AAsset "github.com/ayachain/go-aya/vdb/assets"
+	ARsp "github.com/ayachain/go-aya/vdb/receipt"
 	ATx "github.com/ayachain/go-aya/vdb/transaction"
 	"github.com/pkg/errors"
 )
@@ -30,7 +30,7 @@ func DoTransfer( tx *ATx.Transaction, base vdb.CacheCVFS ) error {
 		// expected
 		if astfrom.Avail < tx.Value || astfrom.Vote < tx.Value {
 
-			base.Receipts().Put( txHash, tx.BlockIndex, ARsp.RawExpectedResponse(APosComm.TxInsufficientFunds) )
+			base.Receipts().Put( txHash, tx.BlockIndex, ARsp.ExpectedReceipt(APosComm.TxInsufficientFunds, nil).Encode() )
 
 			return nil
 		}
@@ -44,7 +44,7 @@ func DoTransfer( tx *ATx.Transaction, base vdb.CacheCVFS ) error {
 
 		base.Assetses().Put( tx.From, astfrom )
 		base.Assetses().Put( tx.To, astto )
-		base.Receipts().Put( txHash, tx.BlockIndex, ARsp.RawExpectedResponse(APosComm.TxConfirm) )
+		base.Receipts().Put( txHash, tx.BlockIndex, ARsp.ConfirmReceipt(APosComm.TxConfirm, nil).Encode() )
 
 		return nil
 	}

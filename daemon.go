@@ -346,11 +346,14 @@ func daemonFunc(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment
 		fmt.Printf("Swarm key fingerprint: %x\n", node.PNetFingerprint)
 	}
 
-	printSwarmAddrs(node)
+	printSwarmAddrs( node )
 
 	DaemonAyaChain( node )
 
 	defer func() {
+
+		ShutdownAyaChain()
+
 		// We wait for the node to close first, as the node has children
 		// that it will wait for before closing, such as the API server.
 		node.Close()
@@ -426,8 +429,9 @@ func daemonFunc(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment
 
 	// Give the user some immediate feedback when they hit C-c
 	go func() {
+
 		<- req.Context.Done()
-		<- ShutdownAyaChain()
+
 		fmt.Println("Received interrupt signal, shutting down...")
 		fmt.Println("(Hit ctrl-c again to force-shutdown the daemon.)")
 	}()

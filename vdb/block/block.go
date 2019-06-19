@@ -29,26 +29,26 @@ type Block struct {
 	AVdbComm.AMessageEncode `json:"-"`
 
 	/// block index
-	Index uint64 `json:"index"`
+	Index uint64 `json:"Index"`
 
 	/// chain id
-	ChainID string `json:"chainid"`
+	ChainID string `json:"ChainID"`
 
 	/// prev block hash is a ipfs block CID
-	Parent  string `json:"parent"`
+	Parent  string `json:"Parent"`
 
 	/// full block data CID, is cvfs root CID
-	ExtraData string `json:"extradata"`
+	ExtraData string `json:"ExtraData"`
 
 	/// broadcasting time super master node package this block times.
-	Timestamp uint64 `json:"timestamp"`
+	Timestamp uint64 `json:"Timestamp"`
 
 	/// append data
-	AppendData []byte `json:"append"`
+	AppendData []byte `json:"Append"`
 
 	/// block sub transactions, is a ipfs block cid
-	Txc uint16	`json:"txc"`
-	Txs string	`json:"txs"`
+	Txc uint16	`json:"Txc"`
+	Txs string	`json:"Txs"`
 
 	/// Because in the development of AAPP, it is necessary to use random number,
 	/// so if each node decides random number by itself, it can not reach consensus
@@ -57,14 +57,14 @@ type Block struct {
 	/// been guaranteed that random number algorithms run on different nodes will get
 	/// the same results. However, the random number is determined by the broadcast of
 	/// super nodes, and other nodes can not cheat.
-	RandSeed int32 `json:"seed"`
+	RandSeed int32 `json:"Seed"`
 }
 
 /// only in create a new chain then use
 type GenBlock struct {
 	Block
-	Consensus	string	`json:"consensus"`
-	Award map[string]uint64 `json:"award"`
+	Consensus	string	`json:"Consensus"`
+	Award map[string]uint64 `json:"Award"`
 }
 
 
