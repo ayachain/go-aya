@@ -28,7 +28,6 @@ var ayacmd = &cmds.Command {
 }
 
 func DaemonAyaChain( ind *core.IpfsNode ) {
-
 	keystore.Init("/Users/apple/.aya/keystore", ind)
 }
 

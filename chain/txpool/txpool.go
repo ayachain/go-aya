@@ -10,9 +10,9 @@ import (
 	AKeyStore "github.com/ayachain/go-aya/keystore"
 	"github.com/ayachain/go-aya/vdb"
 	AAssets "github.com/ayachain/go-aya/vdb/assets"
-	"github.com/ayachain/go-aya/vdb/block"
+	ABlock "github.com/ayachain/go-aya/vdb/block"
 	AvdbComm "github.com/ayachain/go-aya/vdb/common"
-	AMsgMBlock "github.com/ayachain/go-aya/vdb/mblock"
+	AMBlock "github.com/ayachain/go-aya/vdb/mblock"
 	ATx "github.com/ayachain/go-aya/vdb/transaction"
 	EAccount "github.com/ethereum/go-ethereum/accounts"
 	EComm "github.com/ethereum/go-ethereum/common"
@@ -98,25 +98,23 @@ type ATxPool struct {
 
 	adbpath string
 	channelTopics string
-	miningBlock *AMsgMBlock.MBlock
-	genBlock *block.GenBlock
+	genBlock *ABlock.GenBlock
 
 	topAssets []*AAssets.SortAssets
 	workmode AtxPoolWorkMode
 	ind *core.IpfsNode
+	miningBlock AMBlock.MBlock
 
 	workctx context.Context
 	workcancel context.CancelFunc
 
 	threadChans map[AtxThreadsName] chan *AKeyStore.ASignedRawMsg
-
 	notary ACore.Notary
-
 	threadClosewg sync.WaitGroup
 }
 
 
-func NewTxPool( ind *core.IpfsNode, gblk *block.GenBlock, cvfs vdb.CVFS, miner ACore.Notary, acc EAccount.Account) *ATxPool {
+func NewTxPool( ind *core.IpfsNode, gblk *ABlock.GenBlock, cvfs vdb.CVFS, miner ACore.Notary, acc EAccount.Account) *ATxPool {
 
 	adbpath := "/atxpool/" + gblk.ChainID
 	var nd *merkledag.ProtoNode
@@ -256,7 +254,7 @@ func (pool *ATxPool) PowerOn( pctx context.Context ) error {
 			AtxThreadTopicsListen,
 			AtxThreadTxCommit,
 			AtxThreadTxPackage,
-			AtxThreadMining,
+			//AtxThreadMining,
 			AtxThreadReceiptListen,
 			AtxThreadExecutor,
 		)
@@ -335,9 +333,9 @@ func (pool *ATxPool) PowerOff(err error) {
 	pool.workcancel()
 }
 
-func (pool *ATxPool) UpdateBestBlock( ) error {
+func (pool *ATxPool) UpdateBestBlock( cblock *ABlock.Block  ) error {
 
-	idx, err := pool.cvfs.Indexes().GetIndex( pool.miningBlock.Index )
+	idx, err := pool.cvfs.Indexes().GetIndex( cblock.Index )
 	if err != nil {
 		return err
 	}
@@ -364,10 +362,6 @@ func (pool *ATxPool) UpdateBestBlock( ) error {
 }
 
 func (pool *ATxPool) DoPackMBlock() {
-
-	if pool.miningBlock != nil {
-		return
-	}
 
 	cc, exist := pool.threadChans[AtxThreadTxPackage]
 

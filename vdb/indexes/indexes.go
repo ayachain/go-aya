@@ -44,6 +44,8 @@ func CreateServices( ind *core.IpfsNode, chainId string ) IndexesServices {
 
 	var nd *merkledag.ProtoNode
 	dsk := datastore.NewKey(adbpath)
+
+	//ind.Repo.Datastore().Delete(dsk)
 	val, err := ind.Repo.Datastore().Get(dsk)
 
 	switch {
