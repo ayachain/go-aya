@@ -109,8 +109,11 @@ func (pool *ATxPool) blockExecutorThread(ctx context.Context) {
 				continue
 			}
 
+
 			_ = pool.UpdateBestBlock(cblock)
 
+			pool.miningBlock = nil
+			
 			pool.DoPackMBlock()
 
 			fmt.Printf("Confrim Block %06d:\tCID:%v\n", cblock.Index, latestCid.String())

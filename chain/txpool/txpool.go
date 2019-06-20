@@ -80,13 +80,19 @@ const (
 type AtxThreadsName string
 
 const (
-	AtxThreadAll			AtxThreadsName = "All"
+
 	AtxThreadTxPackage 		AtxThreadsName = "thread.tx.package"
+
 	AtxThreadExecutor		AtxThreadsName = "thread.block.executor"
+
 	AtxThreadReceiptListen 	AtxThreadsName = "thread.receipt.listen"
+
 	AtxThreadTxCommit 		AtxThreadsName = "thread.tx.commit"
+
 	AtxThreadMining			AtxThreadsName = "thread.block.mining"
+
 	AtxThreadTopicsListen	AtxThreadsName = "thread.topics.listen"
+
 )
 
 type ATxPool struct {
@@ -103,7 +109,7 @@ type ATxPool struct {
 	topAssets []*AAssets.SortAssets
 	workmode AtxPoolWorkMode
 	ind *core.IpfsNode
-	miningBlock AMBlock.MBlock
+	miningBlock *AMBlock.MBlock
 
 	workctx context.Context
 	workcancel context.CancelFunc
@@ -254,7 +260,7 @@ func (pool *ATxPool) PowerOn( pctx context.Context ) error {
 			AtxThreadTopicsListen,
 			AtxThreadTxCommit,
 			AtxThreadTxPackage,
-			//AtxThreadMining,
+			AtxThreadMining,
 			AtxThreadReceiptListen,
 			AtxThreadExecutor,
 		)
@@ -263,9 +269,9 @@ func (pool *ATxPool) PowerOn( pctx context.Context ) error {
 
 		pool.runthreads(
 			AtxThreadTopicsListen,
-			//AtxThreadTxCommit,
+			AtxThreadTxCommit,
 			AtxThreadTxPackage,
-			//AtxThreadMining,
+			AtxThreadMining,
 			AtxThreadReceiptListen,
 			AtxThreadExecutor,
 		)
