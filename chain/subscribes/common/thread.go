@@ -3,94 +3,223 @@ package common
 import (
 	"context"
 	"errors"
-	"github.com/ipfs/go-log"
-	"github.com/libp2p/go-libp2p-pubsub"
-	"github.com/miekg/dns"
+	AKeyStore "github.com/ayachain/go-aya/keystore"
+	"github.com/ipfs/go-ipfs/core"
 )
 
 var(
 	ErrNotRunningThread = errors.New("thread not running")
 )
 
-type Thread struct {
 
-	consumer Consumer
-	producer Producer
+type Thread interface {
 
-	insleep bool
-	sig chan AThreadSemaphore
-	Type AThreadRoleType
+	Consumer
+
+	Producer
+
+	Start(ctx context.Context, ind *core.IpfsNode, topic string)
+
+	Semaphore( sig AThreadSemaphore )
 }
 
-func (trd *Thread) Semaphore( sig AThreadSemaphore ) {
+
+type AThread struct {
+
+	Thread
+
+	sig chan AThreadSemaphore
+
+	Type AThreadRoleType
+
+	Topics string
+}
+
+func (trd *AThread) Start(ctx context.Context, ind *core.IpfsNode, topic string) {
+
+	trd.Topics = topic
+
+	funChangeChan := make(chan func() <- chan struct{})
+	var cancel context.CancelFunc
+
+	go func() {
+
+		changeSig := make(chan struct{})
+
+		for {
+
+			select {
+
+			case <- ctx.Done():
+
+				if cancel != nil {
+					cancel()
+				}
+				return
+
+			case s := <- trd.sig:
+
+				switch s {
+
+				case ThreadSemaphoreStop:
+
+					funChangeChan <- nil
+
+					cancel()
+
+					return
+
+				case ThreadSemaphoreConsumer:
+
+					if trd.Type != ThreadRoleTypeConsumer {
+						trd.Type = ThreadRoleTypeConsumer
+						changeSig <- nil
+					}
+
+					continue
+
+
+				case ThreadSemaphoreProducer:
+
+					if trd.Type == ThreadRoleTypeProcucer {
+						trd.Type = ThreadRoleTypeProcucer
+						changeSig <- nil
+					}
+
+					continue
+
+				}
+
+			case <- changeSig:
+
+				if cancel != nil {
+					cancel()
+				}
+
+				switch trd.Type {
+				case ThreadRoleTypeConsumer:
+
+					cel, fn := trd.newConsumerDaemonThread(ind)
+					cancel = cel
+					funChangeChan <- fn
+
+				case ThreadRoleTypeProcucer:
+
+					cel, fn := trd.newProducerDaemonThread(ind)
+					cancel = cel
+					funChangeChan <- fn
+				}
+
+			}
+		}
+
+	}()
+
+	go func() {
+
+		for {
+
+			select {
+			case fun := <- funChangeChan:
+
+				if fun == nil {
+					return
+				}
+
+				<- fun()
+			}
+
+		}
+
+	}()
+
+}
+
+func (trd *AThread) Semaphore( sig AThreadSemaphore ) {
 	trd.sig <- sig
 }
 
-func (trd *Thread)  Start(ctx context.Context, role AThreadRoleType, subscription pubsub.Subscription) {
+func (trd *AThread) newProducerDaemonThread( ind *core.IpfsNode ) (context.CancelFunc, func() <- chan struct{} ) {
 
-	messagepool := make(chan *pubsub.Message, 128)
+	// Producer thread daemon
+	producerCtx, producerCancel := context.WithCancel(context.Background())
+	producerWorkThread := func() <- chan struct{} {
 
-	subctx, subcancel := context.WithCancel(context.Background())
+		doneChan := make(chan struct{})
 
-	go func() {
+		go func() {
 
-		for {
+			for {
 
-			msg, err := subscription.Next(subctx)
-			if err != nil {
-				return
+				msg, err := trd.DoProduce(producerCtx)
+
+				if err != nil {
+					doneChan <- nil
+					return
+				}
+
+				rawmsg, err := msg.Bytes()
+				if err != nil {
+					log.Error(err)
+					continue
+				}
+
+				if err := ind.PubSub.Publish(trd.Topics, rawmsg); err != nil {
+					log.Error(err)
+					continue
+				}
+
 			}
 
-			messagepool <- msg
+		}()
+
+		return doneChan
+	}
+
+	return producerCancel, producerWorkThread
+}
+
+func (trd *AThread) newConsumerDaemonThread( ind *core.IpfsNode ) (context.CancelFunc, func() <- chan struct{} ) {
+
+	// Consumer thread daemon
+	consumerCtx, consumerCancel := context.WithCancel(context.Background())
+	consumerWorkThread := func() <- chan struct{} {
+
+		doneChan := make(chan struct{})
+
+		subscription, err := ind.PubSub.Subscribe(trd.Topics)
+		if err != nil {
+			doneChan <- nil
+			return doneChan
 		}
 
-	}()
+		go func() {
 
-	go func() {
+			for {
 
-		for {
+				msg, err := subscription.Next(consumerCtx)
 
-				select {
-
-				case <- ctx.Done():
-					subcancel()
-					<- subctx.Done()
+				if err != nil {
+					doneChan <- nil
 					return
-
-				case s := <- trd.sig:
-					switch s {
-					case ThreadSemaphoreResume: trd.insleep = false; continue
-					case ThreadSemaphoreSleep: trd.insleep = true; continue
-					case ThreadSemaphoreStop: return
-					}
-
-				default:
-
-					if trd.insleep {
-						continue
-					} else {
-
-					}
-
 				}
-		}
 
-	}()
+				rawmsg, err := AKeyStore.BytesToRawMsg(msg.Data)
+				if err != nil {
+					log.Error(err)
+					continue
+				}
 
-}
+				<- trd.DoConsume(rawmsg)
 
-func (trd *Thread) Wakeup() {
-	trd.wakeup <- nil
-}
+				continue
 
-func (trd *Thread) ChangeRole(roleType ThreadRoleType) {
+			}
 
-	trd.Type = roleType
+		}()
 
-	trd.sig <- nil
+		return doneChan
+	}
 
-}
-
-func (trd *Thread)  Shutdown() error {
-	return nil
+	return consumerCancel, consumerWorkThread
 }

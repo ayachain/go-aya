@@ -1,5 +1,7 @@
 package common
 
+import "github.com/whyrusleeping/go-logging"
+
 type AThreadRoleType string
 
 const (
@@ -12,6 +14,9 @@ type AThreadSemaphore string
 
 const (
 	ThreadSemaphoreStop AThreadSemaphore = "stop"
-	ThreadSemaphoreSleep AThreadSemaphore = "sleep"
-	ThreadSemaphoreResume AThreadSemaphore = "resume"
+	ThreadSemaphoreConsumer AThreadSemaphore = "consumer"
+	ThreadSemaphoreProducer AThreadSemaphore = "producer"
 )
+
+
+var log = logging.MustGetLogger("ATxPool")

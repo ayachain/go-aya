@@ -4,26 +4,77 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	AKeyStore "github.com/ayachain/go-aya/keystore"
 	AMsgMinied "github.com/ayachain/go-aya/vdb/minined"
 	"github.com/syndtr/goleveldb/leveldb"
 )
 
-func (pool *ATxPool) receiptListen(ctx context.Context) {
+func receiptListen(ctx context.Context) {
 
 	fmt.Println("ATxPool Thread On: " + AtxThreadReceiptListen)
 
-	tctx, cancel := context.WithCancel(ctx)
+	pool := ctx.Value("Pool").(*ATxPool)
 
-	pool.threadClosewg.Add(1)
+	pool.workingThreadWG.Add(1)
+
+	pool.threadChans[AtxThreadReceiptListen] = make(chan *AKeyStore.ASignedRawMsg)
+
+	subCtx, subCancel := context.WithCancel(ctx)
+
+
+	defer func() {
+
+		subCancel()
+
+		cc, exist := pool.threadChans[AtxThreadReceiptListen]
+		if exist {
+
+			close( cc )
+			delete(pool.threadChans, AtxThreadReceiptListen)
+
+		}
+
+		pool.workingThreadWG.Done()
+
+		fmt.Println("ATxPool Thread Off: " + AtxThreadReceiptListen)
+
+	}()
+
+
+	go func() {
+
+		sub, err := pool.ind.PubSub.Subscribe( pool.channelTopics[AtxThreadReceiptListen] )
+		if err != nil {
+			return
+		}
+
+		for {
+
+			msg, err := sub.Next(subCtx)
+
+			if err != nil {
+				return
+			}
+
+			rawmsg, err := AKeyStore.BytesToRawMsg(msg.Data)
+			if err != nil {
+				log.Error(err)
+				continue
+			}
+
+			pool.threadChans[AtxThreadReceiptListen] <- rawmsg
+
+		}
+
+	}()
+
 
 	for {
 
 		select {
-		case <- tctx.Done():
+		case <- ctx.Done():
 
-			fmt.Println("ATxPool Thread Off: " + AtxThreadReceiptListen)
-
-			pool.threadClosewg.Done()
+			subCancel()
 
 			return
 
@@ -66,8 +117,7 @@ func (pool *ATxPool) receiptListen(ctx context.Context) {
 			exist, err := pool.storage.Has(receiptKey, nil)
 			if err != nil {
 				log.Error(ErrStorageLowAPIExpected)
-				cancel()
-				continue
+				return
 			}
 
 			rcidstr := rcp.RetCID.String()
@@ -77,14 +127,12 @@ func (pool *ATxPool) receiptListen(ctx context.Context) {
 				value, err := pool.storage.Get(receiptKey, nil)
 				if err != nil {
 					log.Error(ErrStorageLowAPIExpected)
-					cancel()
-					continue
+					return
 				}
 
 				if json.Unmarshal(value, receiptMap) != nil {
 					log.Error(ErrStorageRawDataDecodeExpected)
-					cancel()
-					continue
+					return
 				}
 
 				ocount, vexist := receiptMap[rcidstr]
@@ -102,13 +150,12 @@ func (pool *ATxPool) receiptListen(ctx context.Context) {
 			rmapbs, err := json.Marshal(receiptMap)
 			if err != nil {
 				log.Error(ErrStorageLowAPIExpected)
-				cancel()
-				continue
+				return
 			}
 
 			if err := pool.storage.Put( receiptKey, rmapbs, nil ); err != nil {
 				log.Error(ErrStorageLowAPIExpected)
-				cancel()
+				return
 			}
 
 
@@ -120,17 +167,15 @@ func (pool *ATxPool) receiptListen(ctx context.Context) {
 
 				if err := pool.storage.Write(batch, nil); err != nil {
 					log.Error(err)
-					cancel()
-					continue
+					return
 				}
 
 
 				cblock := pool.miningBlock.Confirm(rcidstr)
 
-				if err := pool.DoBroadcast(cblock); err != nil {
+				if err := pool.doBroadcast(cblock, pool.channelTopics[AtxThreadExecutor] ); err != nil {
 					log.Error(err)
-					cancel()
-					continue
+					return
 				}
 
 			}

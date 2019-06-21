@@ -1,9 +1,10 @@
 package common
 
+import (
+	"context"
+	AKeyStore "github.com/ayachain/go-aya/keystore"
+)
+
 type Producer interface {
-
-	Dowork() <- chan struct{}
-
-	Shutdown() <- chan struct{}
-
+	DoProduce(ctx context.Context) (*AKeyStore.ASignedRawMsg, error)
 }

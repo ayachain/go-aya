@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	AKeyStore "github.com/ayachain/go-aya/keystore"
 	AMsgMBlock "github.com/ayachain/go-aya/vdb/mblock"
 	ATx "github.com/ayachain/go-aya/vdb/transaction"
 	blocks "github.com/ipfs/go-block-format"
@@ -17,29 +18,37 @@ const (
 	PackageTxsLimit = 2048
 )
 
-var (
-	PackageThreadSleepTime = time.Microsecond  * 100
-)
-
-func (pool *ATxPool) txPackageThread(ctx context.Context) {
+func txPackageThread(ctx context.Context) {
 
 	fmt.Println("ATxPool Thread On: " + AtxThreadTxPackage)
 
-	tctx, cancel := context.WithCancel(ctx)
+	pool := ctx.Value("Pool").(*ATxPool)
 
-	pool.threadClosewg.Add(1)
+	pool.workingThreadWG.Add(1)
+
+	pool.threadChans[AtxThreadTxPackage] = make(chan *AKeyStore.ASignedRawMsg)
+
+	defer func() {
+
+		cc, exist := pool.threadChans[AtxThreadTxPackage]
+		if exist {
+
+			close( cc )
+			delete(pool.threadChans, AtxThreadTxPackage)
+
+		}
+
+		pool.workingThreadWG.Done()
+
+		fmt.Println("ATxPool Thread Off: " + AtxThreadTxPackage)
+
+	}()
 
 	for {
 
 		select {
-		case <- tctx.Done():
-
-			fmt.Println("ATxPool Thread Off: " + AtxThreadTxPackage)
-
-			pool.threadClosewg.Done()
-
+		case <- ctx.Done():
 			return
-
 
 		case _, isOpen := <- pool.threadChans[AtxThreadTxPackage]:
 
@@ -54,8 +63,8 @@ func (pool *ATxPool) txPackageThread(ctx context.Context) {
 			rand.Seed(time.Now().UnixNano())
 			bindex, err := pool.cvfs.Indexes().GetLatest()
 			if err != nil {
-				cancel()
-				continue
+				log.Error(err)
+				return
 			}
 
 			/// Because you need to wait for calculation, miningblock does not have a field for the final result.
@@ -72,7 +81,8 @@ func (pool *ATxPool) txPackageThread(ctx context.Context) {
 
 			sshot, err := pool.storage.GetSnapshot()
 			if err != nil {
-				cancel()
+				log.Error(err)
+				return
 			}
 
 			it := sshot.NewIterator(&util.Range{Start: TxHashIteratorStart, Limit: TxHashIteratorLimit}, nil)
@@ -108,15 +118,15 @@ func (pool *ATxPool) txPackageThread(ctx context.Context) {
 			//commit block to ipfs block
 			txsblockcontent, err := json.Marshal(txs)
 			if err != nil {
-				cancel()
+				log.Error(err)
+				return
 			}
 
 			iblk := blocks.NewBlock(txsblockcontent)
 			err = pool.ind.Blocks.AddBlock(iblk)
 			if err != nil {
 				log.Error(err)
-				cancel()
-				continue
+				return
 			}
 
 			//packing
@@ -125,16 +135,14 @@ func (pool *ATxPool) txPackageThread(ctx context.Context) {
 
 			if err := pool.storage.Write(batch, nil); err != nil {
 				log.Error(err)
-				cancel()
-				continue
+				return
 			}
 
 			pool.miningBlock = mblk
 
-			if err := pool.DoBroadcast(mblk); err != nil {
+			if err := pool.doBroadcast(mblk, pool.channelTopics[AtxThreadTxPackage]); err != nil {
 				log.Error(err)
-				cancel()
-				continue
+				return
 			}
 
 		}

@@ -11,97 +11,6 @@ import (
 	"strconv"
 )
 
-
-var transaferAvail = &cmds.Command{
-
-	Helptext:cmds.HelpText{
-		Tagline: "transfer balance",
-	},
-	Arguments: []cmds.Argument {
-		cmds.StringArg("chainid", true, false, "aya chain id"),
-		cmds.StringArg("to", true, false, "target address"),
-		cmds.StringArg("value", true, false, "amount"),
-	},
-	Run:func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-
-		chain := AChain.GetChainByIdentifier(req.Arguments[0])
-		if chain == nil {
-			return ARsponse.EmitErrorResponse(re, errors.New("not exist chain connection") )
-		}
-
-
-		acc := AKeyStore.GetCoinBaseAddress()
-
-		vnumber, err := strconv.ParseUint(req.Arguments[2], 10, 64)
-		if err != nil {
-			return ARsponse.EmitErrorResponse(re, err)
-		}
-
-		txcount, err := chain.CVFServices().Transactions().GetTxCount(acc.Address)
-		if err != nil {
-			return ARsponse.EmitErrorResponse(re, err)
-		}
-
-		tx := ATxUtils.MakeTransferAvail(acc.Address, EComm.HexToAddress(req.Arguments[1]), vnumber, txcount)
-
-		if err := AKeyStore.SignTransaction(tx, acc); err != nil {
-			return ARsponse.EmitErrorResponse(re, err)
-		}
-
-		if err := chain.SendRawMessage(tx); err != nil {
-			return ARsponse.EmitErrorResponse(re, err)
-		}
-
-		return ARsponse.EmitSuccessResponse(re, tx.GetHash256())
-	},
-
-}
-
-
-var transaferDoLock = &cmds.Command{
-
-	Helptext:cmds.HelpText{
-		Tagline: "lock avail balance",
-	},
-	Arguments: []cmds.Argument {
-		cmds.StringArg("chainid", true, false, "aya chain id"),
-		cmds.StringArg("value", true, false, "amount"),
-	},
-	Run:func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
-
-		chain := AChain.GetChainByIdentifier(req.Arguments[0])
-		if chain == nil {
-			return ARsponse.EmitErrorResponse(re, errors.New("not exist chain connection") )
-		}
-
-
-		acc := AKeyStore.GetCoinBaseAddress()
-
-		vnumber, err := strconv.ParseUint(req.Arguments[2], 10, 64)
-		if err != nil {
-			return ARsponse.EmitErrorResponse(re, err)
-		}
-
-		txcount, err := chain.CVFServices().Transactions().GetTxCount(acc.Address)
-		if err != nil {
-			return ARsponse.EmitErrorResponse(re, err)
-		}
-
-		tx := ATxUtils.MakeTransferAvail(acc.Address, EComm.HexToAddress(req.Arguments[1]), vnumber, txcount)
-
-		if err := AKeyStore.SignTransaction(tx, acc); err != nil {
-			return ARsponse.EmitErrorResponse(re, err)
-		}
-
-		if err := chain.SendRawMessage(tx); err != nil {
-			return ARsponse.EmitErrorResponse(re, err)
-		}
-
-		return ARsponse.EmitSuccessResponse(re, tx.GetHash256())
-	},
-}
-
-
 var transferCMD = &cmds.Command{
 
 	Helptext:cmds.HelpText{
@@ -137,7 +46,11 @@ var transferCMD = &cmds.Command{
 			return ARsponse.EmitErrorResponse(re, err)
 		}
 
-		if err := chain.SendRawMessage(tx); err != nil {
+		if !tx.Verify() {
+			return ARsponse.EmitErrorResponse(re, errors.New("Verify failed"))
+		}
+
+		if err := chain.PublishTx(tx); err != nil {
 			return ARsponse.EmitErrorResponse(re, err)
 		}
 

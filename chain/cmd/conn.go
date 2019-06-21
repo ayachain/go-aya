@@ -47,7 +47,7 @@ var connCmd = &cmds.Command {
 			return ARsponse.EmitErrorResponse(re, err )
 		}
 
-		if err := AChain.AddChainLink(gblk, ind, acc); err != nil {
+		if err := AChain.AddChainLink(req.Context, gblk, ind, acc); err != nil {
 			return ARsponse.EmitErrorResponse(re, err )
 		}
 

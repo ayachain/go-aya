@@ -9,8 +9,8 @@ import (
 	ACIMPL "github.com/ayachain/go-aya/consensus/impls"
 	"github.com/ayachain/go-aya/vdb"
 	ABlock "github.com/ayachain/go-aya/vdb/block"
-	AvdbComm "github.com/ayachain/go-aya/vdb/common"
 	"github.com/ayachain/go-aya/vdb/indexes"
+	ATx "github.com/ayachain/go-aya/vdb/transaction"
 	EAccount "github.com/ethereum/go-ethereum/accounts"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-ipfs/core"
@@ -25,11 +25,9 @@ var(
 
 type AyaChain interface {
 
-	Connect() error
 	Disconnect()
 	CVFServices() vdb.CVFS
-	SendRawMessage( coder AvdbComm.AMessageEncode ) error
-
+	PublishTx(tx *ATx.Transaction) error
 }
 
 type aChain struct {
@@ -59,7 +57,7 @@ type aChain struct {
 
 var chains = make(map[string]AyaChain)
 
-func AddChainLink( genBlock *ABlock.GenBlock, ind *core.IpfsNode, acc EAccount.Account ) error {
+func AddChainLink( ctx context.Context, genBlock *ABlock.GenBlock, ind *core.IpfsNode, acc EAccount.Account ) error {
 
 	_, exist := chains[genBlock.ChainID]
 	if exist {
@@ -106,13 +104,27 @@ func AddChainLink( genBlock *ABlock.GenBlock, ind *core.IpfsNode, acc EAccount.A
 	// config txpool
 	ac.TxPool = txpool.NewTxPool( ind, genBlock, vdbfs, notary, acc)
 
-	if err := ac.Connect(); err != nil {
-		return err
-	}
-
 	chains[genBlock.ChainID] = ac
 
-	return nil
+	poolCtx, cancel := context.WithCancel(context.Background())
+
+	ac.ctxCancel = cancel
+
+	go func() {
+
+		select {
+		case <- ctx.Done():
+
+			cancel()
+
+			delete(chains, ac.ChainId)
+
+		}
+
+	}()
+
+	return ac.TxPool.PowerOn(poolCtx)
+
 }
 
 func GetChainByIdentifier(chainId string) AyaChain{
@@ -127,29 +139,12 @@ func DisconnectionAll() {
 
 }
 
-func (chain *aChain) Connect() error {
-
-	ctx, cancel := context.WithCancel(chain.INode.Context())
-
-	chain.ctxCancel = cancel
-
-	go func() {
-
-		select {
-		case <- ctx.Done():
-			delete(chains, chain.ChainId)
-		}
-	}()
-
-	return chain.TxPool.PowerOn(ctx)
-}
-
 func (chain *aChain) Disconnect() {
 	chain.ctxCancel()
 }
 
-func (chain *aChain) SendRawMessage( coder AvdbComm.AMessageEncode ) error {
-	return chain.TxPool.DoBroadcast( coder )
+func (chain *aChain) PublishTx(tx *ATx.Transaction) error {
+	return chain.TxPool.PublishTx( tx )
 }
 
 func (chain *aChain) CVFServices() vdb.CVFS {

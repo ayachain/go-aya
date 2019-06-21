@@ -1,9 +1,11 @@
 package common
 
+import (
+	AKeyStore "github.com/ayachain/go-aya/keystore"
+)
+
 type Consumer interface {
 
-	Dowork() <- chan struct{}
-
-	Shutdown() <- chan struct{}
+	DoConsume( msg *AKeyStore.ASignedRawMsg ) <- chan struct{}
 
 }

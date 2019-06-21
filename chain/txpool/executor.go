@@ -4,31 +4,78 @@ import (
 	"context"
 	"fmt"
 	ATaskGroup "github.com/ayachain/go-aya/consensus/core/worker"
+	AKeyStore "github.com/ayachain/go-aya/keystore"
 	AMsgBlock "github.com/ayachain/go-aya/vdb/block"
 	AChainInfo "github.com/ayachain/go-aya/vdb/chaininfo"
 	"github.com/ipfs/go-cid"
 )
 
-func (pool *ATxPool) blockExecutorThread(ctx context.Context) {
+func blockExecutorThread(ctx context.Context) {
 
 	fmt.Println("ATxPool Thread On: " + AtxThreadExecutor)
 
-	tctx, cancel := context.WithCancel(ctx)
+	pool := ctx.Value("Pool").(*ATxPool)
 
-	pool.threadClosewg.Add(1)
+	subCtx, subCancel := context.WithCancel(ctx)
+
+	pool.threadChans[AtxThreadExecutor] = make(chan *AKeyStore.ASignedRawMsg)
+
+	pool.workingThreadWG.Add(1)
+
+	defer func() {
+
+		subCancel()
+
+		<- subCtx.Done()
+
+		cc, exist := pool.threadChans[AtxThreadExecutor]
+		if exist {
+
+			close( cc )
+			delete(pool.threadChans, AtxThreadExecutor)
+
+		}
+
+		pool.workingThreadWG.Done()
+
+		fmt.Println("ATxPool Thread Off: " + AtxThreadExecutor)
+
+	}()
+
+
+	go func() {
+
+		sub, err := pool.ind.PubSub.Subscribe( pool.channelTopics[AtxThreadExecutor] )
+		if err != nil {
+			return
+		}
+
+		for {
+
+			msg, err := sub.Next(subCtx)
+
+			if err != nil {
+				return
+			}
+
+			rawmsg, err := AKeyStore.BytesToRawMsg(msg.Data)
+			if err != nil {
+				log.Error(err)
+				continue
+			}
+
+			pool.threadChans[AtxThreadExecutor] <- rawmsg
+		}
+
+	}()
+
 
 	for {
 
 		select {
-		case <- tctx.Done():
+		case <- ctx.Done():
 
-			close(pool.threadChans[AtxThreadExecutor])
-
-			delete(pool.threadChans, AtxThreadExecutor)
-
-			fmt.Println("ATxPool Thread Off: " + AtxThreadExecutor)
-
-			pool.threadClosewg.Done()
+			subCancel()
 
 			return
 
@@ -56,7 +103,7 @@ func (pool *ATxPool) blockExecutorThread(ctx context.Context) {
 			}
 
 
-			batchBlock, err := pool.ind.Blocks.GetBlock( tctx, bcid )
+			batchBlock, err := pool.ind.Blocks.GetBlock( context.TODO(), bcid )
 			if err != nil {
 				log.Error(err)
 				continue
@@ -75,14 +122,12 @@ func (pool *ATxPool) blockExecutorThread(ctx context.Context) {
 			latestCid, err := pool.cvfs.WriteTaskGroup(group)
 			if err != nil {
 				log.Error(err)
-				cancel()
-				continue
+				return
 			}
 
 			if err := pool.cvfs.Indexes().PutIndexBy( cblock.Index, cblock.GetHash(), latestCid ); err != nil {
 				log.Error(err)
-				cancel()
-				continue
+				return
 			}
 
 			indexCid := pool.cvfs.Indexes().Flush()
@@ -97,16 +142,13 @@ func (pool *ATxPool) blockExecutorThread(ctx context.Context) {
 					Indexes:indexCid,
 				}
 
-				if err := pool.DoBroadcast(info); err != nil {
+				if err := pool.doBroadcast(info, pool.channelTopics[AtxThreadChainInfo]); err != nil {
 					log.Error(err)
-					cancel()
-					continue
+					return
 				}
 
 			} else {
-
-				cancel()
-				continue
+				return
 			}
 
 

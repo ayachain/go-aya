@@ -3,29 +3,75 @@ package txpool
 import (
 	"context"
 	"fmt"
+	AKeyStore "github.com/ayachain/go-aya/keystore"
 	AMsgMBlock "github.com/ayachain/go-aya/vdb/mblock"
 	AMsgMined "github.com/ayachain/go-aya/vdb/minined"
 	IBlocks "github.com/ipfs/go-block-format"
 )
 
-func (pool *ATxPool) miningThread(ctx context.Context) {
+func miningThread(ctx context.Context) {
 
 	fmt.Println("ATxPool Thread On: " + AtxThreadMining)
 
-	tctx, cancel := context.WithCancel(ctx)
+	pool := ctx.Value("Pool").(*ATxPool)
 
-	pool.threadClosewg.Add(1)
+	pool.workingThreadWG.Add(1)
+
+	pool.threadChans[AtxThreadMining] = make(chan *AKeyStore.ASignedRawMsg)
+
+	subCtx, subCancel := context.WithCancel(ctx)
+
+	defer func() {
+
+		subCancel()
+
+		cc, exist := pool.threadChans[AtxThreadMining]
+		if exist {
+
+			close( cc )
+			delete(pool.threadChans, AtxThreadMining)
+
+		}
+
+		pool.workingThreadWG.Done()
+
+		fmt.Println("ATxPool Thread Off: " + AtxThreadMining)
+
+	}()
+
+
+	go func() {
+
+		sub, err := pool.ind.PubSub.Subscribe( pool.channelTopics[AtxThreadMining] )
+		if err != nil {
+			return
+		}
+
+		for {
+
+			msg, err := sub.Next(subCtx)
+
+			if err != nil {
+				return
+			}
+
+			rawmsg, err := AKeyStore.BytesToRawMsg(msg.Data)
+			if err != nil {
+				log.Error(err)
+				continue
+			}
+
+			pool.threadChans[AtxThreadMining] <- rawmsg
+		}
+
+	}()
+
 
 	for {
 
 		select {
 
-		case <-tctx.Done():
-
-			fmt.Println("ATxPool Thread Off: " + AtxThreadMining)
-
-			pool.threadClosewg.Done()
-
+		case <- ctx.Done():
 			return
 
 		case msg, isOpen := <- pool.threadChans[AtxThreadMining] :
@@ -47,8 +93,7 @@ func (pool *ATxPool) miningThread(ctx context.Context) {
 			cVFS, err := pool.cvfs.NewCVFSCache()
 			if err != nil {
 				log.Error(err)
-				cancel()
-				continue
+				return
 			}
 
 			group, err := pool.notary.MiningBlock(mblock, cVFS)
@@ -56,7 +101,7 @@ func (pool *ATxPool) miningThread(ctx context.Context) {
 
 				if err := cVFS.Close(); err != nil {
 					log.Error(err)
-					cancel()
+					return
 				}
 
 				continue
@@ -64,16 +109,14 @@ func (pool *ATxPool) miningThread(ctx context.Context) {
 
 			if err := cVFS.Close(); err != nil {
 				log.Error(err)
-				cancel()
-				continue
+				return
 			}
 
 			groupbytes := group.Encode()
 			gblock := IBlocks.NewBlock(groupbytes)
 			if err := pool.ind.Blocks.AddBlock(gblock); err != nil {
 				log.Error(err)
-				cancel()
-				continue
+				return
 			}
 
 			mRet := &AMsgMined.Minined{
@@ -81,10 +124,9 @@ func (pool *ATxPool) miningThread(ctx context.Context) {
 				RetCID:gblock.Cid(),
 			}
 
-			if err := pool.DoBroadcast(mRet); err != nil {
+			if err := pool.doBroadcast(mRet, pool.channelTopics[AtxThreadReceiptListen]); err != nil {
 				log.Error(err)
-				cancel()
-				continue
+				return
 			}
 
 		}

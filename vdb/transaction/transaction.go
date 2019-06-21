@@ -7,6 +7,7 @@ import (
 	AVdbComm "github.com/ayachain/go-aya/vdb/common"
 	EComm "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
+	"strings"
 )
 
 const MessagePrefix = byte('t')
@@ -72,13 +73,14 @@ func ( trsn *Transaction ) Verify() bool {
 
 	hs := trsn.GetHash256()
 
-	pubkey, err := crypto.Ecrecover( hs.Bytes(), trsn.Sig )
+	pubkey, err := crypto.SigToPub(hs.Bytes(), trsn.Sig)
 	if err != nil {
 		return false
 	}
 
-	return bytes.Equal(pubkey, trsn.From.Bytes())
+	from := crypto.PubkeyToAddress(*pubkey)
 
+	return strings.EqualFold(from.String(), trsn.From.String())
 }
 
 func ( trsn *Transaction ) EncodeRawKey() []byte {
