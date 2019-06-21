@@ -7,6 +7,7 @@ import (
 	AKeyStore "github.com/ayachain/go-aya/keystore"
 	AMsgMinied "github.com/ayachain/go-aya/vdb/minined"
 	"github.com/syndtr/goleveldb/leveldb"
+	"time"
 )
 
 func receiptListen(ctx context.Context) {
@@ -25,6 +26,8 @@ func receiptListen(ctx context.Context) {
 	defer func() {
 
 		subCancel()
+
+		<- subCtx.Done()
 
 		cc, exist := pool.threadChans[AtxThreadReceiptListen]
 		if exist {
@@ -74,11 +77,11 @@ func receiptListen(ctx context.Context) {
 		select {
 		case <- ctx.Done():
 
-			subCancel()
-
 			return
 
 		case rmsg, isOpen := <- pool.threadChans[AtxThreadReceiptListen] :
+
+			stime := time.Now()
 
 			if !isOpen {
 				continue
@@ -179,6 +182,8 @@ func receiptListen(ctx context.Context) {
 				}
 
 			}
+
+			fmt.Println("AtxThreadReceiptListen HandleTime:", time.Since(stime))
 
 		}
 

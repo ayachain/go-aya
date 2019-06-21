@@ -4,7 +4,6 @@ import AVdbComm "github.com/ayachain/go-aya/vdb/common"
 
 const DBPath = "/db/blocks"
 
-
 type reader interface {
 
 	GetBlocks( hashOrIndex...interface{} ) ([]*Block, error)

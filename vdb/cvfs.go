@@ -8,6 +8,7 @@ import (
 	ABlock "github.com/ayachain/go-aya/vdb/block"
 	AVdbComm "github.com/ayachain/go-aya/vdb/common"
 	AIndexes "github.com/ayachain/go-aya/vdb/indexes"
+	ANodes "github.com/ayachain/go-aya/vdb/node"
 	AReceipts "github.com/ayachain/go-aya/vdb/receipt"
 	ATx "github.com/ayachain/go-aya/vdb/transaction"
 	EComm "github.com/ethereum/go-ethereum/common"
@@ -38,6 +39,7 @@ type CVFS interface {
 	Assetses() AAssetses.Services
 	Receipts() AReceipts.Services
 	Transactions() ATx.Services
+	Nodes() ANodes.Services
 
 	SeekToBlock( bcid cid.Cid ) error
 	WriteTaskGroup( group *AWrok.TaskBatchGroup ) ( cid.Cid, error )
@@ -163,6 +165,29 @@ func ( vfs *aCVFS ) SeekToBlock( bcid cid.Cid ) error {
 	vfs.Root = root
 
 	return nil
+}
+
+func ( vfs *aCVFS ) Nodes() ANodes.Services {
+
+	vfs.writeWaiter.Wait()
+
+	v, exist := vfs.servies[ ANodes.DBPath ]
+
+	if !exist {
+
+		astDir, err := AVdbComm.LookupDBPath(vfs.Root, ANodes.DBPath)
+
+		if err != nil {
+			return nil
+		}
+
+		v = ANodes.CreateServices(astDir,true)
+
+		vfs.servies[ ANodes.DBPath ] = v
+	}
+
+	return v.(ANodes.Services)
+
 }
 
 func ( vfs *aCVFS ) Assetses() AAssetses.Services {

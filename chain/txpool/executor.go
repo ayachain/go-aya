@@ -8,6 +8,7 @@ import (
 	AMsgBlock "github.com/ayachain/go-aya/vdb/block"
 	AChainInfo "github.com/ayachain/go-aya/vdb/chaininfo"
 	"github.com/ipfs/go-cid"
+	"time"
 )
 
 func blockExecutorThread(ctx context.Context) {
@@ -75,11 +76,11 @@ func blockExecutorThread(ctx context.Context) {
 		select {
 		case <- ctx.Done():
 
-			subCancel()
-
 			return
 
 		case msg, isOpen := <- pool.threadChans[AtxThreadExecutor] :
+
+			stime := time.Now()
 
 			if !isOpen {
 				continue
@@ -159,6 +160,8 @@ func blockExecutorThread(ctx context.Context) {
 			pool.DoPackMBlock()
 
 			fmt.Printf("Confrim Block %06d:\tCID:%v\n", cblock.Index, latestCid.String())
+
+			fmt.Println("AtxThreadExecutor HandleTime:", time.Since(stime))
 		}
 	}
 }

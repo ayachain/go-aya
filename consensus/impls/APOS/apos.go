@@ -7,12 +7,14 @@ import (
 	AGroup "github.com/ayachain/go-aya/consensus/core/worker"
 	APosComm "github.com/ayachain/go-aya/consensus/impls/APOS/common"
 	"github.com/ayachain/go-aya/consensus/impls/APOS/workflow"
+	AKeyStore "github.com/ayachain/go-aya/keystore"
 	"github.com/ayachain/go-aya/vdb"
 	AMsgMBlock "github.com/ayachain/go-aya/vdb/mblock"
 	ARsp "github.com/ayachain/go-aya/vdb/receipt"
 	ATx "github.com/ayachain/go-aya/vdb/transaction"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-ipfs/core"
+	"github.com/syndtr/goleveldb/leveldb"
 )
 
 type APOSConsensusNotary struct {
@@ -24,6 +26,8 @@ type APOSConsensusNotary struct {
 	workCancel context.CancelFunc
 
 	ind *core.IpfsNode
+
+	db *leveldb.DB
 }
 
 func NewAPOSConsensusNotary( ind *core.IpfsNode ) *APOSConsensusNotary {
@@ -90,4 +94,35 @@ func (n *APOSConsensusNotary) MiningBlock( block *AMsgMBlock.MBlock, cvfs vdb.Ca
 	}
 
 	return cvfs.MergeGroup(), nil
+}
+
+func (n *APOSConsensusNotary) TrustOrNot( msg *AKeyStore.ASignedRawMsg, mtype ACore.NotaryMessageType ) <- chan bool {
+
+	replayChan := make(chan bool)
+
+	go func() {
+
+		//from, err := msg.ECRecover()
+		//if err != nil {
+		//	replayChan <- false
+		//	return
+		//}
+
+		switch mtype {
+
+		case ACore.NotaryMessageChainInfo:
+
+		case ACore.NotaryMessageTransaction:
+
+		case ACore.NotaryMessageMiningBlock:
+
+		case ACore.NotaryMessageConfirmBlock:
+
+		case ACore.NotaryMessageReceipt:
+
+		}
+
+	}()
+
+	return replayChan
 }

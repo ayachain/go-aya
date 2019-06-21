@@ -21,6 +21,10 @@ func txListenThread(ctx context.Context) {
 
 	defer func() {
 
+		subCancel()
+
+		<- subCtx.Done()
+
 		cc, exist := pool.threadChans[AtxThreadTxListen]
 		if exist {
 
@@ -38,56 +42,57 @@ func txListenThread(ctx context.Context) {
 
 	go func() {
 
-		time.Sleep(time.Microsecond * 200)
-
-		for {
-
-			select {
-
-			case <- ctx.Done():
-
-				subCancel()
-
-				return
-
-			case msg, isOpen := <- pool.threadChans[AtxThreadTxListen]:
-
-				if !isOpen {
-					continue
-				}
-
-				if err := pool.addRawTransaction(msg); err != nil {
-					log.Error(err)
-					continue
-				}
-			}
-
-		}
-
-	}()
-
-
-	sub, err := pool.ind.PubSub.Subscribe( pool.channelTopics[AtxThreadTxListen] )
-
-	if err != nil {
-		return
-	}
-
-	for {
-
-		msg, err := sub.Next(subCtx)
+		sub, err := pool.ind.PubSub.Subscribe( pool.channelTopics[AtxThreadTxListen] )
 
 		if err != nil {
 			return
 		}
 
-		rawmsg, err := AKeyStore.BytesToRawMsg(msg.Data)
-		if err != nil {
-			log.Error(err)
-			continue
+		for {
+
+			msg, err := sub.Next(subCtx)
+
+			if err != nil {
+				return
+			}
+
+			rawmsg, err := AKeyStore.BytesToRawMsg(msg.Data)
+			if err != nil {
+				log.Error(err)
+				continue
+			}
+
+			pool.threadChans[AtxThreadTxListen] <- rawmsg
 		}
 
-		pool.threadChans[AtxThreadTxListen] <- rawmsg
+	}()
+
+
+	for {
+
+		select {
+
+		case <- ctx.Done():
+
+			return
+
+		case msg, isOpen := <- pool.threadChans[AtxThreadTxListen]:
+
+			stime := time.Now()
+
+			if !isOpen {
+				continue
+			}
+
+			if err := pool.addRawTransaction(msg); err != nil {
+
+				log.Error(err)
+				continue
+			}
+
+			fmt.Println("AtxThreadTxListen HandleTime:", time.Since(stime))
+		}
+
 	}
 
 }

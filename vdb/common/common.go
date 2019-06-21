@@ -112,6 +112,13 @@ func LookupDBPath( root *mfs.Root, path string ) (*mfs.Directory, error) {
 	return dir, nil
 }
 
+func CacheDel( originDB *leveldb.DB, cacheDB *leveldb.DB, key []byte ) {
+
+	_ = originDB.Delete(key, nil)
+	_ = cacheDB.Delete(key, nil)
+
+}
+
 func CacheHas( originDB *leveldb.DB, cacheDB *leveldb.DB, key []byte ) (bool, error) {
 
 	exist, err := cacheDB.Has(key, nil)

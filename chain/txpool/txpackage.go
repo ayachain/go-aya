@@ -31,6 +31,7 @@ func txPackageThread(ctx context.Context) {
 	defer func() {
 
 		cc, exist := pool.threadChans[AtxThreadTxPackage]
+
 		if exist {
 
 			close( cc )
@@ -51,6 +52,8 @@ func txPackageThread(ctx context.Context) {
 			return
 
 		case _, isOpen := <- pool.threadChans[AtxThreadTxPackage]:
+
+			stime := time.Now()
 
 			if !isOpen {
 				continue
@@ -140,11 +143,12 @@ func txPackageThread(ctx context.Context) {
 
 			pool.miningBlock = mblk
 
-			if err := pool.doBroadcast(mblk, pool.channelTopics[AtxThreadTxPackage]); err != nil {
+			if err := pool.doBroadcast(mblk, pool.channelTopics[AtxThreadMining]); err != nil {
 				log.Error(err)
 				return
 			}
 
+			fmt.Println("AtxThreadTxPackage HandleTime:", time.Since(stime))
 		}
 
 	}

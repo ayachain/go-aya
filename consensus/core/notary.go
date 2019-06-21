@@ -18,21 +18,27 @@ package core
 
 import (
 	AGroup "github.com/ayachain/go-aya/consensus/core/worker"
+	AKeyStore "github.com/ayachain/go-aya/keystore"
 	"github.com/ayachain/go-aya/vdb"
-	ABlock "github.com/ayachain/go-aya/vdb/block"
 	AMsgMBlock "github.com/ayachain/go-aya/vdb/mblock"
-	ATx "github.com/ayachain/go-aya/vdb/transaction"
+)
+
+type NotaryMessageType string
+
+const (
+
+	NotaryMessageTransaction 	NotaryMessageType = "tx"
+	NotaryMessageMiningBlock 	NotaryMessageType = "mblock"
+	NotaryMessageConfirmBlock 	NotaryMessageType = "cblock"
+	NotaryMessageReceipt		NotaryMessageType = "receipt"
+	NotaryMessageChainInfo		NotaryMessageType = "info"
+
 )
 
 type Notary interface {
 
 	MiningBlock( block *AMsgMBlock.MBlock, cvfs vdb.CacheCVFS ) (*AGroup.TaskBatchGroup, error)
 
-	WhenTransactionIn( transaction *ATx.Transaction, vfs vdb.CVFS ) bool
+	TrustOrNot( msg *AKeyStore.ASignedRawMsg, mtype NotaryMessageType ) <- chan bool
 
-	WhenTransactionOut( transaction *ATx.Transaction, vfs vdb.CVFS ) bool
-
-	WhenBlockIn( block *ABlock.Block, vfs vdb.CVFS ) bool
-
-	WhenBlockOut( block *ABlock.Block, vfs vdb.CVFS ) bool
 }

@@ -7,6 +7,7 @@ import (
 	AMsgMBlock "github.com/ayachain/go-aya/vdb/mblock"
 	AMsgMined "github.com/ayachain/go-aya/vdb/minined"
 	IBlocks "github.com/ipfs/go-block-format"
+	"time"
 )
 
 func miningThread(ctx context.Context) {
@@ -24,6 +25,8 @@ func miningThread(ctx context.Context) {
 	defer func() {
 
 		subCancel()
+
+		<- subCtx.Done()
 
 		cc, exist := pool.threadChans[AtxThreadMining]
 		if exist {
@@ -75,6 +78,8 @@ func miningThread(ctx context.Context) {
 			return
 
 		case msg, isOpen := <- pool.threadChans[AtxThreadMining] :
+
+			stime := time.Now()
 
 			if !isOpen {
 				continue
@@ -129,6 +134,8 @@ func miningThread(ctx context.Context) {
 				return
 			}
 
+
+			fmt.Println("AtxThreadMining HandleTime:", time.Since(stime))
 		}
 	}
 

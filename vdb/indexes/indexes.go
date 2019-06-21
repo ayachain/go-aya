@@ -40,7 +40,7 @@ type aIndexes struct {
 
 func CreateServices( ind *core.IpfsNode, chainId string ) IndexesServices {
 
-	adbpath := "/aya/chain/indexes/" + chainId + "a1"
+	adbpath := "/aya/chain/indexes/" + chainId + "a2"
 
 	var nd *merkledag.ProtoNode
 	dsk := datastore.NewKey(adbpath)

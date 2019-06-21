@@ -126,7 +126,6 @@ func ( b *Block ) RawMessageDecode( bs []byte ) error {
 
 }
 
-
 func ( gb *GenBlock ) GetHash() EComm.Hash {
 
 	bs := gb.Encode()
