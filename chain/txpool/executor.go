@@ -18,7 +18,9 @@ func blockExecutorThread(ctx context.Context) {
 
 	subCtx, subCancel := context.WithCancel(ctx)
 
+	pool.tcmapMutex.Lock()
 	pool.threadChans[ATxPoolThreadExecutor] = make(chan []byte, ATxPoolThreadExecutorBuff)
+	pool.tcmapMutex.Unlock()
 
 	pool.workingThreadWG.Add(1)
 
@@ -28,6 +30,7 @@ func blockExecutorThread(ctx context.Context) {
 
 		<- subCtx.Done()
 
+		pool.tcmapMutex.Lock()
 		cc, exist := pool.threadChans[ATxPoolThreadExecutor]
 		if exist {
 
@@ -35,6 +38,7 @@ func blockExecutorThread(ctx context.Context) {
 			delete(pool.threadChans, ATxPoolThreadExecutor)
 
 		}
+		pool.tcmapMutex.Unlock()
 
 		pool.workingThreadWG.Done()
 

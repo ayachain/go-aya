@@ -103,7 +103,6 @@ type ATxPool struct {
 	ind *core.IpfsNode
 
 	channelTopics map[ATxPoolThreadsName] string
-	ctmapMutex sync.Mutex
 
 	threadChans map[ATxPoolThreadsName] chan []byte
 	tcmapMutex sync.Mutex

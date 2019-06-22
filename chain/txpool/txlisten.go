@@ -15,7 +15,9 @@ func txListenThread(ctx context.Context ) {
 
 	pool.workingThreadWG.Add(1)
 
+	pool.tcmapMutex.Lock()
 	pool.threadChans[ATxPoolThreadTxListen] = make(chan []byte, AtxPoolThreadTxListenBuff)
+	pool.tcmapMutex.Unlock()
 
 	subCtx, subCancel := context.WithCancel(ctx)
 
@@ -25,6 +27,7 @@ func txListenThread(ctx context.Context ) {
 
 		<- subCtx.Done()
 
+		pool.tcmapMutex.Lock()
 		cc, exist := pool.threadChans[ATxPoolThreadTxListen]
 		if exist {
 
@@ -32,6 +35,7 @@ func txListenThread(ctx context.Context ) {
 			delete(pool.threadChans, ATxPoolThreadTxListen)
 
 		}
+		pool.tcmapMutex.Unlock()
 
 		pool.workingThreadWG.Done()
 

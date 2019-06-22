@@ -17,7 +17,9 @@ func miningThread(ctx context.Context ) {
 
 	pool.workingThreadWG.Add(1)
 
+	pool.tcmapMutex.Lock()
 	pool.threadChans[ATxPoolThreadMining] = make(chan []byte, ATxPoolThreadMiningBuff)
+	pool.tcmapMutex.Unlock()
 
 	subCtx, subCancel := context.WithCancel(ctx)
 
@@ -27,6 +29,7 @@ func miningThread(ctx context.Context ) {
 
 		<- subCtx.Done()
 
+		pool.tcmapMutex.Lock()
 		cc, exist := pool.threadChans[ATxPoolThreadMining]
 		if exist {
 
@@ -34,6 +37,7 @@ func miningThread(ctx context.Context ) {
 			delete(pool.threadChans, ATxPoolThreadMining)
 
 		}
+		pool.tcmapMutex.Unlock()
 
 		pool.workingThreadWG.Done()
 

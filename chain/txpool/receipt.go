@@ -28,6 +28,7 @@ func receiptListen(ctx context.Context ) {
 
 		<- subCtx.Done()
 
+		pool.tcmapMutex.Lock()
 		cc, exist := pool.threadChans[ATxPoolThreadReceiptListen]
 		if exist {
 
@@ -35,6 +36,7 @@ func receiptListen(ctx context.Context ) {
 			delete(pool.threadChans, ATxPoolThreadReceiptListen)
 
 		}
+		pool.tcmapMutex.Unlock()
 
 		pool.workingThreadWG.Done()
 

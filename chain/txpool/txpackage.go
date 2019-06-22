@@ -20,10 +20,13 @@ func txPackageThread(ctx context.Context ) {
 
 	pool.workingThreadWG.Add(1)
 
+	pool.tcmapMutex.Lock()
 	pool.threadChans[ATxPoolThreadTxPackage] = make(chan []byte, ATxPoolThreadTxPackageBuff)
+	pool.tcmapMutex.Unlock()
 
 	defer func() {
 
+		pool.tcmapMutex.Lock()
 		cc, exist := pool.threadChans[ATxPoolThreadTxPackage]
 
 		if exist {
@@ -32,6 +35,7 @@ func txPackageThread(ctx context.Context ) {
 			delete(pool.threadChans, ATxPoolThreadTxPackage)
 
 		}
+		pool.tcmapMutex.Unlock()
 
 		pool.workingThreadWG.Done()
 
