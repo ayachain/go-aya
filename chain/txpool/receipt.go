@@ -72,7 +72,7 @@ func receiptListen(ctx context.Context ) {
 
 	for {
 
-		cc, _ := pool.threadChans.Load(ATxPoolThreadMining)
+		cc, _ := pool.threadChans.Load(ATxPoolThreadReceiptListen)
 
 		select {
 		case <- ctx.Done():

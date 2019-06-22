@@ -90,8 +90,13 @@ func (blks *aBlocks) OpenTransaction() (*leveldb.Transaction, error) {
 
 func (blks *aBlocks) Shutdown() error {
 
-	_ = blks.rawdb.Close()
-	_ = blks.mfsstorage.Close()
+	if err := blks.rawdb.Close(); err != nil {
+		return err
+	}
 
-	return blks.Flush()
+	if err := blks.mfsstorage.Close(); err != nil {
+		return err
+	}
+
+	return nil
 }

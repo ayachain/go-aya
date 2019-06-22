@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	ADB "github.com/ayachain/go-aya-alvm-adb"
 	ACore "github.com/ayachain/go-aya/consensus/core"
 	"github.com/ayachain/go-aya/vdb"
 	AAssets "github.com/ayachain/go-aya/vdb/assets"
@@ -17,12 +16,9 @@ import (
 	EComm "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-ipfs/core"
-	"github.com/ipfs/go-merkledag"
-	"github.com/ipfs/go-mfs"
-	"github.com/ipfs/go-unixfs"
 	"github.com/syndtr/goleveldb/leveldb"
+	"github.com/syndtr/goleveldb/leveldb/storage"
 	"github.com/whyrusleeping/go-logging"
 	"sync"
 )
@@ -112,11 +108,6 @@ type ATxPool struct {
 
 func NewTxPool( ind *core.IpfsNode, gblk *ABlock.GenBlock, cvfs vdb.CVFS, miner ACore.Notary, acc EAccount.Account) *ATxPool {
 
-	adbpath := "/atxpool/" + gblk.ChainID
-	var nd *merkledag.ProtoNode
-	dsk := datastore.NewKey(adbpath)
-	val, err := ind.Repo.Datastore().Get(dsk)
-
 	// create channel topices string
 	topic := crypto.Keccak256Hash( []byte( AtxPoolVersion + gblk.ChainID ) )
 
@@ -126,33 +117,6 @@ func NewTxPool( ind *core.IpfsNode, gblk *ABlock.GenBlock, cvfs vdb.CVFS, miner 
 		ATxPoolThreadExecutor : crypto.Keccak256Hash([]byte(fmt.Sprintf("%v%v", topic, ATxPoolThreadExecutor))).String(),
 		ATxPoolThreadReceiptListen : crypto.Keccak256Hash([]byte(fmt.Sprintf("%v%v", topic, ATxPoolThreadReceiptListen))).String(),
 		ATxPoolThreadMining : crypto.Keccak256Hash([]byte(fmt.Sprintf("%v%v", topic, ATxPoolThreadMining))).String(),
-	}
-
-	switch {
-	case err == datastore.ErrNotFound || val == nil:
-		nd = unixfs.EmptyDirNode()
-
-	case err == nil:
-
-		c, err := cid.Cast(val)
-		if err != nil {
-			nd = unixfs.EmptyDirNode()
-		}
-
-		rnd, err := ind.DAG.Get(context.TODO(), c)
-		if err != nil {
-			nd = unixfs.EmptyDirNode()
-		}
-
-		pbnd, ok := rnd.(*merkledag.ProtoNode)
-		if !ok {
-			nd = unixfs.EmptyDirNode()
-		}
-
-		nd = pbnd
-
-	default:
-		nd = unixfs.EmptyDirNode()
 	}
 
 	oast, err := cvfs.Assetses().AssetsOf(acc.Address)
@@ -165,59 +129,8 @@ func NewTxPool( ind *core.IpfsNode, gblk *ABlock.GenBlock, cvfs vdb.CVFS, miner 
 		}
 	}
 
-	root, err := mfs.NewRoot(
-		context.TODO(),
-		ind.DAG,
-		nd,
-		func(ctx context.Context, fcid cid.Cid) error {
-			return ind.Repo.Datastore().Put(dsk, fcid.Bytes())
-		},
-	)
-
-	dbnode, err := mfs.Lookup(root, "/" + gblk.ChainID)
-	if err != nil {
-
-		if err := mfs.Mkdir(root, "/" + gblk.ChainID, mfs.MkdirOpts{Flush:true, Mkparents:true}); err != nil {
-			panic(err)
-		}
-
-	} else {
-
-		dir, ok := dbnode.(*mfs.Directory)
-		if !ok {
-			goto configNewDir
-		}
-
-		db, err := leveldb.Open(ADB.NewMFSStorage(dir), nil)
-		if err != nil {
-			goto configNewDir
-		}
-
-		return &ATxPool{
-			storage:db,
-			cvfs:cvfs,
-			workmode:AtxPoolWorkModeNormal,
-			ind:ind,
-			channelTopics:topicmap,
-			ownerAccount:acc,
-			ownerAsset:oast,
-			notary:miner,
-			genBlock:gblk,
-		}
-	}
-
-configNewDir :
-
-	newnode, err := mfs.Lookup(root, "/" + gblk.ChainID)
-	newdir, ok := newnode.(*mfs.Directory)
-	if !ok {
-		panic(mfs.ErrDirExists)
-	}
-
-	db, err := leveldb.Open(ADB.NewMFSStorage(newdir), nil)
-	if err != nil {
-		panic(mfs.ErrDirExists)
-	}
+	memstore := storage.NewMemStorage()
+	db, err := leveldb.Open(memstore, nil)
 
 	return &ATxPool{
 		storage:db,
