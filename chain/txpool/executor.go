@@ -18,9 +18,7 @@ func blockExecutorThread(ctx context.Context) {
 
 	subCtx, subCancel := context.WithCancel(ctx)
 
-	pool.tcmapMutex.Lock()
-	pool.threadChans[ATxPoolThreadExecutor] = make(chan []byte, ATxPoolThreadExecutorBuff)
-	pool.tcmapMutex.Unlock()
+	pool.threadChans.Store(ATxPoolThreadExecutor, make(chan []byte, ATxPoolThreadExecutorBuff) )
 
 	pool.workingThreadWG.Add(1)
 
@@ -30,15 +28,13 @@ func blockExecutorThread(ctx context.Context) {
 
 		<- subCtx.Done()
 
-		pool.tcmapMutex.Lock()
-		cc, exist := pool.threadChans[ATxPoolThreadExecutor]
+		cc, exist := pool.threadChans.Load(ATxPoolThreadExecutor)
 		if exist {
 
-			close( cc )
-			delete(pool.threadChans, ATxPoolThreadExecutor)
+			close( cc.(chan []byte) )
 
+			pool.threadChans.Delete(ATxPoolThreadExecutor)
 		}
-		pool.tcmapMutex.Unlock()
 
 		pool.workingThreadWG.Done()
 
@@ -64,7 +60,9 @@ func blockExecutorThread(ctx context.Context) {
 
 			if <- pool.notary.TrustOrNot(msg, core.NotaryMessageConfirmBlock, pool.cvfs) {
 
-				pool.threadChans[ATxPoolThreadExecutor] <- msg.Data
+				cc, _ := pool.threadChans.Load(ATxPoolThreadExecutor)
+
+				cc.(chan []byte) <- msg.Data
 
 			}
 		}
@@ -74,12 +72,14 @@ func blockExecutorThread(ctx context.Context) {
 
 	for {
 
+		cc, _ := pool.threadChans.Load(ATxPoolThreadExecutor)
+
 		select {
 		case <- ctx.Done():
 
 			return
 
-		case rawmsg, isOpen := <- pool.threadChans[ATxPoolThreadExecutor] :
+		case rawmsg, isOpen := <- cc.(chan []byte):
 
 			if !isOpen {
 				continue

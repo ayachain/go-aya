@@ -104,8 +104,7 @@ type ATxPool struct {
 
 	channelTopics map[ATxPoolThreadsName] string
 
-	threadChans map[ATxPoolThreadsName] chan []byte
-	tcmapMutex sync.Mutex
+	threadChans sync.Map
 
 	notary ACore.Notary
 	workingThreadWG sync.WaitGroup
@@ -178,7 +177,7 @@ func NewTxPool( ind *core.IpfsNode, gblk *ABlock.GenBlock, cvfs vdb.CVFS, miner 
 	dbnode, err := mfs.Lookup(root, "/" + gblk.ChainID)
 	if err != nil {
 
-		if err := mfs.Mkdir(root, "/" + gblk.ChainID, mfs.MkdirOpts{Flush:false, Mkparents:true}); err != nil {
+		if err := mfs.Mkdir(root, "/" + gblk.ChainID, mfs.MkdirOpts{Flush:true, Mkparents:true}); err != nil {
 			panic(err)
 		}
 
@@ -200,7 +199,6 @@ func NewTxPool( ind *core.IpfsNode, gblk *ABlock.GenBlock, cvfs vdb.CVFS, miner 
 			workmode:AtxPoolWorkModeNormal,
 			ind:ind,
 			channelTopics:topicmap,
-			threadChans:make(map[ATxPoolThreadsName] chan []byte),
 			ownerAccount:acc,
 			ownerAsset:oast,
 			notary:miner,
@@ -227,7 +225,6 @@ configNewDir :
 		workmode:AtxPoolWorkModeNormal,
 		ind:ind,
 		channelTopics:topicmap,
-		threadChans:make(map[ATxPoolThreadsName] chan []byte),
 		ownerAccount:acc,
 		ownerAsset:oast,
 		notary:miner,
@@ -330,13 +327,13 @@ func (pool *ATxPool) UpdateBestBlock( cblock *ABlock.Block  ) error {
 
 func (pool *ATxPool) DoPackMBlock() {
 
-	cc, exist := pool.threadChans[ATxPoolThreadTxPackage]
+	cc, exist := pool.threadChans.Load(ATxPoolThreadTxPackage)
 
 	if !exist {
 		return
 	}
 
-	cc <- nil
+	cc.(chan []byte) <- nil
 
 	return
 }

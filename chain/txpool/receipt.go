@@ -16,9 +16,7 @@ func receiptListen(ctx context.Context ) {
 
 	pool.workingThreadWG.Add(1)
 
-	pool.tcmapMutex.Lock()
-	pool.threadChans[ATxPoolThreadReceiptListen] = make(chan []byte, ATxPoolThreadReceiptListenBuff)
-	pool.tcmapMutex.Unlock()
+	pool.threadChans.Store(ATxPoolThreadReceiptListen, make(chan []byte, ATxPoolThreadReceiptListenBuff))
 
 	subCtx, subCancel := context.WithCancel(ctx)
 
@@ -28,15 +26,13 @@ func receiptListen(ctx context.Context ) {
 
 		<- subCtx.Done()
 
-		pool.tcmapMutex.Lock()
-		cc, exist := pool.threadChans[ATxPoolThreadReceiptListen]
+		cc, exist := pool.threadChans.Load(ATxPoolThreadReceiptListen)
 		if exist {
 
-			close( cc )
-			delete(pool.threadChans, ATxPoolThreadReceiptListen)
+			close( cc.(chan []byte) )
 
+			pool.threadChans.Delete(ATxPoolThreadReceiptListen)
 		}
-		pool.tcmapMutex.Unlock()
 
 		pool.workingThreadWG.Done()
 
@@ -62,7 +58,11 @@ func receiptListen(ctx context.Context ) {
 			}
 
 			if <- pool.notary.TrustOrNot(msg, core.NotaryMessageMinedRet, pool.cvfs) {
-				pool.threadChans[ATxPoolThreadReceiptListen] <- msg.Data
+
+				cc, _ := pool.threadChans.Load(ATxPoolThreadReceiptListen)
+
+				cc.(chan []byte) <- msg.Data
+
 			}
 
 		}
@@ -72,12 +72,14 @@ func receiptListen(ctx context.Context ) {
 
 	for {
 
+		cc, _ := pool.threadChans.Load(ATxPoolThreadMining)
+
 		select {
 		case <- ctx.Done():
 
 			return
 
-		case rawmsg, isOpen := <- pool.threadChans[ATxPoolThreadReceiptListen] :
+		case rawmsg, isOpen := <- cc.(chan []byte):
 
 			if !isOpen {
 				continue

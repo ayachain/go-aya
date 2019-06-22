@@ -17,9 +17,7 @@ func miningThread(ctx context.Context ) {
 
 	pool.workingThreadWG.Add(1)
 
-	pool.tcmapMutex.Lock()
-	pool.threadChans[ATxPoolThreadMining] = make(chan []byte, ATxPoolThreadMiningBuff)
-	pool.tcmapMutex.Unlock()
+	pool.threadChans.Store(ATxPoolThreadMining, make(chan []byte, ATxPoolThreadTxPackageBuff) )
 
 	subCtx, subCancel := context.WithCancel(ctx)
 
@@ -29,15 +27,13 @@ func miningThread(ctx context.Context ) {
 
 		<- subCtx.Done()
 
-		pool.tcmapMutex.Lock()
-		cc, exist := pool.threadChans[ATxPoolThreadMining]
+		cc, exist := pool.threadChans.Load(ATxPoolThreadMining)
 		if exist {
 
-			close( cc )
-			delete(pool.threadChans, ATxPoolThreadMining)
+			close( cc.(chan []byte) )
 
+			pool.threadChans.Delete(ATxPoolThreadMining)
 		}
-		pool.tcmapMutex.Unlock()
 
 		pool.workingThreadWG.Done()
 
@@ -62,7 +58,11 @@ func miningThread(ctx context.Context ) {
 			}
 
 			if <- pool.notary.TrustOrNot(msg, core.NotaryMessageMiningBlock, pool.cvfs) {
-				pool.threadChans[ATxPoolThreadMining] <- msg.Data
+
+				cc, _ := pool.threadChans.Load(ATxPoolThreadMining)
+
+				cc.(chan []byte) <- msg.Data
+
 			}
 
 		}
@@ -72,12 +72,14 @@ func miningThread(ctx context.Context ) {
 
 	for {
 
+		cc, _ := pool.threadChans.Load(ATxPoolThreadMining)
+
 		select {
 
 		case <- ctx.Done():
 			return
 
-		case rawmsg, isOpen := <- pool.threadChans[ATxPoolThreadMining] :
+		case rawmsg, isOpen := <- cc.(chan []byte):
 
 			if !isOpen {
 				continue

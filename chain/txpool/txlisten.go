@@ -15,9 +15,7 @@ func txListenThread(ctx context.Context ) {
 
 	pool.workingThreadWG.Add(1)
 
-	pool.tcmapMutex.Lock()
-	pool.threadChans[ATxPoolThreadTxListen] = make(chan []byte, AtxPoolThreadTxListenBuff)
-	pool.tcmapMutex.Unlock()
+	pool.threadChans.Store(ATxPoolThreadTxListen, make(chan []byte, AtxPoolThreadTxListenBuff))
 
 	subCtx, subCancel := context.WithCancel(ctx)
 
@@ -27,15 +25,14 @@ func txListenThread(ctx context.Context ) {
 
 		<- subCtx.Done()
 
-		pool.tcmapMutex.Lock()
-		cc, exist := pool.threadChans[ATxPoolThreadTxListen]
+		cc, exist := pool.threadChans.Load(ATxPoolThreadTxListen)
 		if exist {
 
-			close( cc )
-			delete(pool.threadChans, ATxPoolThreadTxListen)
+			close( cc.(chan []byte) )
+
+			pool.threadChans.Delete(ATxPoolThreadTxListen)
 
 		}
-		pool.tcmapMutex.Unlock()
 
 		pool.workingThreadWG.Done()
 
@@ -62,7 +59,9 @@ func txListenThread(ctx context.Context ) {
 
 			if <- pool.notary.TrustOrNot(msg, core.NotaryMessageTransaction, pool.cvfs) {
 
-				pool.threadChans[ATxPoolThreadTxListen] <- msg.Data
+				cc, _ := pool.threadChans.Load(ATxPoolThreadTxListen)
+
+				cc.(chan []byte) <- msg.Data
 
 			}
 
@@ -73,13 +72,15 @@ func txListenThread(ctx context.Context ) {
 
 	for {
 
+		cc, _ := pool.threadChans.Load(ATxPoolThreadTxListen)
+
 		select {
 
 		case <- ctx.Done():
 
 			return
 
-		case rawmsg, isOpen := <- pool.threadChans[ATxPoolThreadTxListen]:
+		case rawmsg, isOpen := <- cc.(chan []byte):
 
 			if !isOpen {
 				continue

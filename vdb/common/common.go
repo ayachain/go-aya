@@ -92,7 +92,7 @@ func LookupDBPath( root *mfs.Root, path string ) (*mfs.Directory, error) {
 
 	if err != nil {
 
-		err := mfs.Mkdir(root, path, mfs.MkdirOpts{ Mkparents:true, Flush:false })
+		err := mfs.Mkdir(root, path, mfs.MkdirOpts{ Mkparents:true, Flush:true })
 		if err != nil {
 			return nil, err
 		}

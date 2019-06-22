@@ -20,22 +20,18 @@ func txPackageThread(ctx context.Context ) {
 
 	pool.workingThreadWG.Add(1)
 
-	pool.tcmapMutex.Lock()
-	pool.threadChans[ATxPoolThreadTxPackage] = make(chan []byte, ATxPoolThreadTxPackageBuff)
-	pool.tcmapMutex.Unlock()
+	pool.threadChans.Store(ATxPoolThreadTxPackage, make(chan []byte, ATxPoolThreadTxPackageBuff))
 
 	defer func() {
 
-		pool.tcmapMutex.Lock()
-		cc, exist := pool.threadChans[ATxPoolThreadTxPackage]
-
+		cc, exist := pool.threadChans.Load(ATxPoolThreadTxPackage)
 		if exist {
 
-			close( cc )
-			delete(pool.threadChans, ATxPoolThreadTxPackage)
+			close( cc.(chan []byte) )
+
+			pool.threadChans.Delete(ATxPoolThreadTxPackage)
 
 		}
-		pool.tcmapMutex.Unlock()
 
 		pool.workingThreadWG.Done()
 
@@ -46,11 +42,13 @@ func txPackageThread(ctx context.Context ) {
 
 	for {
 
+		cc, _ := pool.threadChans.Load(ATxPoolThreadTxPackage)
+
 		select {
 		case <- ctx.Done():
 			return
 
-		case _, isOpen := <- pool.threadChans[ATxPoolThreadTxPackage]:
+		case _, isOpen := <- cc.(chan []byte):
 
 			if !isOpen {
 				continue

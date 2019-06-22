@@ -54,7 +54,7 @@ type aCVFS struct {
 
 	inode *core.IpfsNode
 
-	servies map[string]AVdbComm.VDBSerices
+	servies sync.Map
 
 	indexServices AIndexes.IndexesServices
 	chainId string
@@ -121,7 +121,6 @@ func LinkVFS( chainId string, baseCid cid.Cid, ind *core.IpfsNode ) (CVFS, error
 		Root:root,
 		inode:ind,
 		chainId:chainId,
-		servies: make(map[string]AVdbComm.VDBSerices),
 		writeWaiter: &sync.WaitGroup{},
 	}
 
@@ -145,12 +144,19 @@ func ( vfs *aCVFS ) SeekToBlock( bcid cid.Cid ) error {
 		return nil
 	}
 
-	for k, v := range vfs.servies {
-		if err := v.Shutdown(); err != nil {
+	vfs.servies.Range(func(k,v interface{})bool{
+
+		ser := v.(AVdbComm.VDBSerices)
+
+		if err := ser.Shutdown(); err != nil {
 			panic(err)
 		}
-		delete(vfs.servies, k)
-	}
+
+		vfs.servies.Delete(k)
+
+		return true
+
+	})
 
 	if err := vfs.Root.Close(); err != nil {
 		return err
@@ -171,7 +177,7 @@ func ( vfs *aCVFS ) Nodes() ANodes.Services {
 
 	vfs.writeWaiter.Wait()
 
-	v, exist := vfs.servies[ ANodes.DBPath ]
+	v, exist := vfs.servies.Load(ANodes.DBPath )
 
 	if !exist {
 
@@ -183,7 +189,7 @@ func ( vfs *aCVFS ) Nodes() ANodes.Services {
 
 		v = ANodes.CreateServices(astDir,true)
 
-		vfs.servies[ ANodes.DBPath ] = v
+		vfs.servies.Store( ANodes.DBPath, v )
 	}
 
 	return v.(ANodes.Services)
@@ -194,7 +200,7 @@ func ( vfs *aCVFS ) Assetses() AAssetses.Services {
 
 	vfs.writeWaiter.Wait()
 
-	v, exist := vfs.servies[ AAssetses.DBPATH ]
+	v, exist := vfs.servies.Load(AAssetses.DBPATH)
 
 	if !exist {
 
@@ -206,7 +212,7 @@ func ( vfs *aCVFS ) Assetses() AAssetses.Services {
 
 		v = AAssetses.CreateServices(astDir,true)
 
-		vfs.servies[ AAssetses.DBPATH ] = v
+		vfs.servies.Store(AAssetses.DBPATH, v)
 	}
 
 	return v.(AAssetses.Services)
@@ -217,7 +223,7 @@ func ( vfs *aCVFS ) Blocks() ABlock.Services {
 
 	vfs.writeWaiter.Wait()
 
-	v, exist := vfs.servies[ ABlock.DBPath ]
+	v, exist := vfs.servies.Load(ABlock.DBPath)
 
 	if !exist {
 
@@ -229,8 +235,7 @@ func ( vfs *aCVFS ) Blocks() ABlock.Services {
 
 		v = ABlock.CreateServices(blockDir, vfs.indexServices, true)
 
-		vfs.servies[ ABlock.DBPath ] = v
-
+		vfs.servies.Store(ABlock.DBPath, v)
 	}
 
 	return v.(ABlock.Services)
@@ -240,7 +245,7 @@ func ( vfs *aCVFS ) Transactions() ATx.Services {
 
 	vfs.writeWaiter.Wait()
 
-	v, exist := vfs.servies[ ATx.DBPath ]
+	v, exist := vfs.servies.Load(ATx.DBPath)
 
 	if !exist {
 
@@ -253,7 +258,7 @@ func ( vfs *aCVFS ) Transactions() ATx.Services {
 
 		v =  ATx.CreateServices(atxDir, true)
 
-		vfs.servies[ ATx.DBPath ] = v
+		vfs.servies.Store(ATx.DBPath, v)
 
 	}
 
@@ -264,7 +269,7 @@ func ( vfs *aCVFS ) Receipts() AReceipts.Services {
 
 	vfs.writeWaiter.Wait()
 
-	v, exist := vfs.servies[ AReceipts.DBPath ]
+	v, exist := vfs.servies.Load(AReceipts.DBPath)
 
 	if !exist {
 
@@ -276,7 +281,7 @@ func ( vfs *aCVFS ) Receipts() AReceipts.Services {
 
 		v =  AReceipts.CreateServices(rcpDir, true)
 
-		vfs.servies[ AReceipts.DBPath ] = v
+		vfs.servies.Store(AReceipts.DBPath, v)
 
 	}
 
@@ -302,12 +307,20 @@ func ( vfs *aCVFS ) WriteTaskGroup( group *AWrok.TaskBatchGroup) (cid.Cid, error
 
 	defer vfs.writeWaiter.Done()
 
-	for k, v := range vfs.servies {
-		if err := v.Shutdown(); err != nil {
+
+	vfs.servies.Range(func(k,v interface{})bool{
+
+		ser := v.(AVdbComm.VDBSerices)
+
+		if err := ser.Shutdown(); err != nil {
 			panic(err)
 		}
-		delete(vfs.servies, k)
-	}
+
+		vfs.servies.Delete(k)
+
+		return true
+	})
+
 
 	var err error
 
@@ -390,10 +403,19 @@ func ( vfs *aCVFS ) Close() error {
 	vfs.writeWaiter.Add(1)
 	defer vfs.writeWaiter.Done()
 
-	for k, v := range vfs.servies {
-		_ = v.Shutdown()
-		delete(vfs.servies, k)
-	}
+	vfs.servies.Range(func(k,v interface{})bool{
+
+		ser := v.(AVdbComm.VDBSerices)
+
+		if err := ser.Shutdown(); err != nil {
+			panic(err)
+		}
+
+		vfs.servies.Delete(k)
+
+		return true
+
+	})
 
 	if err := vfs.indexServices.Close(); err != nil {
 		return err
