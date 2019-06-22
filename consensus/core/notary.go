@@ -18,9 +18,9 @@ package core
 
 import (
 	AGroup "github.com/ayachain/go-aya/consensus/core/worker"
-	AKeyStore "github.com/ayachain/go-aya/keystore"
 	"github.com/ayachain/go-aya/vdb"
 	AMsgMBlock "github.com/ayachain/go-aya/vdb/mblock"
+	pubsub "github.com/libp2p/go-libp2p-pubsub"
 )
 
 type NotaryMessageType string
@@ -30,7 +30,7 @@ const (
 	NotaryMessageTransaction 	NotaryMessageType = "tx"
 	NotaryMessageMiningBlock 	NotaryMessageType = "mblock"
 	NotaryMessageConfirmBlock 	NotaryMessageType = "cblock"
-	NotaryMessageReceipt		NotaryMessageType = "receipt"
+	NotaryMessageMinedRet		NotaryMessageType = "minedret"
 	NotaryMessageChainInfo		NotaryMessageType = "info"
 
 )
@@ -39,6 +39,6 @@ type Notary interface {
 
 	MiningBlock( block *AMsgMBlock.MBlock, cvfs vdb.CacheCVFS ) (*AGroup.TaskBatchGroup, error)
 
-	TrustOrNot( msg *AKeyStore.ASignedRawMsg, mtype NotaryMessageType ) <- chan bool
+	TrustOrNot( msg *pubsub.Message, mtype NotaryMessageType, cvfs vdb.CVFS ) <- chan bool
 
 }

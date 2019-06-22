@@ -13,11 +13,7 @@ const (
 )
 
 type reader interface {
-
 	AssetsOf( addr EComm.Address ) ( *Assets, error )
-
-	GetLockedTop100() ( []*SortAssets, error )
-
 }
 
 type writer interface {

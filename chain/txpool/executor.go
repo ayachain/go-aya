@@ -3,23 +3,22 @@ package txpool
 import (
 	"context"
 	"fmt"
+	"github.com/ayachain/go-aya/consensus/core"
 	ATaskGroup "github.com/ayachain/go-aya/consensus/core/worker"
-	AKeyStore "github.com/ayachain/go-aya/keystore"
 	AMsgBlock "github.com/ayachain/go-aya/vdb/block"
 	AChainInfo "github.com/ayachain/go-aya/vdb/chaininfo"
 	"github.com/ipfs/go-cid"
-	"time"
 )
 
 func blockExecutorThread(ctx context.Context) {
 
-	fmt.Println("ATxPool Thread On: " + AtxThreadExecutor)
+	fmt.Println("ATxPool Thread On: " + ATxPoolThreadExecutor)
 
 	pool := ctx.Value("Pool").(*ATxPool)
 
 	subCtx, subCancel := context.WithCancel(ctx)
 
-	pool.threadChans[AtxThreadExecutor] = make(chan *AKeyStore.ASignedRawMsg)
+	pool.threadChans[ATxPoolThreadExecutor] = make(chan []byte, ATxPoolThreadExecutorBuff)
 
 	pool.workingThreadWG.Add(1)
 
@@ -29,24 +28,24 @@ func blockExecutorThread(ctx context.Context) {
 
 		<- subCtx.Done()
 
-		cc, exist := pool.threadChans[AtxThreadExecutor]
+		cc, exist := pool.threadChans[ATxPoolThreadExecutor]
 		if exist {
 
 			close( cc )
-			delete(pool.threadChans, AtxThreadExecutor)
+			delete(pool.threadChans, ATxPoolThreadExecutor)
 
 		}
 
 		pool.workingThreadWG.Done()
 
-		fmt.Println("ATxPool Thread Off: " + AtxThreadExecutor)
+		fmt.Println("ATxPool Thread Off: " + ATxPoolThreadExecutor)
 
 	}()
 
 
 	go func() {
 
-		sub, err := pool.ind.PubSub.Subscribe( pool.channelTopics[AtxThreadExecutor] )
+		sub, err := pool.ind.PubSub.Subscribe( pool.channelTopics[ATxPoolThreadExecutor] )
 		if err != nil {
 			return
 		}
@@ -59,13 +58,11 @@ func blockExecutorThread(ctx context.Context) {
 				return
 			}
 
-			rawmsg, err := AKeyStore.BytesToRawMsg(msg.Data)
-			if err != nil {
-				log.Error(err)
-				continue
-			}
+			if <- pool.notary.TrustOrNot(msg, core.NotaryMessageConfirmBlock, pool.cvfs) {
 
-			pool.threadChans[AtxThreadExecutor] <- rawmsg
+				pool.threadChans[ATxPoolThreadExecutor] <- msg.Data
+
+			}
 		}
 
 	}()
@@ -78,24 +75,17 @@ func blockExecutorThread(ctx context.Context) {
 
 			return
 
-		case msg, isOpen := <- pool.threadChans[AtxThreadExecutor] :
-
-			stime := time.Now()
+		case rawmsg, isOpen := <- pool.threadChans[ATxPoolThreadExecutor] :
 
 			if !isOpen {
 				continue
 			}
 
-			if !msg.Verify() {
-				continue
-			}
-
 			cblock := &AMsgBlock.Block{}
-			if err := cblock.RawMessageDecode(msg.Content); err != nil {
+			if err := cblock.RawMessageDecode(rawmsg); err != nil {
 				log.Error(err)
 				continue
 			}
-
 
 			bcid, err := cid.Decode(cblock.ExtraData)
 			if err != nil {
@@ -143,7 +133,7 @@ func blockExecutorThread(ctx context.Context) {
 					Indexes:indexCid,
 				}
 
-				if err := pool.doBroadcast(info, pool.channelTopics[AtxThreadChainInfo]); err != nil {
+				if err := pool.doBroadcast(info, pool.channelTopics[ATxPoolThreadChainInfo]); err != nil {
 					log.Error(err)
 					return
 				}
@@ -160,8 +150,6 @@ func blockExecutorThread(ctx context.Context) {
 			pool.DoPackMBlock()
 
 			fmt.Printf("Confrim Block %06d:\tCID:%v\n", cblock.Index, latestCid.String())
-
-			fmt.Println("AtxThreadExecutor HandleTime:", time.Since(stime))
 		}
 	}
 }

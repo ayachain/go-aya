@@ -48,10 +48,6 @@ func (cache *aCache) AssetsOf( addr EComm.Address ) ( *Assets, error ) {
 	return rcd, nil
 }
 
-func (cache *aCache) GetLockedTop100() ( []*SortAssets, error ) {
-	return nil, nil
-}
-
 func (cache *aCache) Close() {
 	_ = cache.cdb.Close()
 }

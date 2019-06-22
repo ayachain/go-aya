@@ -5,6 +5,7 @@ import (
 	AIndexes "github.com/ayachain/go-aya/vdb/indexes"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/storage"
+	"github.com/syndtr/goleveldb/leveldb/util"
 )
 
 type aCache struct {
@@ -108,4 +109,83 @@ func (cache *aCache) Del( peerId string ) {
 
 	cache.delKeys = append(cache.delKeys, []byte(peerId))
 
+}
+
+func (cache *aCache) GetFirst() *Node {
+
+	it := cache.source.NewIterator( &util.Range{nil,nil}, nil )
+
+	defer it.Release()
+
+	var maxnd *Node
+
+	for it.Next() {
+
+		nd := &Node{}
+
+		if err := nd.Decode(it.Value()); err != nil {
+			continue
+		}
+
+		if maxnd == nil {
+
+			maxnd = nd
+			continue
+
+		} else {
+
+			if nd.Votes > maxnd.Votes {
+				maxnd = nd
+			}
+
+		}
+
+	}
+
+	return maxnd
+}
+
+func (cache *aCache) GetLatest() *Node {
+
+	it := cache.source.NewIterator( &util.Range{nil,nil}, nil )
+
+	defer it.Release()
+
+	var minnd *Node
+
+	for it.Next() {
+
+		nd := &Node{}
+
+		if err := nd.Decode(it.Value()); err != nil {
+			continue
+		}
+
+		if minnd == nil {
+
+			minnd = nd
+			continue
+
+		} else {
+
+			if nd.Votes < minnd.Votes {
+				minnd = nd
+			}
+
+		}
+
+	}
+
+	return minnd
+
+}
+
+func (cache *aCache) TotalSum() uint64 {
+
+	size, err := cache.source.SizeOf([]util.Range{{nil,nil}})
+	if err != nil {
+		return 0
+	}
+
+	return uint64(size.Sum())
 }

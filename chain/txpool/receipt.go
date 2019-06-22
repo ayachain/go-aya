@@ -2,26 +2,25 @@ package txpool
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	AKeyStore "github.com/ayachain/go-aya/keystore"
+	"github.com/ayachain/go-aya/consensus/core"
 	AMsgMinied "github.com/ayachain/go-aya/vdb/minined"
 	"github.com/syndtr/goleveldb/leveldb"
-	"time"
 )
 
-func receiptListen(ctx context.Context) {
+func receiptListen(ctx context.Context ) {
 
-	fmt.Println("ATxPool Thread On: " + AtxThreadReceiptListen)
+	fmt.Println("ATxPool Thread On: " + ATxPoolThreadReceiptListen)
 
 	pool := ctx.Value("Pool").(*ATxPool)
 
 	pool.workingThreadWG.Add(1)
 
-	pool.threadChans[AtxThreadReceiptListen] = make(chan *AKeyStore.ASignedRawMsg)
+	pool.tcmapMutex.Lock()
+	pool.threadChans[ATxPoolThreadReceiptListen] = make(chan []byte, ATxPoolThreadReceiptListenBuff)
+	pool.tcmapMutex.Unlock()
 
 	subCtx, subCancel := context.WithCancel(ctx)
-
 
 	defer func() {
 
@@ -29,24 +28,25 @@ func receiptListen(ctx context.Context) {
 
 		<- subCtx.Done()
 
-		cc, exist := pool.threadChans[AtxThreadReceiptListen]
+		cc, exist := pool.threadChans[ATxPoolThreadReceiptListen]
 		if exist {
 
 			close( cc )
-			delete(pool.threadChans, AtxThreadReceiptListen)
+			delete(pool.threadChans, ATxPoolThreadReceiptListen)
 
 		}
 
 		pool.workingThreadWG.Done()
 
-		fmt.Println("ATxPool Thread Off: " + AtxThreadReceiptListen)
+		fmt.Println("ATxPool Thread Off: " + ATxPoolThreadReceiptListen)
 
 	}()
 
 
 	go func() {
 
-		sub, err := pool.ind.PubSub.Subscribe( pool.channelTopics[AtxThreadReceiptListen] )
+		sub, err := pool.ind.PubSub.Subscribe( pool.channelTopics[ATxPoolThreadReceiptListen] )
+
 		if err != nil {
 			return
 		}
@@ -59,13 +59,9 @@ func receiptListen(ctx context.Context) {
 				return
 			}
 
-			rawmsg, err := AKeyStore.BytesToRawMsg(msg.Data)
-			if err != nil {
-				log.Error(err)
-				continue
+			if <- pool.notary.TrustOrNot(msg, core.NotaryMessageMinedRet, pool.cvfs) {
+				pool.threadChans[ATxPoolThreadReceiptListen] <- msg.Data
 			}
-
-			pool.threadChans[AtxThreadReceiptListen] <- rawmsg
 
 		}
 
@@ -79,32 +75,18 @@ func receiptListen(ctx context.Context) {
 
 			return
 
-		case rmsg, isOpen := <- pool.threadChans[AtxThreadReceiptListen] :
-
-			stime := time.Now()
+		case rawmsg, isOpen := <- pool.threadChans[ATxPoolThreadReceiptListen] :
 
 			if !isOpen {
 				continue
 			}
 
-			if rmsg.Content[0] != AMsgMinied.MessagePrefix {
-				continue
-			}
-
-			from, err := rmsg.ECRecover()
-			if err != nil {
-				log.Error(err)
-				continue
-			}
-
-			fromAst, err := pool.cvfs.Assetses().AssetsOf(*from)
-			if err != nil {
-				log.Error(err)
+			if rawmsg[0] != AMsgMinied.MessagePrefix {
 				continue
 			}
 
 			rcp := &AMsgMinied.Minined{}
-			err = rcp.RawMessageDecode( rmsg.Content )
+			err := rcp.RawMessageDecode( rawmsg )
 			if err != nil {
 				log.Error(err)
 				continue
@@ -114,55 +96,13 @@ func receiptListen(ctx context.Context) {
 				continue
 			}
 
+			rcidstr := rcp.RetCID.String()
+
 			receiptKey := []byte(TxReceiptPrefix)
+
 			copy( receiptKey[1:], rcp.MBlockHash.Bytes() )
 
-			exist, err := pool.storage.Has(receiptKey, nil)
-			if err != nil {
-				log.Error(ErrStorageLowAPIExpected)
-				return
-			}
-
-			rcidstr := rcp.RetCID.String()
-			receiptMap := make(map[string]uint64)
-			if exist {
-
-				value, err := pool.storage.Get(receiptKey, nil)
-				if err != nil {
-					log.Error(ErrStorageLowAPIExpected)
-					return
-				}
-
-				if json.Unmarshal(value, receiptMap) != nil {
-					log.Error(ErrStorageRawDataDecodeExpected)
-					return
-				}
-
-				ocount, vexist := receiptMap[rcidstr]
-				if vexist {
-					receiptMap[rcidstr] = ocount + fromAst.Vote
-				} else {
-					receiptMap[rcidstr] = fromAst.Vote
-				}
-
-			} else {
-				receiptMap[rcidstr] = fromAst.Vote
-			}
-
-
-			rmapbs, err := json.Marshal(receiptMap)
-			if err != nil {
-				log.Error(ErrStorageLowAPIExpected)
-				return
-			}
-
-			if err := pool.storage.Put( receiptKey, rmapbs, nil ); err != nil {
-				log.Error(ErrStorageLowAPIExpected)
-				return
-			}
-
-
-			if receiptMap[rcidstr] > pool.ownerAsset.Vote * 3 || pool.workmode == AtxPoolWorkModeOblivioned {
+			if pool.workmode == AtxPoolWorkModeOblivioned {
 
 				batch := &leveldb.Batch{}
 				batch.Delete(receiptKey)
@@ -176,14 +116,12 @@ func receiptListen(ctx context.Context) {
 
 				cblock := pool.miningBlock.Confirm(rcidstr)
 
-				if err := pool.doBroadcast(cblock, pool.channelTopics[AtxThreadExecutor] ); err != nil {
+				if err := pool.doBroadcast(cblock, pool.channelTopics[ATxPoolThreadExecutor] ); err != nil {
 					log.Error(err)
 					return
 				}
 
 			}
-
-			fmt.Println("AtxThreadReceiptListen HandleTime:", time.Since(stime))
 
 		}
 

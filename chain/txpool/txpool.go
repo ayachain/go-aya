@@ -7,7 +7,6 @@ import (
 	"fmt"
 	ADB "github.com/ayachain/go-aya-alvm-adb"
 	ACore "github.com/ayachain/go-aya/consensus/core"
-	AKeyStore "github.com/ayachain/go-aya/keystore"
 	"github.com/ayachain/go-aya/vdb"
 	AAssets "github.com/ayachain/go-aya/vdb/assets"
 	ABlock "github.com/ayachain/go-aya/vdb/block"
@@ -55,63 +54,60 @@ var log = logging.MustGetLogger("ATxPool")
 /// its own mode of work and set up the switch to complete the mode of work.
 type AtxPoolWorkMode uint8
 
-const (
-	/// The operations of common nodes for transaction pool include, but are not limited to, sending
-	/// transactions, validating transactions, and saving some data.
-	AtxPoolWorkModeNormal AtxPoolWorkMode = 0
-
-
-	/// The main node's operations on the transaction pool include, but are not limited to, sending
-	/// transactions, validating transactions, saving data, and computing ALVM execution results.
-	AtxPoolWorkModeMaster AtxPoolWorkMode = 1
-
-
-	/// The operation of the super node for the transaction pool includes, but is not limited to,
-	/// sending transactions, validating transactions, saving data, blocking, packaging, computing
-	/// ALVM execution results, etc.
-	AtxPoolWorkModeSuper AtxPoolWorkMode = 2
-
-	/// owner
-	AtxPoolWorkModeOblivioned AtxPoolWorkMode = 3
-)
-
-type AtxThreadsName string
+type ATxPoolThreadsName string
 
 const (
 
-	AtxThreadTxListen		AtxThreadsName = "thread.tx.listen"
+	PackageTxsLimit 								= 2048
 
-	AtxThreadTxPackage 		AtxThreadsName = "thread.tx.package"
+	AtxPoolWorkModeNormal 			AtxPoolWorkMode = 0
 
-	AtxThreadExecutor		AtxThreadsName = "thread.block.executor"
+	AtxPoolWorkModeMaster 			AtxPoolWorkMode = 1
 
-	AtxThreadReceiptListen 	AtxThreadsName = "thread.receipt.listen"
+	AtxPoolWorkModeSuper 			AtxPoolWorkMode = 2
 
-	AtxThreadMining			AtxThreadsName = "thread.block.mining"
+	AtxPoolWorkModeOblivioned 		AtxPoolWorkMode = 3
 
-	AtxThreadChainInfo		AtxThreadsName = "thread.chain.info"
 
+	ATxPoolThreadTxListen			ATxPoolThreadsName 	= "thread.tx.listen"
+	AtxPoolThreadTxListenBuff 					   		= 128
+
+	ATxPoolThreadTxPackage 			ATxPoolThreadsName 	= "thread.tx.package"
+	ATxPoolThreadTxPackageBuff					  		= 1
+
+	ATxPoolThreadExecutor			ATxPoolThreadsName 	= "thread.block.executor"
+	ATxPoolThreadExecutorBuff					  		= 8
+
+	ATxPoolThreadReceiptListen 		ATxPoolThreadsName 	= "thread.receipt.listen"
+	ATxPoolThreadReceiptListenBuff						= 256
+
+	ATxPoolThreadMining				ATxPoolThreadsName 	= "thread.block.mining"
+	ATxPoolThreadMiningBuff								= 32
+
+	ATxPoolThreadChainInfo			ATxPoolThreadsName 	= "thread.chain.info"
+	ATxPoolThreadChainInfoBuff							= 1
 )
 
 type ATxPool struct {
 
 	cvfs vdb.CVFS
+
 	storage *leveldb.DB
+
 	ownerAccount EAccount.Account
 	ownerAsset *AAssets.Assets
-
-	adbpath string
-
-	channelTopics map[AtxThreadsName]string
-
 	genBlock *ABlock.GenBlock
-
-	topAssets []*AAssets.SortAssets
-	workmode AtxPoolWorkMode
-	ind *core.IpfsNode
 	miningBlock *AMBlock.MBlock
 
-	threadChans map[AtxThreadsName] chan *AKeyStore.ASignedRawMsg
+	workmode AtxPoolWorkMode
+	ind *core.IpfsNode
+
+	channelTopics map[ATxPoolThreadsName] string
+	ctmapMutex sync.Mutex
+
+	threadChans map[ATxPoolThreadsName] chan []byte
+	tcmapMutex sync.Mutex
+
 	notary ACore.Notary
 	workingThreadWG sync.WaitGroup
 }
@@ -126,12 +122,12 @@ func NewTxPool( ind *core.IpfsNode, gblk *ABlock.GenBlock, cvfs vdb.CVFS, miner 
 	// create channel topices string
 	topic := crypto.Keccak256Hash( []byte( AtxPoolVersion + gblk.ChainID ) )
 
-	topicmap := map[AtxThreadsName]string{
-		AtxThreadTxListen : crypto.Keccak256Hash([]byte(fmt.Sprintf("%v%v", topic, AtxThreadTxListen))).String(),
-		AtxThreadTxPackage : crypto.Keccak256Hash([]byte(fmt.Sprintf("%v%v", topic, AtxThreadTxPackage))).String(),
-		AtxThreadExecutor : crypto.Keccak256Hash([]byte(fmt.Sprintf("%v%v", topic, AtxThreadExecutor))).String(),
-		AtxThreadReceiptListen : crypto.Keccak256Hash([]byte(fmt.Sprintf("%v%v", topic, AtxThreadReceiptListen))).String(),
-		AtxThreadMining : crypto.Keccak256Hash([]byte(fmt.Sprintf("%v%v", topic, AtxThreadMining))).String(),
+	topicmap := map[ATxPoolThreadsName]string{
+		ATxPoolThreadTxListen : crypto.Keccak256Hash([]byte(fmt.Sprintf("%v%v", topic, ATxPoolThreadTxListen))).String(),
+		ATxPoolThreadTxPackage : crypto.Keccak256Hash([]byte(fmt.Sprintf("%v%v", topic, ATxPoolThreadTxPackage))).String(),
+		ATxPoolThreadExecutor : crypto.Keccak256Hash([]byte(fmt.Sprintf("%v%v", topic, ATxPoolThreadExecutor))).String(),
+		ATxPoolThreadReceiptListen : crypto.Keccak256Hash([]byte(fmt.Sprintf("%v%v", topic, ATxPoolThreadReceiptListen))).String(),
+		ATxPoolThreadMining : crypto.Keccak256Hash([]byte(fmt.Sprintf("%v%v", topic, ATxPoolThreadMining))).String(),
 	}
 
 	switch {
@@ -159,11 +155,6 @@ func NewTxPool( ind *core.IpfsNode, gblk *ABlock.GenBlock, cvfs vdb.CVFS, miner 
 
 	default:
 		nd = unixfs.EmptyDirNode()
-	}
-
-	tops, err := cvfs.Assetses().GetLockedTop100()
-	if err != nil {
-		tops = []*AAssets.SortAssets{}
 	}
 
 	oast, err := cvfs.Assetses().AssetsOf(acc.Address)
@@ -207,11 +198,10 @@ func NewTxPool( ind *core.IpfsNode, gblk *ABlock.GenBlock, cvfs vdb.CVFS, miner 
 		return &ATxPool{
 			storage:db,
 			cvfs:cvfs,
-			topAssets:tops,
 			workmode:AtxPoolWorkModeNormal,
 			ind:ind,
 			channelTopics:topicmap,
-			threadChans:make(map[AtxThreadsName] chan *AKeyStore.ASignedRawMsg),
+			threadChans:make(map[ATxPoolThreadsName] chan []byte),
 			ownerAccount:acc,
 			ownerAsset:oast,
 			notary:miner,
@@ -235,11 +225,10 @@ configNewDir :
 	return &ATxPool{
 		storage:db,
 		cvfs:cvfs,
-		topAssets:tops,
 		workmode:AtxPoolWorkModeNormal,
 		ind:ind,
 		channelTopics:topicmap,
-		threadChans:make(map[AtxThreadsName] chan *AKeyStore.ASignedRawMsg),
+		threadChans:make(map[ATxPoolThreadsName] chan []byte),
 		ownerAccount:acc,
 		ownerAsset:oast,
 		notary:miner,
@@ -262,21 +251,21 @@ func (pool *ATxPool) PowerOn( ctx context.Context ) error {
 
 		pool.runThreads(
 			ctx,
-			AtxThreadTxListen,
-			AtxThreadTxPackage,
-			AtxThreadMining,
-			AtxThreadReceiptListen,
-			AtxThreadExecutor,
+			ATxPoolThreadTxListen,
+			ATxPoolThreadTxPackage,
+			ATxPoolThreadMining,
+			ATxPoolThreadReceiptListen,
+			ATxPoolThreadExecutor,
 		)
 
 	case AtxPoolWorkModeSuper:
 
 		pool.runThreads(
 			ctx,
-			AtxThreadTxPackage,
-			AtxThreadMining,
-			AtxThreadReceiptListen,
-			AtxThreadExecutor,
+			ATxPoolThreadTxPackage,
+			ATxPoolThreadMining,
+			ATxPoolThreadReceiptListen,
+			ATxPoolThreadExecutor,
 		)
 
 
@@ -286,9 +275,9 @@ func (pool *ATxPool) PowerOn( ctx context.Context ) error {
 		pool.runThreads(
 			ctx,
 			//AtxThreadTxPackage,
-			AtxThreadMining,
+			ATxPoolThreadMining,
 			//AtxThreadReceiptListen,
-			AtxThreadExecutor,
+			ATxPoolThreadExecutor,
 		)
 
 
@@ -299,7 +288,7 @@ func (pool *ATxPool) PowerOn( ctx context.Context ) error {
 			//AtxThreadTxPackage,
 			//AtxThreadMining,
 			//AtxThreadReceiptListen,
-			AtxThreadExecutor,
+			ATxPoolThreadExecutor,
 		)
 
 	}
@@ -335,20 +324,14 @@ func (pool *ATxPool) UpdateBestBlock( cblock *ABlock.Block  ) error {
 		return err
 	}
 
-	tops, err := pool.cvfs.Assetses().GetLockedTop100()
-	if err != nil {
-		tops = []*AAssets.SortAssets{}
-	}
-
 	pool.ownerAsset = ast
-	pool.topAssets = tops
 
 	return nil
 }
 
 func (pool *ATxPool) DoPackMBlock() {
 
-	cc, exist := pool.threadChans[AtxThreadTxPackage]
+	cc, exist := pool.threadChans[ATxPoolThreadTxPackage]
 
 	if !exist {
 		return
@@ -422,7 +405,7 @@ func (pool *ATxPool) PublishTx( tx *ATx.Transaction ) error {
 		return ErrMessageVerifyExpected
 	}
 
-	return pool.doBroadcast(tx, pool.channelTopics[AtxThreadTxListen])
+	return pool.doBroadcast(tx, pool.channelTopics[ATxPoolThreadTxListen])
 }
 
 /// Private method
@@ -432,47 +415,9 @@ func (pool *ATxPool) judgingMode() {
 	pool.workmode = AtxPoolWorkModeOblivioned
 	return
 
-	n := 99999999
-
-	for i := 0; i < len(pool.topAssets); i++ {
-		if pool.topAssets[i] != nil && pool.topAssets[i].Address == pool.ownerAccount.Address {
-			n = i
-			break
-		}
-	}
-
-	if n <= 21 {
-		pool.workmode = AtxPoolWorkModeSuper
-		return
-	}
-
-	oasset, err := pool.cvfs.Assetses().AssetsOf( pool.ownerAccount.Address )
-	if err != nil {
-		pool.workmode = AtxPoolWorkModeNormal
-		return
-	}
-
-	if oasset.Locked > 100000 {
-		pool.workmode = AtxPoolWorkModeMaster
-		return
-	}
-
-	pool.workmode = AtxPoolWorkModeNormal
-	return
 }
 
-func (pool *ATxPool) sign( coder AvdbComm.AMessageEncode ) (*AKeyStore.ASignedRawMsg, error) {
-
-	cbs := coder.RawMessageEncode()
-
-	if len(cbs) <= 0 {
-		return nil, ErrRawDBEndoedZeroLen
-	}
-
-	return AKeyStore.CreateMsg(cbs, pool.ownerAccount)
-}
-
-func (pool *ATxPool) runThreads( ctx context.Context, names ... AtxThreadsName ) {
+func (pool *ATxPool) runThreads( ctx context.Context, names ... ATxPoolThreadsName ) {
 
 	for _, n := range names {
 
@@ -480,23 +425,23 @@ func (pool *ATxPool) runThreads( ctx context.Context, names ... AtxThreadsName )
 
 		switch n {
 
-		case AtxThreadTxListen:
+		case ATxPoolThreadTxListen:
 			go txListenThread(sctx)
 
 
-		case AtxThreadTxPackage:
+		case ATxPoolThreadTxPackage:
 			go txPackageThread(sctx)
 
 
-		case AtxThreadMining:
+		case ATxPoolThreadMining:
 			go miningThread(sctx)
 
 
-		case AtxThreadReceiptListen:
+		case ATxPoolThreadReceiptListen:
 			go receiptListen(sctx)
 
 
-		case AtxThreadExecutor:
+		case ATxPoolThreadExecutor:
 			go blockExecutorThread(sctx)
 
 		}
@@ -513,35 +458,17 @@ func (pool *ATxPool) doBroadcast( coder AvdbComm.AMessageEncode, topic string) e
 		return ErrRawDBEndoedZeroLen
 	}
 
-	if signmsg, err := AKeyStore.CreateMsg(cbs, pool.ownerAccount); err != nil {
-
-		return err
-
-	} else {
-
-		rawsmsg, err := signmsg.Bytes()
-		if err != nil {
-			return err
-		}
-
-
-		return pool.ind.PubSub.Publish( topic, rawsmsg )
-	}
+	return pool.ind.PubSub.Publish( topic, cbs )
 
 }
 
-func (pool *ATxPool) addRawTransaction( tx *AKeyStore.ASignedRawMsg ) error {
+func (pool *ATxPool) addRawTransaction( tx *ATx.Transaction ) error {
 
 	if !tx.Verify() {
 		return ErrMessageVerifyExpected
 	}
 
-	subTx := ATx.Transaction{}
-	if err := subTx.Decode(tx.Content[1:]); err != nil {
-		return err
-	}
-
-	txraw := subTx.Encode()
+	txraw := tx.Encode()
 	if len(txraw) <= 0 {
 		return ErrMessageVerifyExpected
 	}

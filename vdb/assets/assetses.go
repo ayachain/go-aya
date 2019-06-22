@@ -1,15 +1,11 @@
 package assets
 
 import (
-	"bytes"
-	"encoding/binary"
 	AVdbComm "github.com/ayachain/go-aya/vdb/common"
 	EComm "github.com/ethereum/go-ethereum/common"
 	"github.com/ipfs/go-mfs"
-	"github.com/pkg/errors"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/storage"
-	"github.com/syndtr/goleveldb/leveldb/util"
 )
 
 type aAssetes struct {
@@ -60,45 +56,6 @@ func (api *aAssetes) AssetsOf( addr EComm.Address ) ( *Assets, error ) {
 	}
 
 	return rcd, nil
-}
-
-func (api *aAssetes) GetLockedTop100() ( []*SortAssets, error ) {
-
-	list := make([]*SortAssets, 100)
-
-	sbs := bytes.NewBuffer([]byte(DBTopIndexPrefix))
-	sbs.Write( []byte{ 0x00, 0x00 } )
-
-	ebs := bytes.NewBuffer([]byte(DBTopIndexPrefix))
-	ebs.Write( []byte{ 0xff, 0xff })
-
-	topIt := api.rawdb.NewIterator( &util.Range{Start:sbs.Bytes(), Limit:ebs.Bytes()}, nil )
-	defer topIt.Release()
-
-	for topIt.Next() {
-
-		rcd, err := api.AssetsOf( EComm.BytesToAddress(topIt.Value()) )
-		if err != nil {
-			return nil, err
-		}
-
-		assets := &SortAssets{
-			Address : EComm.BytesToAddress(topIt.Value()),
-			Assets : rcd,
-		}
-
-		nbs := topIt.Key()[ len([]byte(DBTopIndexPrefix)) : ]
-
-		index := int(binary.BigEndian.Uint16(nbs))
-
-		if index < 0 || index >= 100 {
-			return nil, errors.New("array index bound")
-		}
-
-		list[index] = assets
-	}
-
-	return list, nil
 }
 
 func (api *aAssetes) NewCache() (AVdbComm.VDBCacheServices, error) {

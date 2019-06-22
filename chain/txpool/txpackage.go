@@ -4,46 +4,41 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	AKeyStore "github.com/ayachain/go-aya/keystore"
 	AMsgMBlock "github.com/ayachain/go-aya/vdb/mblock"
 	ATx "github.com/ayachain/go-aya/vdb/transaction"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/util"
-	"math/rand"
 	"time"
 )
 
-const (
-	PackageTxsLimit = 2048
-)
+func txPackageThread(ctx context.Context ) {
 
-func txPackageThread(ctx context.Context) {
-
-	fmt.Println("ATxPool Thread On: " + AtxThreadTxPackage)
+	fmt.Println("ATxPool Thread On: " + ATxPoolThreadTxPackage)
 
 	pool := ctx.Value("Pool").(*ATxPool)
 
 	pool.workingThreadWG.Add(1)
 
-	pool.threadChans[AtxThreadTxPackage] = make(chan *AKeyStore.ASignedRawMsg)
+	pool.threadChans[ATxPoolThreadTxPackage] = make(chan []byte, ATxPoolThreadTxPackageBuff)
 
 	defer func() {
 
-		cc, exist := pool.threadChans[AtxThreadTxPackage]
+		cc, exist := pool.threadChans[ATxPoolThreadTxPackage]
 
 		if exist {
 
 			close( cc )
-			delete(pool.threadChans, AtxThreadTxPackage)
+			delete(pool.threadChans, ATxPoolThreadTxPackage)
 
 		}
 
 		pool.workingThreadWG.Done()
 
-		fmt.Println("ATxPool Thread Off: " + AtxThreadTxPackage)
+		fmt.Println("ATxPool Thread Off: " + ATxPoolThreadTxPackage)
 
 	}()
+
 
 	for {
 
@@ -51,9 +46,7 @@ func txPackageThread(ctx context.Context) {
 		case <- ctx.Done():
 			return
 
-		case _, isOpen := <- pool.threadChans[AtxThreadTxPackage]:
-
-			stime := time.Now()
+		case _, isOpen := <- pool.threadChans[ATxPoolThreadTxPackage]:
 
 			if !isOpen {
 				continue
@@ -63,7 +56,6 @@ func txPackageThread(ctx context.Context) {
 				continue
 			}
 
-			rand.Seed(time.Now().UnixNano())
 			bindex, err := pool.cvfs.Indexes().GetLatest()
 			if err != nil {
 				log.Error(err)
@@ -77,7 +69,6 @@ func txPackageThread(ctx context.Context) {
 			mblk.ChainID = pool.genBlock.ChainID
 			mblk.Parent = bindex.Hash.String()
 			mblk.Timestamp = uint64(time.Now().Unix())
-			mblk.RandSeed = rand.Int31()
 
 			count := uint16(0)
 			var txs []ATx.Transaction
@@ -143,12 +134,10 @@ func txPackageThread(ctx context.Context) {
 
 			pool.miningBlock = mblk
 
-			if err := pool.doBroadcast(mblk, pool.channelTopics[AtxThreadMining]); err != nil {
+			if err := pool.doBroadcast(mblk, pool.channelTopics[ATxPoolThreadMining]); err != nil {
 				log.Error(err)
 				return
 			}
-
-			fmt.Println("AtxThreadTxPackage HandleTime:", time.Since(stime))
 		}
 
 	}

@@ -10,13 +10,19 @@ type reader interface {
 
 	GetNodeByPeerId( peerId string ) (*Node, error)
 
+	GetFirst() *Node
+
+	GetLatest() *Node
+
+	TotalSum() uint64
+
 }
 
 type writer interface {
 
-	Update( peerId string, node *Node )
+	Update( peerId string, node *Node ) error
 
-	Insert( peerId string, node *Node )
+	Insert( peerId string, node *Node ) error
 
 	Del( peerId string )
 

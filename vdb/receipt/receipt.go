@@ -26,9 +26,11 @@ func (r *Receipt) Encode() []byte {
 
 }
 
+
 func (r *Receipt) Decode(bs []byte) error {
 	return json.Unmarshal(bs, r)
 }
+
 
 func ConfirmReceipt( msg string, events []string ) *Receipt {
 

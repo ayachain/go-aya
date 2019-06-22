@@ -25,39 +25,30 @@ var (
 
 type Block struct {
 
-	AVdbComm.RawDBCoder	`json:"-"`
+	AVdbComm.RawDBCoder		`json:"-"`
 	AVdbComm.AMessageEncode `json:"-"`
 
 	/// block index
-	Index uint64 `json:"Index"`
+	Index uint64 			`json:"Index"`
 
 	/// chain id
-	ChainID string `json:"ChainID"`
+	ChainID string 			`json:"ChainID"`
 
 	/// prev block hash is a ipfs block CID
-	Parent  string `json:"Parent"`
+	Parent  string 			`json:"Parent"`
 
 	/// full block data CID, is cvfs root CID
-	ExtraData string `json:"ExtraData"`
+	ExtraData string 		`json:"ExtraData"`
 
 	/// broadcasting time super master node package this block times.
-	Timestamp uint64 `json:"Timestamp"`
+	Timestamp uint64 		`json:"Timestamp"`
 
 	/// append data
-	AppendData []byte `json:"Append"`
+	AppendData []byte 		`json:"Append"`
 
 	/// block sub transactions, is a ipfs block cid
-	Txc uint16	`json:"Txc"`
-	Txs string	`json:"Txs"`
-
-	/// Because in the development of AAPP, it is necessary to use random number,
-	/// so if each node decides random number by itself, it can not reach consensus
-	/// eventually, so we provide a random seed. The first is to prevent Hash conflict,
-	/// and the second can be used to support the generation of random number. It has
-	/// been guaranteed that random number algorithms run on different nodes will get
-	/// the same results. However, the random number is determined by the broadcast of
-	/// super nodes, and other nodes can not cheat.
-	RandSeed int32 `json:"Seed"`
+	Txc uint16				`json:"Txc"`
+	Txs string				`json:"Txs"`
 }
 
 /// only in create a new chain then use

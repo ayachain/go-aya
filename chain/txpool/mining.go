@@ -3,22 +3,21 @@ package txpool
 import (
 	"context"
 	"fmt"
-	AKeyStore "github.com/ayachain/go-aya/keystore"
+	"github.com/ayachain/go-aya/consensus/core"
 	AMsgMBlock "github.com/ayachain/go-aya/vdb/mblock"
 	AMsgMined "github.com/ayachain/go-aya/vdb/minined"
 	IBlocks "github.com/ipfs/go-block-format"
-	"time"
 )
 
-func miningThread(ctx context.Context) {
+func miningThread(ctx context.Context ) {
 
-	fmt.Println("ATxPool Thread On: " + AtxThreadMining)
+	fmt.Println("ATxPool Thread On: " + ATxPoolThreadMining)
 
 	pool := ctx.Value("Pool").(*ATxPool)
 
 	pool.workingThreadWG.Add(1)
 
-	pool.threadChans[AtxThreadMining] = make(chan *AKeyStore.ASignedRawMsg)
+	pool.threadChans[ATxPoolThreadMining] = make(chan []byte, ATxPoolThreadMiningBuff)
 
 	subCtx, subCancel := context.WithCancel(ctx)
 
@@ -28,24 +27,24 @@ func miningThread(ctx context.Context) {
 
 		<- subCtx.Done()
 
-		cc, exist := pool.threadChans[AtxThreadMining]
+		cc, exist := pool.threadChans[ATxPoolThreadMining]
 		if exist {
 
 			close( cc )
-			delete(pool.threadChans, AtxThreadMining)
+			delete(pool.threadChans, ATxPoolThreadMining)
 
 		}
 
 		pool.workingThreadWG.Done()
 
-		fmt.Println("ATxPool Thread Off: " + AtxThreadMining)
+		fmt.Println("ATxPool Thread Off: " + ATxPoolThreadMining)
 
 	}()
 
 
 	go func() {
 
-		sub, err := pool.ind.PubSub.Subscribe( pool.channelTopics[AtxThreadMining] )
+		sub, err := pool.ind.PubSub.Subscribe( pool.channelTopics[ATxPoolThreadMining] )
 		if err != nil {
 			return
 		}
@@ -58,13 +57,10 @@ func miningThread(ctx context.Context) {
 				return
 			}
 
-			rawmsg, err := AKeyStore.BytesToRawMsg(msg.Data)
-			if err != nil {
-				log.Error(err)
-				continue
+			if <- pool.notary.TrustOrNot(msg, core.NotaryMessageMiningBlock, pool.cvfs) {
+				pool.threadChans[ATxPoolThreadMining] <- msg.Data
 			}
 
-			pool.threadChans[AtxThreadMining] <- rawmsg
 		}
 
 	}()
@@ -77,20 +73,14 @@ func miningThread(ctx context.Context) {
 		case <- ctx.Done():
 			return
 
-		case msg, isOpen := <- pool.threadChans[AtxThreadMining] :
-
-			stime := time.Now()
+		case rawmsg, isOpen := <- pool.threadChans[ATxPoolThreadMining] :
 
 			if !isOpen {
 				continue
 			}
 
-			if !msg.Verify() {
-				continue
-			}
-
 			mblock := &AMsgMBlock.MBlock{}
-			if err := mblock.RawMessageDecode(msg.Content); err != nil {
+			if err := mblock.RawMessageDecode(rawmsg); err != nil {
 				log.Error(err)
 				continue
 			}
@@ -129,13 +119,10 @@ func miningThread(ctx context.Context) {
 				RetCID:gblock.Cid(),
 			}
 
-			if err := pool.doBroadcast(mRet, pool.channelTopics[AtxThreadReceiptListen]); err != nil {
+			if err := pool.doBroadcast(mRet, pool.channelTopics[ATxPoolThreadReceiptListen]); err != nil {
 				log.Error(err)
 				return
 			}
-
-
-			fmt.Println("AtxThreadMining HandleTime:", time.Since(stime))
 		}
 	}
 

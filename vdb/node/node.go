@@ -1,13 +1,9 @@
 package node
 
 import (
-	"bytes"
 	"encoding/json"
-	"errors"
 	AVdbComm "github.com/ayachain/go-aya/vdb/common"
 	EComm "github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ipfs/go-cid"
 )
 
 type NodeType string
@@ -22,6 +18,8 @@ type Node struct {
 	AVdbComm.RawDBCoder     `json:"-"`
 	
 	Type NodeType 			`json:"Type"`
+	
+	Votes uint64			`json:"Votes"`
 
 	PeerID string			`json:"PeerID"`
 
@@ -30,3 +28,20 @@ type Node struct {
 	Sig []byte				`json:"Sig"`
 
 }
+
+func (nd *Node) Encode() []byte {
+
+	bs, err := json.Marshal(nd)
+
+	if err != nil {
+		return nil
+	}
+
+	return bs
+}
+
+
+func (nd *Node) Decode(bs []byte) error {
+	return json.Unmarshal(bs, nd)
+}
+

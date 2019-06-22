@@ -3,19 +3,19 @@ package txpool
 import (
 	"context"
 	"fmt"
-	AKeyStore "github.com/ayachain/go-aya/keystore"
-	"time"
+	"github.com/ayachain/go-aya/consensus/core"
+	ATx "github.com/ayachain/go-aya/vdb/transaction"
 )
 
-func txListenThread(ctx context.Context) {
+func txListenThread(ctx context.Context ) {
 
-	fmt.Println("ATxPool Thread On: " + AtxThreadTxListen)
+	fmt.Println("ATxPool Thread On: " + ATxPoolThreadTxListen)
 
 	pool := ctx.Value("Pool").(*ATxPool)
 
 	pool.workingThreadWG.Add(1)
 
-	pool.threadChans[AtxThreadTxListen] = make(chan *AKeyStore.ASignedRawMsg)
+	pool.threadChans[ATxPoolThreadTxListen] = make(chan []byte, AtxPoolThreadTxListenBuff)
 
 	subCtx, subCancel := context.WithCancel(ctx)
 
@@ -25,24 +25,24 @@ func txListenThread(ctx context.Context) {
 
 		<- subCtx.Done()
 
-		cc, exist := pool.threadChans[AtxThreadTxListen]
+		cc, exist := pool.threadChans[ATxPoolThreadTxListen]
 		if exist {
 
 			close( cc )
-			delete(pool.threadChans, AtxThreadTxListen)
+			delete(pool.threadChans, ATxPoolThreadTxListen)
 
 		}
 
 		pool.workingThreadWG.Done()
 
-		fmt.Println("ATxPool Thread Off: " + AtxThreadTxListen)
+		fmt.Println("ATxPool Thread Off: " + ATxPoolThreadTxListen)
 
 	}()
 
 
 	go func() {
 
-		sub, err := pool.ind.PubSub.Subscribe( pool.channelTopics[AtxThreadTxListen] )
+		sub, err := pool.ind.PubSub.Subscribe( pool.channelTopics[ATxPoolThreadTxListen] )
 
 		if err != nil {
 			return
@@ -56,13 +56,12 @@ func txListenThread(ctx context.Context) {
 				return
 			}
 
-			rawmsg, err := AKeyStore.BytesToRawMsg(msg.Data)
-			if err != nil {
-				log.Error(err)
-				continue
+			if <- pool.notary.TrustOrNot(msg, core.NotaryMessageTransaction, pool.cvfs) {
+
+				pool.threadChans[ATxPoolThreadTxListen] <- msg.Data
+
 			}
 
-			pool.threadChans[AtxThreadTxListen] <- rawmsg
 		}
 
 	}()
@@ -76,21 +75,24 @@ func txListenThread(ctx context.Context) {
 
 			return
 
-		case msg, isOpen := <- pool.threadChans[AtxThreadTxListen]:
-
-			stime := time.Now()
+		case rawmsg, isOpen := <- pool.threadChans[ATxPoolThreadTxListen]:
 
 			if !isOpen {
 				continue
 			}
 
-			if err := pool.addRawTransaction(msg); err != nil {
+			tx := &ATx.Transaction{}
+			if err := tx.RawMessageDecode(rawmsg); err != nil {
+				log.Error(err)
+				continue
+			}
+
+			if err := pool.addRawTransaction(tx); err != nil {
 
 				log.Error(err)
 				continue
 			}
 
-			fmt.Println("AtxThreadTxListen HandleTime:", time.Since(stime))
 		}
 
 	}
