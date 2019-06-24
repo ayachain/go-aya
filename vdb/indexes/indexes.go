@@ -2,6 +2,7 @@ package indexes
 
 import (
 	"context"
+	ADB "github.com/ayachain/go-aya-alvm-adb"
 	"github.com/ayachain/go-aya/vdb/common"
 	AVdbComm "github.com/ayachain/go-aya/vdb/common"
 	EComm "github.com/ethereum/go-ethereum/common"
@@ -13,7 +14,7 @@ import (
 	"github.com/ipfs/go-mfs"
 	"github.com/ipfs/go-unixfs"
 	"github.com/syndtr/goleveldb/leveldb"
-	"github.com/syndtr/goleveldb/leveldb/storage"
+	"github.com/syndtr/goleveldb/leveldb/util"
 	"github.com/whyrusleeping/go-logging"
 	"sync"
 )
@@ -29,14 +30,14 @@ type aIndexes struct {
 
 	mfsroot *mfs.Root
 
-	mfsstorage storage.Storage
+	mfsstorage *ADB.MFSStorage
 	ldb *leveldb.DB
 	snLock sync.RWMutex
 }
 
 func CreateServices( ind *core.IpfsNode, chainId string ) IndexesServices {
 
-	adbpath := "/aya/chain/indexes/" + chainId + "b12"
+	adbpath := "/aya/chain/indexes/" + chainId + "f1"
 
 	var nd *merkledag.ProtoNode
 	dsk := datastore.NewKey(adbpath)
@@ -246,13 +247,17 @@ func ( i *aIndexes ) PutIndexBy( num uint64, bhash EComm.Hash, ci cid.Cid ) erro
 		return err
 	}
 
+	log.Info("IndexesLatest:", ci.String())
+
 	return nil
 }
+
 
 func (api *aIndexes) UpdateSnapshot() error {
 
 	return nil
 }
+
 
 func (api *aIndexes) Flush() cid.Cid {
 
@@ -263,4 +268,14 @@ func (api *aIndexes) Flush() cid.Cid {
 	}
 
 	return nd.Cid()
+}
+
+
+func (api *aIndexes) SyncCache() error {
+
+	if err := api.ldb.CompactRange(util.Range{nil,nil}); err != nil {
+		log.Error(err)
+	}
+
+	return api.mfsstorage.Flush()
 }

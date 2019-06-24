@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	ACore "github.com/ayachain/go-aya/consensus/core"
+	"github.com/ayachain/go-aya/logs"
 	"github.com/ayachain/go-aya/vdb"
 	AAssets "github.com/ayachain/go-aya/vdb/assets"
 	ABlock "github.com/ayachain/go-aya/vdb/block"
@@ -40,7 +41,7 @@ var(
 	//TxCount					= TxHashIteratorLimit
 )
 
-var log = logging.MustGetLogger("ATxPool")
+var log = logging.MustGetLogger(logs.AModules_TxPool)
 
 /// Because nodes play different roles in the network, we divide the nodes into three categories:
 /// super nodes, master nodes and ordinary nodes, and describe the operation of the transaction

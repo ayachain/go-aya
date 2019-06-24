@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	AWrok "github.com/ayachain/go-aya/consensus/core/worker"
+	"github.com/ayachain/go-aya/logs"
 	AAssetses "github.com/ayachain/go-aya/vdb/assets"
 	ABlock "github.com/ayachain/go-aya/vdb/block"
 	AVdbComm "github.com/ayachain/go-aya/vdb/common"
@@ -18,15 +19,17 @@ import (
 	"github.com/ipfs/go-merkledag"
 	"github.com/ipfs/go-mfs"
 	"github.com/ipfs/go-unixfs"
-	"github.com/prometheus/common/log"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/opt"
+	"github.com/whyrusleeping/go-logging"
 	"sync"
 )
 
 var (
 	ErrVDBServicesNotExist = errors.New("vdb services not exist in cvfs")
 )
+
+var log = logging.MustGetLogger(logs.AModules_CVFS)
 
 type CVFS interface {
 
@@ -65,6 +68,7 @@ func CreateVFS( block *ABlock.GenBlock, ind *core.IpfsNode ) (cid.Cid, error) {
 	cvfs, err := LinkVFS(block.ChainID, cid.Undef, ind)
 
 	if err != nil {
+		log.Error(err)
 		return cid.Undef, err
 	}
 	defer cvfs.Close()
@@ -232,12 +236,24 @@ func ( vfs *aCVFS ) WriteTaskGroup( group *AWrok.TaskBatchGroup) (cid.Cid, error
 		return cid.Undef, err
 	}
 
+	// Flush VDB
+	vfs.servies.Range(func(key, value interface{}) bool {
+
+		if err := value.(AVdbComm.VDBSerices).SyncCache(); err != nil {
+			log.Error(err)
+			return false
+		}
+
+		return true
+
+	})
+
 	nd, err := mfs.FlushPath(context.TODO(), vfs.Root, "/")
 	if err != nil {
 		return cid.Undef, err
 	}
 
-	//Update
+	//Update Snapshot
 	for dbkey, _ := range bmap {
 
 		vdbser, _ := vfs.servies.Load(dbkey)
@@ -249,16 +265,6 @@ func ( vfs *aCVFS ) WriteTaskGroup( group *AWrok.TaskBatchGroup) (cid.Cid, error
 
 	return nd.Cid(), nil
 }
-
-//func ( vfs *aCVFS ) Flush() cid.Cid {
-//
-//	nd, err := mfs.FlushPath(context.TODO(), vfs.Root, "/")
-//	if err != nil {
-//		return cid.Undef
-//	}
-//
-//	return nd.Cid()
-//}
 
 func ( vfs *aCVFS ) Close() error {
 
@@ -309,9 +315,6 @@ func newMFSRoot( ctx context.Context, c cid.Cid, ind *core.IpfsNode ) ( *mfs.Roo
 	}
 
 	mroot, err := mfs.NewRoot(ctx, ind.DAG, pbnd, func(i context.Context, i2 cid.Cid) error {
-
-		fmt.Println(i2.String())
-
 		return nil
 	})
 

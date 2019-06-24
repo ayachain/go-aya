@@ -19,7 +19,6 @@ import (
 
 var(
 	ErrAlreadyExistConnected				= errors.New("chan already exist connected")
-	ErrUnSupportRawMessage			= errors.New("unsupport raw message")
 	ErrCantLinkToChainExpected		= errors.New("not found chain in Aya")
 )
 
@@ -30,6 +29,7 @@ type AyaChain interface {
 	CVFServices() vdb.CVFS
 	PublishTx(tx *ATx.Transaction) error
 }
+
 
 type aChain struct {
 

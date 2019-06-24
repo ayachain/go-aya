@@ -2,13 +2,14 @@ package block
 
 import (
 	"errors"
+	ADB "github.com/ayachain/go-aya-alvm-adb"
 	AVdbComm "github.com/ayachain/go-aya/vdb/common"
 	AIndexes "github.com/ayachain/go-aya/vdb/indexes"
 	EComm "github.com/ethereum/go-ethereum/common"
 	"github.com/ipfs/go-mfs"
 	"github.com/prometheus/common/log"
 	"github.com/syndtr/goleveldb/leveldb"
-	"github.com/syndtr/goleveldb/leveldb/storage"
+	"github.com/syndtr/goleveldb/leveldb/util"
 	"sync"
 )
 
@@ -20,7 +21,7 @@ type aBlocks struct {
 	headAPI AIndexes.IndexesServices
 
 	ldb *leveldb.DB
-	mfsstorage storage.Storage
+	mfsstorage *ADB.MFSStorage
 	dbSnapshot *leveldb.Snapshot
 	snLock sync.RWMutex
 
@@ -115,9 +116,9 @@ func (blks *aBlocks) Shutdown() error {
 		blks.dbSnapshot.Release()
 	}
 
-	if err := blks.mfsstorage.Close(); err != nil {
-		return err
-	}
+	//if err := blks.mfsstorage.Close(); err != nil {
+	//	return err
+	//}
 
 	if err := blks.ldb.Close(); err != nil {
 		return err
@@ -147,4 +148,13 @@ func (api *aBlocks) UpdateSnapshot() error {
 	}
 
 	return nil
+}
+
+func (api *aBlocks) SyncCache() error {
+
+	if err := api.ldb.CompactRange(util.Range{nil,nil}); err != nil {
+		log.Error(err)
+	}
+
+	return api.mfsstorage.Flush()
 }

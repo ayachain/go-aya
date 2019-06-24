@@ -19,5 +19,7 @@ type VDBSerices interface {
 
 	OpenTransaction() (*leveldb.Transaction, error)
 
+	SyncCache() error
+
 	UpdateSnapshot() error
 }

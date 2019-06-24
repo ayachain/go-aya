@@ -22,7 +22,7 @@ func (t *Transaction) Commit() error {
 
 	var waiterLock sync.WaitGroup
 
-	errs := make(map[string]error)
+	errs := &sync.Map{}
 
 	for k, vtx := range t.transactions {
 
@@ -30,7 +30,7 @@ func (t *Transaction) Commit() error {
 
 		go func( commitTx *leveldb.Transaction ) {
 
-			errs[k] = commitTx.Commit()
+			errs.Store(k, commitTx.Commit())
 
 			waiterLock.Done()
 
@@ -40,36 +40,42 @@ func (t *Transaction) Commit() error {
 
 	waiterLock.Wait()
 
+	needRollBack := false
+	errs.Range(func(key, value interface{}) bool {
 
-	for _, err := range errs {
-
-		if err != nil {
-			goto rollback
+		if value != nil {
+			needRollBack = true
+			return false
 		}
 
+		return true
+	})
+
+	if needRollBack {
+
+		var rollbackgroup sync.WaitGroup
+
+		for _, vtx := range t.transactions {
+
+			rollbackgroup.Add(1)
+
+			go func(commitTx *leveldb.Transaction) {
+
+				commitTx.Discard()
+
+				rollbackgroup.Done()
+
+			}(vtx)
+
+		}
+
+		log.Error( ErrCommitRolledBack )
+
+		return ErrCommitRolledBack
 	}
+
 
 	return nil
-
-rollback :
-
-	var rollbackgroup sync.WaitGroup
-
-	for _, vtx := range t.transactions {
-
-		rollbackgroup.Add(1)
-
-		go func( commitTx *leveldb.Transaction ) {
-
-			commitTx.Discard()
-
-			rollbackgroup.Done()
-
-		}( vtx )
-
-	}
-
-	return ErrCommitRolledBack
 }
 
 func (t *Transaction) Discard() {

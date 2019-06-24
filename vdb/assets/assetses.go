@@ -1,12 +1,13 @@
 package assets
 
 import (
+	ADB "github.com/ayachain/go-aya-alvm-adb"
 	AVdbComm "github.com/ayachain/go-aya/vdb/common"
 	EComm "github.com/ethereum/go-ethereum/common"
 	"github.com/ipfs/go-mfs"
 	"github.com/prometheus/common/log"
 	"github.com/syndtr/goleveldb/leveldb"
-	"github.com/syndtr/goleveldb/leveldb/storage"
+	"github.com/syndtr/goleveldb/leveldb/util"
 	"sync"
 )
 
@@ -20,7 +21,7 @@ type aAssetes struct {
 	dbSnapshot *leveldb.Snapshot
 	snLock sync.RWMutex
 
-	mfsstorage storage.Storage
+	mfsstorage *ADB.MFSStorage
 }
 
 func CreateServices( mdir *mfs.Directory ) Services {
@@ -51,9 +52,9 @@ func (api *aAssetes) Shutdown() error {
 		api.dbSnapshot.Release()
 	}
 
-	if err := api.mfsstorage.Close(); err != nil {
-		return err
-	}
+	//if err := api.mfsstorage.Close(); err != nil {
+	//	return err
+	//}
 
 	if err := api.ldb.Close(); err != nil {
 		return err
@@ -122,4 +123,13 @@ func (api *aAssetes) UpdateSnapshot() error {
 	}
 
 	return nil
+}
+
+func (api *aAssetes) SyncCache() error {
+
+	if err := api.ldb.CompactRange(util.Range{nil,nil}); err != nil {
+		log.Error(err)
+	}
+
+	return api.mfsstorage.Flush()
 }

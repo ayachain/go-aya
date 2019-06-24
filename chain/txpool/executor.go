@@ -152,7 +152,7 @@ func blockExecutorThread(ctx context.Context) {
 			
 			pool.DoPackMBlock()
 
-			fmt.Printf("Confrim Block %08d:%v\n", cblock.Index, latestCid.String())
+			log.Infof("Confrim Block %08d:%v", cblock.Index, latestCid.String())
 		}
 	}
 }

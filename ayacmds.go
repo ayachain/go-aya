@@ -1,13 +1,14 @@
 package main
 
 import (
-	aappcmd "github.com/ayachain/go-aya/aapp/cmd"
+	AappCMD "github.com/ayachain/go-aya/aapp/cmd"
 	"github.com/ayachain/go-aya/chain"
-	chancmd "github.com/ayachain/go-aya/chain/cmd"
+	ChainCMD "github.com/ayachain/go-aya/chain/cmd"
 	"github.com/ayachain/go-aya/keystore"
-	keystorecmd "github.com/ayachain/go-aya/keystore/cmd"
-	txcmd "github.com/ayachain/go-aya/tx/cmd"
-	walletcmd "github.com/ayachain/go-aya/wallet/cmd"
+	KSCmd "github.com/ayachain/go-aya/keystore/cmd"
+	ALogs "github.com/ayachain/go-aya/logs"
+	TxCmd "github.com/ayachain/go-aya/tx/cmd"
+	WalletCMD "github.com/ayachain/go-aya/wallet/cmd"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 	"github.com/ipfs/go-ipfs/core"
 	"sync"
@@ -19,16 +20,20 @@ var ayacmd = &cmds.Command {
 		Tagline: "Display file status.",
 	},
 	Subcommands: map[string]*cmds.Command{
-		"aapp" 		: 	aappcmd.AAppCMDS,
-		"keystore" 	: 	keystorecmd.KeystoreCMDS,
-		"chain"		: 	chancmd.ChainCMDS,
-		"wallet"	:	walletcmd.WalletCMDS,
-		"tx"		:	txcmd.TxCMDS,
+		"aapp" 		: 	AappCMD.AAppCMDS,
+		"keystore" 	: 	KSCmd.KeystoreCMDS,
+		"chain"		: 	ChainCMD.ChainCMDS,
+		"wallet"	:	WalletCMD.WalletCMDS,
+		"tx"		:	TxCmd.TxCMDS,
 	},
 }
 
 func DaemonAyaChain( ind *core.IpfsNode ) {
+
+	ALogs.ConfigLogs()
+
 	keystore.Init("/Users/apple/.aya/keystore", ind)
+
 }
 
 func ShutdownAyaChain() {

@@ -7,7 +7,6 @@ import (
 	"github.com/ipfs/go-mfs"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/opt"
-	"github.com/syndtr/goleveldb/leveldb/storage"
 	"github.com/whyrusleeping/go-logging"
 )
 
@@ -65,7 +64,7 @@ func BigEndianBytesUint16 ( n uint16 ) []byte {
 	return enc
 }
 
-func OpenDB( dir *mfs.Directory, dbKey string ) (*leveldb.DB, storage.Storage, error) {
+func OpenDB( dir *mfs.Directory, dbKey string ) (*leveldb.DB, *ADB.MFSStorage, error) {
 
 	dbstroage := ADB.NewMFSStorage(dir, dbKey)
 	if dbstroage == nil {
@@ -81,7 +80,7 @@ func OpenDB( dir *mfs.Directory, dbKey string ) (*leveldb.DB, storage.Storage, e
 	return db, dbstroage, nil
 }
 
-func OpenExistedDB( dir *mfs.Directory, dbkey string ) (*leveldb.DB, storage.Storage) {
+func OpenExistedDB( dir *mfs.Directory, dbkey string ) ( *leveldb.DB, *ADB.MFSStorage ) {
 
 	dbstroage := ADB.NewMFSStorage(dir, dbkey)
 	if dbstroage == nil {

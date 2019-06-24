@@ -1,12 +1,12 @@
 package receipt
 
 import (
+	ADB "github.com/ayachain/go-aya-alvm-adb"
 	AVdbComm "github.com/ayachain/go-aya/vdb/common"
 	EComm "github.com/ethereum/go-ethereum/common"
 	"github.com/ipfs/go-mfs"
 	"github.com/prometheus/common/log"
 	"github.com/syndtr/goleveldb/leveldb"
-	"github.com/syndtr/goleveldb/leveldb/storage"
 	"github.com/syndtr/goleveldb/leveldb/util"
 	"sync"
 )
@@ -16,7 +16,7 @@ type aReceipt struct {
 	Services
 	*mfs.Directory
 
-	mfsstorage storage.Storage
+	mfsstorage *ADB.MFSStorage
 	ldb *leveldb.DB
 	dbSnapshot *leveldb.Snapshot
 	snLock sync.RWMutex
@@ -107,9 +107,9 @@ func (r *aReceipt) Shutdown() error {
 		r.dbSnapshot.Release()
 	}
 
-	if err := r.mfsstorage.Close(); err != nil {
-		return err
-	}
+	//if err := r.mfsstorage.Close(); err != nil {
+	//	return err
+	//}
 
 	if err := r.ldb.Close(); err != nil {
 		log.Error(err)
@@ -137,4 +137,13 @@ func (api *aReceipt) UpdateSnapshot() error {
 	}
 
 	return nil
+}
+
+func (api *aReceipt) SyncCache() error {
+
+	if err := api.ldb.CompactRange(util.Range{nil,nil}); err != nil {
+		log.Error(err)
+	}
+
+	return api.mfsstorage.Flush()
 }
