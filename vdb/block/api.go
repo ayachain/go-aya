@@ -2,12 +2,11 @@ package block
 
 import AVdbComm "github.com/ayachain/go-aya/vdb/common"
 
-const DBPath = "/db/blocks"
+const DBPath = "/blocks"
 
 type reader interface {
 
 	GetBlocks( hashOrIndex...interface{} ) ([]*Block, error)
-
 }
 
 type writer interface {
@@ -19,16 +18,13 @@ type writer interface {
 
 
 type Services interface {
-
 	AVdbComm.VDBSerices
 	reader
 }
 
 
 type Caches interface {
-
 	AVdbComm.VDBCacheServices
-
 	reader
 	writer
 }

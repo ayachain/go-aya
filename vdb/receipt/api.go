@@ -5,18 +5,21 @@ import (
 	EComm "github.com/ethereum/go-ethereum/common"
 )
 
-const DBPath = "/db/receipts"
-
+const DBPath = "/receipts"
 
 type reader interface {
+
 	GetTransactionReceipt( txhs EComm.Hash ) (*Receipt, error)
+
 	HasTransactionReceipt( txhs EComm.Hash ) bool
+
 }
 
 
 type writer interface {
 
 	Put( txhs EComm.Hash, bindex uint64, receipt []byte )
+
 }
 
 

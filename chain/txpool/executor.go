@@ -146,14 +146,13 @@ func blockExecutorThread(ctx context.Context) {
 				return
 			}
 
-
 			_ = pool.UpdateBestBlock(cblock)
 
 			pool.miningBlock = nil
 			
 			pool.DoPackMBlock()
 
-			fmt.Printf("Confrim Block %06d:\tCID:%v\n", cblock.Index, latestCid.String())
+			fmt.Printf("Confrim Block %08d:%v\n", cblock.Index, latestCid.String())
 		}
 	}
 }

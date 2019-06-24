@@ -11,16 +11,16 @@ type aCache struct {
 
 	Caches
 
-	source *leveldb.DB
+	source *leveldb.Snapshot
 	cdb *leveldb.DB
 }
 
 
-func newCache( sourceDB *leveldb.DB ) (Caches, error) {
+func newCache( sourceDB *leveldb.Snapshot ) (Caches, error) {
 
 	memsto := storage.NewMemStorage()
 
-	mdb, err := leveldb.Open(memsto, nil)
+	mdb, err := leveldb.Open(memsto, AvdbComm.OpenDBOpt)
 	if err != nil {
 		return nil, err
 	}
@@ -32,6 +32,7 @@ func newCache( sourceDB *leveldb.DB ) (Caches, error) {
 
 	return c, nil
 }
+
 
 func (cache *aCache) AssetsOf( addr EComm.Address ) ( *Assets, error ) {
 
@@ -48,9 +49,11 @@ func (cache *aCache) AssetsOf( addr EComm.Address ) ( *Assets, error ) {
 	return rcd, nil
 }
 
+
 func (cache *aCache) Close() {
 	_ = cache.cdb.Close()
 }
+
 
 func (cache *aCache) MergerBatch() *leveldb.Batch {
 
@@ -67,16 +70,18 @@ func (cache *aCache) MergerBatch() *leveldb.Batch {
 	return batch
 }
 
+
 func (cache *aCache) PutNewAssets( addr EComm.Address, ast *Assets ) {
 
-	if err := cache.cdb.Put( addr.Bytes(), ast.Encode(), nil ); err != nil {
+	if err := cache.cdb.Put( addr.Bytes(), ast.Encode(), AvdbComm.WriteOpt ); err != nil {
 		panic(err)
 	}
+
 }
 
 func (cache *aCache) Put( addr EComm.Address, ast *Assets ) {
 
-	if err := cache.cdb.Put( addr.Bytes(), ast.Encode(), nil ); err != nil {
+	if err := cache.cdb.Put( addr.Bytes(), ast.Encode(), AvdbComm.WriteOpt ); err != nil {
 		panic(err)
 	}
 }

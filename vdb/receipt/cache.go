@@ -12,17 +12,18 @@ type aCache struct {
 
 	Caches
 
-	source *leveldb.DB
+	source *leveldb.Snapshot
+
 	cdb *leveldb.DB
 }
 
 
 
-func newCache( sourceDB *leveldb.DB ) (Caches, error) {
+func newCache( sourceDB *leveldb.Snapshot ) (Caches, error) {
 
 	memsto := storage.NewMemStorage()
 
-	mdb, err := leveldb.Open(memsto, nil)
+	mdb, err := leveldb.Open(memsto, AvdbComm.OpenDBOpt)
 	if err != nil {
 		return nil, err
 	}
@@ -38,16 +39,17 @@ func newCache( sourceDB *leveldb.DB ) (Caches, error) {
 
 func (cache *aCache) HasTransactionReceipt( txhs EComm.Hash ) bool {
 
-	st := append(txhs.Bytes(), AvdbComm.BigEndianBytes(0)... )
-	ed := append(txhs.Bytes(), AvdbComm.BigEndianBytes((uint64(1) << 63) -1)... )
+	it := cache.source.NewIterator( util.BytesPrefix(txhs.Bytes()), nil )
 
-	s, err := cache.source.SizeOf([]util.Range{{Start:st,Limit:ed}})
-	if err != nil {
-		return false
+	defer it.Release()
+
+	if it.Next() {
+		return true
 	}
 
-	return s.Sum() > 0
+	return false
 }
+
 
 func (cache *aCache) GetTransactionReceipt( txhs EComm.Hash ) (*Receipt, error) {
 
@@ -55,10 +57,7 @@ func (cache *aCache) GetTransactionReceipt( txhs EComm.Hash ) (*Receipt, error) 
 		return nil, leveldb.ErrNotFound
 	}
 
-	st := append(txhs.Bytes(), AvdbComm.BigEndianBytes(0)... )
-	ed := append(txhs.Bytes(), AvdbComm.BigEndianBytes((uint64(1) << 63) -1)... )
-
-	it := cache.source.NewIterator(&util.Range{Start:st,Limit:ed}, nil)
+	it := cache.source.NewIterator( util.BytesPrefix(txhs.Bytes()), nil )
 
 	if !it.Next() {
 		return nil, leveldb.ErrNotFound
@@ -73,6 +72,7 @@ func (cache *aCache) GetTransactionReceipt( txhs EComm.Hash ) (*Receipt, error) 
 
 	return rp, nil
 }
+
 
 func (cache *aCache) MergerBatch() *leveldb.Batch {
 
@@ -89,15 +89,17 @@ func (cache *aCache) MergerBatch() *leveldb.Batch {
 	return batch
 }
 
+
 func (cache *aCache) Put( txhs EComm.Hash, bindex uint64, receipt []byte ) {
 
 	key := append(txhs.Bytes(), AvdbComm.BigEndianBytes(bindex)... )
 
-	if err := cache.cdb.Put( key, receipt, nil ); err != nil {
+	if err := cache.cdb.Put( key, receipt, AvdbComm.WriteOpt ); err != nil {
 		panic(err)
 	}
 
 }
+
 
 func (cache *aCache) Close() {
 	_ = cache.cdb.Close()

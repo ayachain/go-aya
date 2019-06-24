@@ -8,8 +8,7 @@ import (
 const (
 	//Default assets record version code
 	DRVer 				= byte(1)
-	DBPATH 				= "/db/assets"
-	DBTopIndexPrefix 	= "Top_"
+	DBPATH 				= "/assets"
 )
 
 type reader interface {
@@ -25,16 +24,13 @@ type writer interface {
 
 
 type Services interface {
-
 	AVdbComm.VDBSerices
 	reader
 }
 
 
 type Caches interface {
-
 	AVdbComm.VDBCacheServices
-
 	reader
 	writer
 }

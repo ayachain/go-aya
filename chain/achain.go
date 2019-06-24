@@ -14,6 +14,7 @@ import (
 	EAccount "github.com/ethereum/go-ethereum/accounts"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-ipfs/core"
+	"github.com/prometheus/common/log"
 )
 
 var(
@@ -89,6 +90,11 @@ func AddChainLink( ctx context.Context, genBlock *ABlock.GenBlock, ind *core.Ipf
 	if err != nil {
 		return ErrCantLinkToChainExpected
 	}
+	defer func() {
+		if err := vdbfs.Close(); err != nil {
+			log.Error(err)
+		}
+	}()
 
 	notary, err := ACIMPL.CreateNotary( genBlock.Consensus, ind )
 	if err != nil {
@@ -123,8 +129,11 @@ func AddChainLink( ctx context.Context, genBlock *ABlock.GenBlock, ind *core.Ipf
 
 	}()
 
-	return ac.TxPool.PowerOn(poolCtx)
+	if err := ac.TxPool.PowerOn(poolCtx); err != nil {
+		return err
+	}
 
+	return nil
 }
 
 func GetChainByIdentifier(chainId string) AyaChain{

@@ -5,7 +5,7 @@ import (
 	EComm "github.com/ethereum/go-ethereum/common"
 )
 
-const DBPath = "/db/transactions"
+const DBPath = "/transactions"
 
 type reader interface {
 

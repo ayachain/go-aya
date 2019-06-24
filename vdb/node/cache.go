@@ -13,17 +13,18 @@ type aCache struct {
 	writer
 
 	headAPI AIndexes.IndexesServices
-	source *leveldb.DB
+	source *leveldb.Snapshot
 	cdb *leveldb.DB
 
 	delKeys [][]byte
 }
 
-func newCache( sourceDB *leveldb.DB ) (Caches, error) {
+func newCache( sourceDB *leveldb.Snapshot ) (Caches, error) {
 
 	memsto := storage.NewMemStorage()
 
-	mdb, err := leveldb.Open(memsto, nil)
+	mdb, err := leveldb.Open(memsto, AvdbComm.OpenDBOpt)
+
 	if err != nil {
 		return nil, err
 	}
@@ -91,14 +92,14 @@ func (cache *aCache) Update( peerId string, node *Node ) error {
 		return leveldb.ErrNotFound
 	}
 
-	return cache.cdb.Put([]byte(peerId), node.Encode(), nil)
+	return cache.cdb.Put([]byte(peerId), node.Encode(), AvdbComm.WriteOpt)
 
 }
 
 
 func (cache *aCache) Insert( peerId string, node *Node ) error {
 
-	return cache.cdb.Put([]byte(peerId), node.Encode(), nil)
+	return cache.cdb.Put([]byte(peerId), node.Encode(), AvdbComm.WriteOpt)
 
 }
 
@@ -178,14 +179,4 @@ func (cache *aCache) GetLatest() *Node {
 
 	return minnd
 
-}
-
-func (cache *aCache) TotalSum() uint64 {
-
-	size, err := cache.source.SizeOf([]util.Range{{nil,nil}})
-	if err != nil {
-		return 0
-	}
-
-	return uint64(size.Sum())
 }

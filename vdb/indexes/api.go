@@ -11,11 +11,11 @@ type IndexesServices interface {
 
 	GetLatest() (*Index, error)
 
-	Flush() cid.Cid
-
 	PutIndex( index *Index ) error
 
 	PutIndexBy( num uint64, bhash EComm.Hash, cid cid.Cid ) error
 
 	Close() error
+
+	Flush() cid.Cid
 }

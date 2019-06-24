@@ -4,7 +4,7 @@ import (
 	AVdbComm "github.com/ayachain/go-aya/vdb/common"
 )
 
-const DBPath = "/db/nodes"
+const DBPath = "/nodes"
 
 type reader interface {
 
@@ -13,9 +13,6 @@ type reader interface {
 	GetFirst() *Node
 
 	GetLatest() *Node
-
-	TotalSum() uint64
-
 }
 
 type writer interface {
@@ -25,7 +22,6 @@ type writer interface {
 	Insert( peerId string, node *Node ) error
 
 	Del( peerId string )
-
 }
 
 

@@ -2,7 +2,6 @@ package indexes
 
 import (
 	"context"
-	"fmt"
 	"github.com/ayachain/go-aya/vdb/common"
 	AVdbComm "github.com/ayachain/go-aya/vdb/common"
 	EComm "github.com/ethereum/go-ethereum/common"
@@ -14,15 +13,12 @@ import (
 	"github.com/ipfs/go-mfs"
 	"github.com/ipfs/go-unixfs"
 	"github.com/syndtr/goleveldb/leveldb"
-	"github.com/syndtr/goleveldb/leveldb/opt"
 	"github.com/syndtr/goleveldb/leveldb/storage"
 	"github.com/whyrusleeping/go-logging"
 	"sync"
 )
 
 var LatestIndexKey = []byte("LATEST")
-
-var SyncWriteOpt = &opt.WriteOptions{Sync:true}
 
 var log = logging.MustGetLogger("IndexesServices")
 
@@ -31,16 +27,16 @@ type aIndexes struct {
 	IndexesServices
 	AVdbComm.VDBSerices
 
-	mfsstorage storage.Storage
-	rawdb *leveldb.DB
 	mfsroot *mfs.Root
 
-	mu *sync.Mutex
+	mfsstorage storage.Storage
+	ldb *leveldb.DB
+	snLock sync.RWMutex
 }
 
 func CreateServices( ind *core.IpfsNode, chainId string ) IndexesServices {
 
-	adbpath := "/aya/chain/indexes/" + chainId + "a4"
+	adbpath := "/aya/chain/indexes/" + chainId + "b12"
 
 	var nd *merkledag.ProtoNode
 	dsk := datastore.NewKey(adbpath)
@@ -90,7 +86,7 @@ func CreateServices( ind *core.IpfsNode, chainId string ) IndexesServices {
 		panic(err)
 	}
 
-	mfsdb, mfsstorage, err := AVdbComm.OpenDB( root.GetDirectory() )
+	mfsdb, mfsstorage, err := AVdbComm.OpenDB( root.GetDirectory(), "Indexes" )
 
 	if err != nil {
 
@@ -118,7 +114,7 @@ func CreateServices( ind *core.IpfsNode, chainId string ) IndexesServices {
 			panic(err)
 		}
 
-		mfsdb, mfsstorage, err = AVdbComm.OpenDB( root.GetDirectory() )
+		mfsdb, mfsstorage, err = AVdbComm.OpenDB( root.GetDirectory(), "Indexes" )
 
 		if err != nil {
 
@@ -129,10 +125,9 @@ func CreateServices( ind *core.IpfsNode, chainId string ) IndexesServices {
 	}
 
 	api := &aIndexes{
-		rawdb:mfsdb,
+		ldb:mfsdb,
 		mfsroot:root,
 		mfsstorage:mfsstorage,
-		mu:&sync.Mutex{},
 	}
 
 	return api
@@ -140,10 +135,10 @@ func CreateServices( ind *core.IpfsNode, chainId string ) IndexesServices {
 
 func ( i *aIndexes ) GetLatest() (*Index, error) {
 
-	i.mu.Lock()
-	defer i.mu.Unlock()
+	i.snLock.RLock()
+	defer i.snLock.RUnlock()
 
-	bs, err := i.rawdb.Get([]byte(LatestIndexKey), nil)
+	bs, err := i.ldb.Get([]byte(LatestIndexKey), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -158,12 +153,12 @@ func ( i *aIndexes ) GetLatest() (*Index, error) {
 
 func ( i *aIndexes ) GetIndex( blockNumber uint64 ) (*Index, error) {
 
-	i.mu.Lock()
-	defer i.mu.Unlock()
+	i.snLock.RLock()
+	defer i.snLock.RUnlock()
 
 	key := common.BigEndianBytes(blockNumber)
 
-	bs, err := i.rawdb.Get(key, nil)
+	bs, err := i.ldb.Get(key, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -179,18 +174,10 @@ func ( i *aIndexes ) GetIndex( blockNumber uint64 ) (*Index, error) {
 
 func ( i *aIndexes ) Close() error {
 
-	i.mu.Lock()
-	defer i.mu.Unlock()
+	i.snLock.Lock()
+	defer i.snLock.Unlock()
 
-	if err := i.rawdb.Close(); err != nil {
-		return err
-	}
-
-	if err := i.mfsstorage.Close(); err != nil {
-		return err
-	}
-
-	if err := i.mfsroot.Flush(); err != nil {
+	if err := i.ldb.Close(); err != nil {
 		return err
 	}
 
@@ -198,44 +185,42 @@ func ( i *aIndexes ) Close() error {
 		return err
 	}
 
-	fmt.Println("Save Block indexes success.")
-
 	return nil
 }
 
 func ( i *aIndexes ) PutIndex( index *Index ) error {
 
-	i.mu.Lock()
-	defer i.mu.Unlock()
+	i.snLock.Lock()
+	defer i.snLock.Unlock()
 
 	key := common.BigEndianBytes(index.BlockIndex)
 
 	value := index.Encode()
 
-	dbtx, err := i.rawdb.OpenTransaction()
+	dbtx, err := i.ldb.OpenTransaction()
 	if err != nil {
 		return err
 	}
 
-	if err := dbtx.Put(key, value, SyncWriteOpt); err != nil {
+	if err := dbtx.Put(key, value, AVdbComm.WriteOpt); err != nil {
 		return err
 	}
 
-	if err := dbtx.Put( []byte(LatestIndexKey), value, SyncWriteOpt ); err != nil {
+	if err := dbtx.Put( []byte(LatestIndexKey), value, AVdbComm.WriteOpt ); err != nil {
 		return err
 	}
 
-	if err := i.mfsroot.Flush(); err != nil {
+	if err := dbtx.Commit(); err !=nil {
 		return err
 	}
 
-	return dbtx.Commit()
+	return nil
 }
 
 func ( i *aIndexes ) PutIndexBy( num uint64, bhash EComm.Hash, ci cid.Cid ) error {
 
-	i.mu.Lock()
-	defer i.mu.Unlock()
+	i.snLock.Lock()
+	defer i.snLock.Unlock()
 
 	key := common.BigEndianBytes(num)
 	value := (&Index{
@@ -244,32 +229,34 @@ func ( i *aIndexes ) PutIndexBy( num uint64, bhash EComm.Hash, ci cid.Cid ) erro
 		FullCID:ci,
 	}).Encode()
 
-	dbtx, err := i.rawdb.OpenTransaction()
+	dbtx, err := i.ldb.OpenTransaction()
 	if err != nil {
 		return err
 	}
 
-	if err := dbtx.Put( key, value, SyncWriteOpt); err != nil {
+	if err := dbtx.Put( key, value, AVdbComm.WriteOpt); err != nil {
 		return err
 	}
 
-	if err := dbtx.Put( []byte(LatestIndexKey), value, SyncWriteOpt ); err != nil {
+	if err := dbtx.Put( []byte(LatestIndexKey), value, AVdbComm.WriteOpt ); err != nil {
 		return err
 	}
 
-	if err := i.mfsroot.Flush(); err != nil {
+	if err := dbtx.Commit(); err !=nil {
 		return err
 	}
 
-	return dbtx.Commit()
+	return nil
 }
 
-func ( i *aIndexes ) Flush() cid.Cid {
+func (api *aIndexes) UpdateSnapshot() error {
 
-	i.mu.Lock()
-	defer i.mu.Unlock()
+	return nil
+}
 
-	nd, err := mfs.FlushPath(context.TODO(), i.mfsroot, "/")
+func (api *aIndexes) Flush() cid.Cid {
+
+	nd, err := mfs.FlushPath( context.TODO(), api.mfsroot, "/")
 
 	if err != nil {
 		return cid.Undef

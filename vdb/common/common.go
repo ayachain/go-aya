@@ -8,13 +8,28 @@ import (
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/opt"
 	"github.com/syndtr/goleveldb/leveldb/storage"
+	"github.com/whyrusleeping/go-logging"
 )
+
+var log = logging.MustGetLogger("AVdb")
+
+var OpenDBOpt = &opt.Options{
+	BlockCacher:opt.NoCacher,
+	BlockCacheCapacity:-1,
+	//BlockCacheEvictRemoved:true,
+	OpenFilesCacher:opt.NoCacher,
+	//OpenFilesCacheCapacity:0,
+}
+
+var WriteOpt = &opt.WriteOptions{
+	NoWriteMerge:false,
+	Sync:true,
+}
 
 type RawDBCoder interface {
 	Encode() []byte
 	Decode([]byte) error
 }
-
 
 type AMessageEncode interface {
 	RawMessageEncode() []byte
@@ -50,14 +65,14 @@ func BigEndianBytesUint16 ( n uint16 ) []byte {
 	return enc
 }
 
-func OpenDB( dir *mfs.Directory ) (*leveldb.DB, storage.Storage, error) {
+func OpenDB( dir *mfs.Directory, dbKey string ) (*leveldb.DB, storage.Storage, error) {
 
-	dbstroage := ADB.NewMFSStorage(dir)
+	dbstroage := ADB.NewMFSStorage(dir, dbKey)
 	if dbstroage == nil {
 		panic("create adb storage expected")
 	}
 
-	db, err := leveldb.Open(dbstroage, &opt.Options{})
+	db, err := leveldb.Open(dbstroage, OpenDBOpt)
 
 	if err != nil {
 		return nil,nil,err
@@ -66,21 +81,17 @@ func OpenDB( dir *mfs.Directory ) (*leveldb.DB, storage.Storage, error) {
 	return db, dbstroage, nil
 }
 
-func OpenExistedDB( dir *mfs.Directory, path string, rdonly bool ) (*leveldb.DB, storage.Storage) {
+func OpenExistedDB( dir *mfs.Directory, dbkey string ) (*leveldb.DB, storage.Storage) {
 
-	dbstroage := ADB.NewMFSStorage(dir)
+	dbstroage := ADB.NewMFSStorage(dir, dbkey)
 	if dbstroage == nil {
 		panic("create adb storage expected")
 	}
 
-	db, err := leveldb.Open(dbstroage, &opt.Options{})
+	db, err := leveldb.Open(dbstroage, OpenDBOpt)
 
 	if err != nil {
 		panic(err)
-	}
-
-	if rdonly {
-		_ = db.SetReadOnly()
 	}
 
 	return db, dbstroage
@@ -114,12 +125,12 @@ func LookupDBPath( root *mfs.Root, path string ) (*mfs.Directory, error) {
 
 func CacheDel( originDB *leveldb.DB, cacheDB *leveldb.DB, key []byte ) {
 
-	_ = originDB.Delete(key, nil)
-	_ = cacheDB.Delete(key, nil)
+	_ = originDB.Delete(key, WriteOpt)
+	_ = cacheDB.Delete(key, WriteOpt)
 
 }
 
-func CacheHas( originDB *leveldb.DB, cacheDB *leveldb.DB, key []byte ) (bool, error) {
+func CacheHas( originDB *leveldb.Snapshot, cacheDB *leveldb.DB, key []byte ) (bool, error) {
 
 	exist, err := cacheDB.Has(key, nil)
 	if err != nil {
@@ -139,7 +150,7 @@ func CacheHas( originDB *leveldb.DB, cacheDB *leveldb.DB, key []byte ) (bool, er
 	return exist, nil
 }
 
-func CacheGet( originDB *leveldb.DB, cacheDB *leveldb.DB, key []byte ) ([]byte, error) {
+func CacheGet( originDB *leveldb.Snapshot, cacheDB *leveldb.DB, key []byte ) ([]byte, error) {
 
 	exist, err := cacheDB.Has(key, nil)
 	if err != nil {
@@ -153,7 +164,7 @@ func CacheGet( originDB *leveldb.DB, cacheDB *leveldb.DB, key []byte ) ([]byte, 
 			return nil, err
 		}
 
-		if err := cacheDB.Put(key, v, nil); err != nil {
+		if err := cacheDB.Put(key, v, WriteOpt); err != nil {
 			return nil, err
 		}
 

@@ -130,7 +130,7 @@ func NewTxPool( ind *core.IpfsNode, gblk *ABlock.GenBlock, cvfs vdb.CVFS, miner 
 	}
 
 	memstore := storage.NewMemStorage()
-	db, err := leveldb.Open(memstore, nil)
+	db, err := leveldb.Open(memstore, AvdbComm.OpenDBOpt)
 
 	return &ATxPool{
 		storage:db,
@@ -217,15 +217,6 @@ func (pool *ATxPool) PowerOn( ctx context.Context ) error {
 }
 
 func (pool *ATxPool) UpdateBestBlock( cblock *ABlock.Block  ) error {
-
-	idx, err := pool.cvfs.Indexes().GetIndex( cblock.Index )
-	if err != nil {
-		return err
-	}
-
-	if err := pool.cvfs.SeekToBlock( idx.FullCID ); err != nil {
-		return err
-	}
 
 	ast, err := pool.cvfs.Assetses().AssetsOf( pool.ownerAccount.Address )
 

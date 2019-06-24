@@ -14,15 +14,15 @@ type aCache struct {
 	writer
 
 	headAPI AIndexes.IndexesServices
-	source *leveldb.DB
+	source *leveldb.Snapshot
 	cdb *leveldb.DB
 }
 
-func newCache( sourceDB *leveldb.DB, idxReader AIndexes.IndexesServices ) (Caches, error) {
+func newCache( sourceDB *leveldb.Snapshot, idxReader AIndexes.IndexesServices ) (Caches, error) {
 
 	memsto := storage.NewMemStorage()
 
-	mdb, err := leveldb.Open(memsto, nil)
+	mdb, err := leveldb.Open(memsto, AvdbComm.OpenDBOpt)
 	if err != nil {
 		return nil, err
 	}
@@ -87,7 +87,7 @@ func (cache *aCache) AppendBlocks( blocks...*Block ) {
 
 	for _, v := range blocks {
 
-		if err := cache.cdb.Put(v.GetHash().Bytes(), v.Encode(), nil); err != nil {
+		if err := cache.cdb.Put(v.GetHash().Bytes(), v.Encode(), AvdbComm.WriteOpt); err != nil {
 			panic(err)
 		}
 	}
@@ -98,7 +98,7 @@ func (cache *aCache) WriteGenBlock( gen *GenBlock ) {
 
 	hash := gen.GetHash().Bytes()
 
-	if err := cache.cdb.Put(hash, gen.Encode(), nil); err != nil {
+	if err := cache.cdb.Put(hash, gen.Encode(), AvdbComm.WriteOpt); err != nil {
 		panic(err)
 	}
 

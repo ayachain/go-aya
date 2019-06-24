@@ -4,48 +4,77 @@ import (
 	AVdbComm "github.com/ayachain/go-aya/vdb/common"
 	EComm "github.com/ethereum/go-ethereum/common"
 	"github.com/ipfs/go-mfs"
+	"github.com/prometheus/common/log"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/storage"
+	"sync"
 )
 
 type aAssetes struct {
 
 	Services
-
 	*mfs.Directory
-	rawdb *leveldb.DB
+
+	ldb *leveldb.DB
+
+	dbSnapshot *leveldb.Snapshot
+	snLock sync.RWMutex
+
 	mfsstorage storage.Storage
 }
 
-func CreateServices( mdir *mfs.Directory, rdOnly bool ) Services {
+func CreateServices( mdir *mfs.Directory ) Services {
 
+	var err error
 	api := &aAssetes{
 		Directory:mdir,
 	}
 
-	api.rawdb, api.mfsstorage = AVdbComm.OpenExistedDB( mdir, DBPATH, rdOnly )
+	api.ldb, api.mfsstorage = AVdbComm.OpenExistedDB( mdir, DBPATH )
+
+	api.dbSnapshot, err = api.ldb.GetSnapshot()
+	if err != nil {
+		_ = api.ldb.Close()
+		log.Error(err)
+		return nil
+	}
 
 	return api
 }
 
 func (api *aAssetes) Shutdown() error {
 
-	_ = api.rawdb.Close()
-	_ = api.mfsstorage.Close()
+	api.snLock.Lock()
+	defer api.snLock.Unlock()
 
-	return api.Flush()
+	if api.dbSnapshot != nil {
+		api.dbSnapshot.Release()
+	}
+
+	if err := api.mfsstorage.Close(); err != nil {
+		return err
+	}
+
+	if err := api.ldb.Close(); err != nil {
+		return err
+	}
+
+	return nil
 }
+
 
 func (api *aAssetes) Close() {
-
-	_ = api.rawdb.Close()
-	_ = api.mfsstorage.Close()
-
+	_ = api.Shutdown()
 }
+
 
 func (api *aAssetes) AssetsOf( addr EComm.Address ) ( *Assets, error ) {
 
-	bnc, err := api.rawdb.Get(addr.Bytes(), nil)
+	api.snLock.RLock()
+	defer api.snLock.RUnlock()
+
+	bnc, err := api.dbSnapshot.Get(addr.Bytes(), nil)
+
 	if err != nil {
 		return nil, err
 	}
@@ -58,17 +87,39 @@ func (api *aAssetes) AssetsOf( addr EComm.Address ) ( *Assets, error ) {
 	return rcd, nil
 }
 
+
 func (api *aAssetes) NewCache() (AVdbComm.VDBCacheServices, error) {
-	return newCache( api.rawdb )
+	return newCache( api.dbSnapshot )
 }
+
 
 func (api *aAssetes) OpenTransaction() (*leveldb.Transaction, error) {
 
-	tx, err := api.rawdb.OpenTransaction()
+	tx, err := api.ldb.OpenTransaction()
 
 	if err != nil {
 		return nil, err
 	}
 
 	return tx, nil
+}
+
+
+func (api *aAssetes) UpdateSnapshot() error {
+
+	api.snLock.Lock()
+	defer api.snLock.Unlock()
+
+	if api.dbSnapshot != nil {
+		api.dbSnapshot.Release()
+	}
+
+	var err error
+	api.dbSnapshot, err = api.ldb.GetSnapshot()
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+
+	return nil
 }

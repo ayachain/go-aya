@@ -3,6 +3,7 @@ package vdb
 import (
 	"context"
 	"errors"
+	"fmt"
 	AWrok "github.com/ayachain/go-aya/consensus/core/worker"
 	AAssetses "github.com/ayachain/go-aya/vdb/assets"
 	ABlock "github.com/ayachain/go-aya/vdb/block"
@@ -24,7 +25,7 @@ import (
 )
 
 var (
-	aVFSDAGNodeConversionError = errors.New("conversion proto node expected")
+	ErrVDBServicesNotExist = errors.New("vdb services not exist in cvfs")
 )
 
 type CVFS interface {
@@ -41,7 +42,6 @@ type CVFS interface {
 	Transactions() ATx.Services
 	Nodes() ANodes.Services
 
-	SeekToBlock( bcid cid.Cid ) error
 	WriteTaskGroup( group *AWrok.TaskBatchGroup ) ( cid.Cid, error )
 
 	NewCVFSCache() (CacheCVFS, error)
@@ -53,13 +53,9 @@ type aCVFS struct {
 	*mfs.Root
 
 	inode *core.IpfsNode
-
 	servies sync.Map
-
 	indexServices AIndexes.IndexesServices
 	chainId string
-
-	writeWaiter *sync.WaitGroup
 }
 
 func CreateVFS( block *ABlock.GenBlock, ind *core.IpfsNode ) (cid.Cid, error) {
@@ -77,6 +73,7 @@ func CreateVFS( block *ABlock.GenBlock, ind *core.IpfsNode ) (cid.Cid, error) {
 	if err != nil {
 		return cid.Undef, err
 	}
+	defer writer.Close()
 
 	// Award
 	for addr, amount := range block.Award {
@@ -102,11 +99,7 @@ func CreateVFS( block *ABlock.GenBlock, ind *core.IpfsNode ) (cid.Cid, error) {
 		return cid.Undef, err
 	}
 
-	_ = writer.Close()
-	_ = cvfs.Close()
-
 	return baseCid, nil
-
 }
 
 func LinkVFS( chainId string, baseCid cid.Cid, ind *core.IpfsNode ) (CVFS, error) {
@@ -121,206 +114,94 @@ func LinkVFS( chainId string, baseCid cid.Cid, ind *core.IpfsNode ) (CVFS, error
 		Root:root,
 		inode:ind,
 		chainId:chainId,
-		writeWaiter: &sync.WaitGroup{},
 	}
 
 	vfs.indexServices = AIndexes.CreateServices(vfs.inode, vfs.chainId)
 
+	/// ANodes VDBServices
+	if dir, err := AVdbComm.LookupDBPath(vfs.Root, ANodes.DBPath); err != nil {
+		goto experctedErr
+	} else {
+		vfs.servies.Store( ANodes.DBPath, ANodes.CreateServices(dir) )
+	}
+
+	/// AAssetses VDBServices
+	if dir, err := AVdbComm.LookupDBPath(vfs.Root, AAssetses.DBPATH); err != nil {
+		goto experctedErr
+	} else {
+		vfs.servies.Store( AAssetses.DBPATH, AAssetses.CreateServices(dir) )
+	}
+
+	/// ABlock VDBServices
+	if dir, err := AVdbComm.LookupDBPath(vfs.Root, ABlock.DBPath); err != nil {
+		goto experctedErr
+	} else {
+		vfs.servies.Store( ABlock.DBPath, ABlock.CreateServices(dir, vfs.indexServices) )
+	}
+
+	/// ATx VDBServices
+	if dir, err := AVdbComm.LookupDBPath(vfs.Root, ATx.DBPath); err != nil {
+		goto experctedErr
+	} else {
+		vfs.servies.Store( ATx.DBPath, ATx.CreateServices(dir) )
+	}
+
+	/// AReceipts VDBServices
+	if dir, err := AVdbComm.LookupDBPath(vfs.Root, AReceipts.DBPath); err != nil {
+		goto experctedErr
+	} else {
+		vfs.servies.Store( AReceipts.DBPath, AReceipts.CreateServices(dir) )
+	}
+
 	return vfs, nil
-}
 
-func ( vfs *aCVFS ) SeekToBlock( bcid cid.Cid ) error {
+experctedErr:
 
-	vfs.writeWaiter.Wait()
-	vfs.writeWaiter.Add(1)
-	defer vfs.writeWaiter.Done()
-
-	lcid, err := mfs.FlushPath(context.TODO(), vfs.Root, "/")
-	if err != nil {
-		return err
-	}
-
-	if lcid.Cid().Equals( bcid ) {
-		return nil
-	}
-
-	vfs.servies.Range(func(k,v interface{})bool{
-
-		ser := v.(AVdbComm.VDBSerices)
-
-		if err := ser.Shutdown(); err != nil {
-			panic(err)
-		}
-
-		vfs.servies.Delete(k)
-
-		return true
-
-	})
-
-	if err := vfs.Root.Close(); err != nil {
-		return err
-	}
-
-	root, err := newMFSRoot(context.TODO(), bcid, vfs.inode)
-
-	if err != nil {
-		return err
-	}
-
-	vfs.Root = root
-
-	return nil
+	return nil, ErrVDBServicesNotExist
 }
 
 func ( vfs *aCVFS ) Nodes() ANodes.Services {
 
-	vfs.writeWaiter.Wait()
-
-	v, exist := vfs.servies.Load(ANodes.DBPath )
-
-	if !exist {
-
-		astDir, err := AVdbComm.LookupDBPath(vfs.Root, ANodes.DBPath)
-
-		if err != nil {
-			return nil
-		}
-
-		v = ANodes.CreateServices(astDir,true)
-
-		vfs.servies.Store( ANodes.DBPath, v )
-	}
+	v, _ := vfs.servies.Load(ANodes.DBPath )
 
 	return v.(ANodes.Services)
-
 }
 
 func ( vfs *aCVFS ) Assetses() AAssetses.Services {
 
-	vfs.writeWaiter.Wait()
-
-	v, exist := vfs.servies.Load(AAssetses.DBPATH)
-
-	if !exist {
-
-		astDir, err := AVdbComm.LookupDBPath(vfs.Root, AAssetses.DBPATH)
-
-		if err != nil {
-			return nil
-		}
-
-		v = AAssetses.CreateServices(astDir,true)
-
-		vfs.servies.Store(AAssetses.DBPATH, v)
-	}
+	v, _ := vfs.servies.Load(AAssetses.DBPATH)
 
 	return v.(AAssetses.Services)
-
 }
 
 func ( vfs *aCVFS ) Blocks() ABlock.Services {
 
-	vfs.writeWaiter.Wait()
-
-	v, exist := vfs.servies.Load(ABlock.DBPath)
-
-	if !exist {
-
-		blockDir, err := AVdbComm.LookupDBPath(vfs.Root, ABlock.DBPath)
-
-		if err != nil {
-			return nil
-		}
-
-		v = ABlock.CreateServices(blockDir, vfs.indexServices, true)
-
-		vfs.servies.Store(ABlock.DBPath, v)
-	}
+	v, _ := vfs.servies.Load(ABlock.DBPath)
 
 	return v.(ABlock.Services)
 }
 
 func ( vfs *aCVFS ) Transactions() ATx.Services {
 
-	vfs.writeWaiter.Wait()
-
-	v, exist := vfs.servies.Load(ATx.DBPath)
-
-	if !exist {
-
-		atxDir, err := AVdbComm.LookupDBPath(vfs.Root, ATx.DBPath)
-
-		if err != nil {
-			return nil
-		}
-
-
-		v =  ATx.CreateServices(atxDir, true)
-
-		vfs.servies.Store(ATx.DBPath, v)
-
-	}
+	v, _ := vfs.servies.Load(ATx.DBPath)
 
 	return v.(ATx.Services)
 }
 
 func ( vfs *aCVFS ) Receipts() AReceipts.Services {
-
-	vfs.writeWaiter.Wait()
-
-	v, exist := vfs.servies.Load(AReceipts.DBPath)
-
-	if !exist {
-
-		rcpDir, err := AVdbComm.LookupDBPath(vfs.Root, AReceipts.DBPath)
-
-		if err != nil {
-			return nil
-		}
-
-		v =  AReceipts.CreateServices(rcpDir, true)
-
-		vfs.servies.Store(AReceipts.DBPath, v)
-
-	}
-
+	v, _ := vfs.servies.Load(AReceipts.DBPath)
 	return v.(AReceipts.Services)
 }
 
 func ( vfs *aCVFS ) Indexes() AIndexes.IndexesServices {
-
-	vfs.writeWaiter.Wait()
-
 	return vfs.indexServices
 }
 
 func ( vfs *aCVFS ) NewCVFSCache() (CacheCVFS, error) {
-
 	return NewCacheCVFS(vfs)
-
 }
 
 func ( vfs *aCVFS ) WriteTaskGroup( group *AWrok.TaskBatchGroup) (cid.Cid, error) {
-
-	vfs.writeWaiter.Add(1)
-
-	defer vfs.writeWaiter.Done()
-
-
-	vfs.servies.Range(func(k,v interface{})bool{
-
-		ser := v.(AVdbComm.VDBSerices)
-
-		if err := ser.Shutdown(); err != nil {
-			panic(err)
-		}
-
-		vfs.servies.Delete(k)
-
-		return true
-	})
-
 
 	var err error
 
@@ -330,57 +211,20 @@ func ( vfs *aCVFS ) WriteTaskGroup( group *AWrok.TaskBatchGroup) (cid.Cid, error
 		transactions:make(map[string]*leveldb.Transaction),
 	}
 
-	var closeServices []AVdbComm.VDBSerices
-	defer func() {
-
-		for _, ser := range closeServices {
-
-			if err := ser.Shutdown(); err != nil {
-
-				log.Errorf("VDB Services closed error : %v", err)
-			}
-		}
-
-	}()
-
 	for dbkey, batch := range bmap {
 
-		dir ,err := AVdbComm.LookupDBPath(vfs.Root, dbkey)
+		services, exist := vfs.servies.Load(dbkey)
+		if !exist {
+			return cid.Undef, ErrVDBServicesNotExist
+		}
 
+		txs.transactions[dbkey], err = services.(AVdbComm.VDBSerices).OpenTransaction()
 		if err != nil {
 			return cid.Undef, err
 		}
 
-		var services AVdbComm.VDBSerices
-
-		switch dbkey {
-
-		case AAssetses.DBPATH:
-			services = AAssetses.CreateServices( dir, false )
-
-		case ABlock.DBPath:
-			services = ABlock.CreateServices(dir, vfs.indexServices, false)
-
-		case ATx.DBPath:
-			services = ATx.CreateServices(dir, false)
-
-		case AReceipts.DBPath:
-			services = AReceipts.CreateServices(dir, false)
-		}
-
-		if services == nil {
-			return cid.Undef, errors.New("DBKey nout found")
-		}
-
-		closeServices = append(closeServices, services)
-
-		txs.transactions[dbkey], err = services.OpenTransaction()
-		if err != nil {
-			return cid.Undef, nil
-		}
-
 		if err := txs.transactions[dbkey].Write(batch, &opt.WriteOptions{Sync:true}); err != nil {
-			return cid.Undef, nil
+			return cid.Undef, err
 		}
 	}
 
@@ -393,15 +237,30 @@ func ( vfs *aCVFS ) WriteTaskGroup( group *AWrok.TaskBatchGroup) (cid.Cid, error
 		return cid.Undef, err
 	}
 
+	//Update
+	for dbkey, _ := range bmap {
+
+		vdbser, _ := vfs.servies.Load(dbkey)
+
+		if err := vdbser.(AVdbComm.VDBSerices).UpdateSnapshot(); err != nil {
+			log.Error(err)
+		}
+	}
+
 	return nd.Cid(), nil
 }
 
+//func ( vfs *aCVFS ) Flush() cid.Cid {
+//
+//	nd, err := mfs.FlushPath(context.TODO(), vfs.Root, "/")
+//	if err != nil {
+//		return cid.Undef
+//	}
+//
+//	return nd.Cid()
+//}
+
 func ( vfs *aCVFS ) Close() error {
-
-	vfs.writeWaiter.Wait()
-
-	vfs.writeWaiter.Add(1)
-	defer vfs.writeWaiter.Done()
 
 	vfs.servies.Range(func(k,v interface{})bool{
 
@@ -421,6 +280,13 @@ func ( vfs *aCVFS ) Close() error {
 		return err
 	}
 
+	nd, err := mfs.FlushPath(context.TODO(), vfs.Root, "/")
+	if err != nil {
+		return err
+	}
+
+	defer fmt.Println("AfterClose MainCVFS CID:" + nd.Cid().String())
+
 	return vfs.Root.Close()
 }
 
@@ -439,16 +305,13 @@ func newMFSRoot( ctx context.Context, c cid.Cid, ind *core.IpfsNode ) ( *mfs.Roo
 			return nil, err
 		}
 
-		var ok bool
-		pbnd, ok = rnd.(*merkledag.ProtoNode)
-		if !ok {
-			return nil, aVFSDAGNodeConversionError
-		}
-
+		pbnd, _ = rnd.(*merkledag.ProtoNode)
 	}
 
 	mroot, err := mfs.NewRoot(ctx, ind.DAG, pbnd, func(i context.Context, i2 cid.Cid) error {
-		//fmt.Println("CVFSPublishedCID : " + i2.String())
+
+		fmt.Println(i2.String())
+
 		return nil
 	})
 

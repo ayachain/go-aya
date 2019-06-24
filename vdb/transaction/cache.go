@@ -13,16 +13,16 @@ type aCache struct {
 
 	Caches
 
-	source *leveldb.DB
+	source *leveldb.Snapshot
 	cdb *leveldb.DB
 }
 
 
-func newCache( sourceDB *leveldb.DB ) (Caches, error) {
+func newCache( sourceDB *leveldb.Snapshot ) (Caches, error) {
 
 	memsto := storage.NewMemStorage()
 
-	mdb, err := leveldb.Open(memsto, nil)
+	mdb, err := leveldb.Open(memsto, AvdbComm.OpenDBOpt)
 	if err != nil {
 		return nil, err
 	}
@@ -59,7 +59,7 @@ func (cache *aCache) Put(tx *Transaction, bidx uint64) {
 
 	tx.BlockIndex = bidx
 
-	if err := cache.cdb.Put(key, tx.Encode(), nil); err != nil {
+	if err := cache.cdb.Put(key, tx.Encode(), AvdbComm.WriteOpt); err != nil {
 		panic(err)
 	}
 
@@ -67,7 +67,7 @@ func (cache *aCache) Put(tx *Transaction, bidx uint64) {
 	tx.BlockIndex = 0
 
 	txcount ++
-	if err := cache.cdb.Put( countKey, AvdbComm.BigEndianBytes(txcount), nil ); err != nil {
+	if err := cache.cdb.Put( countKey, AvdbComm.BigEndianBytes(txcount), AvdbComm.WriteOpt ); err != nil {
 		panic(err)
 	}
 

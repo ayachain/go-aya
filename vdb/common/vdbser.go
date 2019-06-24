@@ -10,6 +10,7 @@ type VDBCacheServices interface {
 	MergerBatch() *leveldb.Batch
 }
 
+
 type VDBSerices interface {
 
 	Shutdown() error
@@ -17,6 +18,6 @@ type VDBSerices interface {
 	NewCache() (VDBCacheServices, error)
 
 	OpenTransaction() (*leveldb.Transaction, error)
+
+	UpdateSnapshot() error
 }
-
-

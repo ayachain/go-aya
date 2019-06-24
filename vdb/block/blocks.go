@@ -6,8 +6,10 @@ import (
 	AIndexes "github.com/ayachain/go-aya/vdb/indexes"
 	EComm "github.com/ethereum/go-ethereum/common"
 	"github.com/ipfs/go-mfs"
+	"github.com/prometheus/common/log"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/storage"
+	"sync"
 )
 
 type aBlocks struct {
@@ -16,23 +18,39 @@ type aBlocks struct {
 	*mfs.Directory
 
 	headAPI AIndexes.IndexesServices
+
+	ldb *leveldb.DB
 	mfsstorage storage.Storage
-	rawdb *leveldb.DB
+	dbSnapshot *leveldb.Snapshot
+	snLock sync.RWMutex
+
 }
 
-func CreateServices( mdir *mfs.Directory, hapi AIndexes.IndexesServices, rdonly bool) Services {
+func CreateServices( mdir *mfs.Directory, hapi AIndexes.IndexesServices ) Services {
+
+	var err error
 
 	api := &aBlocks{
 		Directory:mdir,
 		headAPI:hapi,
 	}
 
-	api.rawdb, api.mfsstorage = AVdbComm.OpenExistedDB(mdir, DBPath, rdonly)
+	api.ldb, api.mfsstorage = AVdbComm.OpenExistedDB( mdir, DBPath )
+
+	api.dbSnapshot, err = api.ldb.GetSnapshot()
+	if err != nil {
+		_ = api.ldb.Close()
+		log.Error(err)
+		return nil
+	}
 
 	return api
 }
 
 func (blks *aBlocks) GetBlocks( hashOrIndex...interface{} ) ([]*Block, error) {
+
+	blks.snLock.RLock()
+	defer blks.snLock.RUnlock()
 
 	var blist []*Block
 
@@ -57,7 +75,7 @@ func (blks *aBlocks) GetBlocks( hashOrIndex...interface{} ) ([]*Block, error) {
 			return nil, errors.New("input params must be a index(uint64) or cid object")
 		}
 
-		dbval, err := blks.rawdb.Get( bhash.Bytes(), nil )
+		dbval, err := blks.dbSnapshot.Get( bhash.Bytes(), nil )
 		if err != nil {
 			return nil, err
 		}
@@ -74,12 +92,12 @@ func (blks *aBlocks) GetBlocks( hashOrIndex...interface{} ) ([]*Block, error) {
 }
 
 func (blks *aBlocks) NewCache() (AVdbComm.VDBCacheServices, error) {
-	return newCache( blks.rawdb, blks.headAPI )
+	return newCache( blks.dbSnapshot, blks.headAPI )
 }
 
 func (blks *aBlocks) OpenTransaction() (*leveldb.Transaction, error) {
 
-	tx, err := blks.rawdb.OpenTransaction()
+	tx, err := blks.ldb.OpenTransaction()
 
 	if err != nil {
 		return nil, err
@@ -90,11 +108,41 @@ func (blks *aBlocks) OpenTransaction() (*leveldb.Transaction, error) {
 
 func (blks *aBlocks) Shutdown() error {
 
-	if err := blks.rawdb.Close(); err != nil {
-		return err
+	blks.snLock.Lock()
+	defer blks.snLock.Unlock()
+
+	if blks.dbSnapshot != nil {
+		blks.dbSnapshot.Release()
 	}
 
 	if err := blks.mfsstorage.Close(); err != nil {
+		return err
+	}
+
+	if err := blks.ldb.Close(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (blks *aBlocks) Close() {
+	_ = blks.Shutdown()
+}
+
+func (api *aBlocks) UpdateSnapshot() error {
+
+	api.snLock.Lock()
+	defer api.snLock.Unlock()
+
+	if api.dbSnapshot != nil {
+		api.dbSnapshot.Release()
+	}
+
+	var err error
+	api.dbSnapshot, err = api.ldb.GetSnapshot()
+	if err != nil {
+		log.Error(err)
 		return err
 	}
 

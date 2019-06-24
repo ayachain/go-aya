@@ -6,11 +6,12 @@ import (
 	AVdbComm "github.com/ayachain/go-aya/vdb/common"
 	EComm "github.com/ethereum/go-ethereum/common"
 	"github.com/ipfs/go-mfs"
+	"github.com/prometheus/common/log"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/storage"
 	"github.com/syndtr/goleveldb/leveldb/util"
+	"sync"
 )
-
 
 var TxCountPrefix = []byte("TxCount_")
 
@@ -20,45 +21,72 @@ type aTransactions struct {
 	*mfs.Directory
 
 	mfsstorage storage.Storage
-	rawdb *leveldb.DB
+	ldb *leveldb.DB
+	dbSnapshot *leveldb.Snapshot
+	snLock sync.RWMutex
 }
 
-func CreateServices( mdir *mfs.Directory, rdOnly bool ) Services {
+func CreateServices( mdir *mfs.Directory ) Services {
+
+	var err error
 
 	api := &aTransactions{
 		Directory:mdir,
 	}
 
-	api.rawdb, api.mfsstorage = AVdbComm.OpenExistedDB(mdir, DBPath, rdOnly)
+	api.ldb, api.mfsstorage = AVdbComm.OpenExistedDB(mdir, DBPath)
+
+	api.dbSnapshot, err = api.ldb.GetSnapshot()
+	if err != nil {
+		_ = api.ldb.Close()
+		log.Error(err)
+		return nil
+	}
 
 	return api
 }
 
+
 func (txs *aTransactions) NewCache() (AVdbComm.VDBCacheServices, error) {
-	return newCache( txs.rawdb )
+	return newCache( txs.dbSnapshot )
 }
+
 
 func (txs *aTransactions) Close() {
-
-	_ = txs.rawdb.Close()
-	_ = txs.mfsstorage.Close()
-	_ = txs.Flush()
-
+	_ = txs.Shutdown()
 }
+
 
 func (txs *aTransactions) Shutdown() error {
 
-	_ = txs.rawdb.Close()
-	_ = txs.mfsstorage.Close()
+	txs.snLock.Lock()
+	defer txs.snLock.Unlock()
 
-	return txs.Flush()
+	if txs.dbSnapshot != nil {
+		txs.dbSnapshot.Release()
+	}
+
+	if err := txs.mfsstorage.Close(); err != nil {
+		return err
+	}
+
+	if err := txs.ldb.Close(); err != nil {
+		log.Error(err)
+		return err
+	}
+
+	return nil
 }
+
 
 func (txs *aTransactions) GetTxCount( address EComm.Address ) (uint64, error) {
 
+	txs.snLock.RLock()
+	defer txs.snLock.RUnlock()
+
 	key := append(TxCountPrefix, address.Bytes()... )
 
-	v, err := txs.rawdb.Get(key, nil)
+	v, err := txs.dbSnapshot.Get(key, nil)
 
 	if err != nil {
 
@@ -73,13 +101,15 @@ func (txs *aTransactions) GetTxCount( address EComm.Address ) (uint64, error) {
 	return binary.BigEndian.Uint64(v), nil
 }
 
+
 func (txs *aTransactions) GetTxByHash( hash EComm.Hash ) (*Transaction, error) {
+
+	txs.snLock.RLock()
+	defer txs.snLock.RUnlock()
 
 	tx := &Transaction{}
 
-	st := append(hash.Bytes(), AVdbComm.BigEndianBytes(0)... )
-
-	it := txs.rawdb.NewIterator(&util.Range{Start:st, Limit:nil}, nil)
+	it := txs.dbSnapshot.NewIterator( util.BytesPrefix(hash.Bytes()) , nil)
 	defer it.Release()
 
 	if it.Next() {
@@ -95,6 +125,7 @@ func (txs *aTransactions) GetTxByHash( hash EComm.Hash ) (*Transaction, error) {
 	return tx, nil
 }
 
+
 func (txs *aTransactions) GetTxByHashBs( hsbs []byte ) (*Transaction, error) {
 
 	hash := EComm.BytesToHash(hsbs)
@@ -102,13 +133,34 @@ func (txs *aTransactions) GetTxByHashBs( hsbs []byte ) (*Transaction, error) {
 	return txs.GetTxByHash(hash)
 }
 
+
 func (txs *aTransactions) OpenTransaction() (*leveldb.Transaction, error) {
 
-	tx, err := txs.rawdb.OpenTransaction()
+	tx, err := txs.ldb.OpenTransaction()
 
 	if err != nil {
 		return nil, err
 	}
 
 	return tx, nil
+}
+
+
+func (api *aTransactions) UpdateSnapshot() error {
+
+	api.snLock.Lock()
+	defer api.snLock.Unlock()
+
+	if api.dbSnapshot != nil {
+		api.dbSnapshot.Release()
+	}
+
+	var err error
+	api.dbSnapshot, err = api.ldb.GetSnapshot()
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+
+	return nil
 }

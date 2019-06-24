@@ -3,9 +3,11 @@ package node
 import (
 	AVdbComm "github.com/ayachain/go-aya/vdb/common"
 	"github.com/ipfs/go-mfs"
+	"github.com/prometheus/common/log"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/storage"
 	"github.com/syndtr/goleveldb/leveldb/util"
+	"sync"
 )
 
 type aNodes struct {
@@ -14,28 +16,39 @@ type aNodes struct {
 	*mfs.Directory
 
 	mfsstorage storage.Storage
-	rawdb *leveldb.DB
+	ldb *leveldb.DB
+	dbSnapshot *leveldb.Snapshot
+	snLock sync.RWMutex
 }
 
 
-func CreateServices( mdir *mfs.Directory, rdonly bool) Services {
+func CreateServices( mdir *mfs.Directory ) Services {
+
+	var err error
 
 	api := &aNodes{
 		Directory:mdir,
 	}
 
-	api.rawdb, api.mfsstorage = AVdbComm.OpenExistedDB(mdir, DBPath, rdonly)
+	api.ldb, api.mfsstorage = AVdbComm.OpenExistedDB(mdir, DBPath)
+
+	api.dbSnapshot, err = api.ldb.GetSnapshot()
+	if err != nil {
+		_ = api.ldb.Close()
+		log.Error(err)
+		return nil
+	}
 
 	return api
 }
 
 func (api *aNodes) NewCache() (AVdbComm.VDBCacheServices, error) {
-	return newCache( api.rawdb )
+	return newCache( api.dbSnapshot )
 }
 
 func (api *aNodes) OpenTransaction() (*leveldb.Transaction, error) {
 
-	tx, err := api.rawdb.OpenTransaction()
+	tx, err := api.ldb.OpenTransaction()
 
 	if err != nil {
 		return nil, err
@@ -47,16 +60,36 @@ func (api *aNodes) OpenTransaction() (*leveldb.Transaction, error) {
 
 func (api *aNodes) Shutdown() error {
 
-	_ = api.rawdb.Close()
-	_ = api.mfsstorage.Close()
+	api.snLock.Lock()
+	defer api.snLock.Unlock()
 
-	return api.Flush()
+	if api.dbSnapshot != nil {
+		api.dbSnapshot.Release()
+	}
+
+	if err := api.mfsstorage.Close(); err != nil {
+		return err
+	}
+
+	if err := api.ldb.Close(); err != nil {
+		log.Error(err)
+		return err
+	}
+
+	return nil
+}
+
+func (api *aNodes) Close() {
+	_ = api.Shutdown()
 }
 
 
 func (api *aNodes) GetNodeByPeerId( peerId string ) (*Node, error) {
 
-	bs, err := api.rawdb.Get( []byte(peerId), nil )
+	api.snLock.RLock()
+	defer api.snLock.RUnlock()
+
+	bs, err := api.dbSnapshot.Get( []byte(peerId), nil )
 
 	if err != nil {
 		return nil, err
@@ -73,7 +106,10 @@ func (api *aNodes) GetNodeByPeerId( peerId string ) (*Node, error) {
 
 func (api *aNodes) GetFirst() *Node {
 
-	it := api.rawdb.NewIterator( &util.Range{nil,nil}, nil )
+	api.snLock.RLock()
+	defer api.snLock.RUnlock()
+
+	it := api.dbSnapshot.NewIterator( &util.Range{nil,nil}, nil )
 
 	defer it.Release()
 
@@ -107,7 +143,10 @@ func (api *aNodes) GetFirst() *Node {
 
 func (api *aNodes) GetLatest() *Node {
 
-	it := api.rawdb.NewIterator( &util.Range{nil,nil}, nil )
+	api.snLock.RLock()
+	defer api.snLock.RUnlock()
+
+	it := api.dbSnapshot.NewIterator( &util.Range{nil,nil}, nil )
 
 	defer it.Release()
 
@@ -139,13 +178,21 @@ func (api *aNodes) GetLatest() *Node {
 	return minnd
 }
 
+func (api *aNodes) UpdateSnapshot() error {
 
-func (api *aNodes) TotalSum() uint64 {
+	api.snLock.Lock()
+	defer api.snLock.Unlock()
 
-	size, err := api.rawdb.SizeOf([]util.Range{{nil,nil}})
-	if err != nil {
-		return 0
+	if api.dbSnapshot != nil {
+		api.dbSnapshot.Release()
 	}
 
-	return uint64(size.Sum())
+	var err error
+	api.dbSnapshot, err = api.ldb.GetSnapshot()
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+
+	return nil
 }
