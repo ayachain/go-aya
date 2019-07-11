@@ -10,6 +10,7 @@ import (
 	"github.com/ayachain/go-aya/vdb"
 	AAssets "github.com/ayachain/go-aya/vdb/assets"
 	ABlock "github.com/ayachain/go-aya/vdb/block"
+	"github.com/ayachain/go-aya/vdb/chaininfo"
 	AvdbComm "github.com/ayachain/go-aya/vdb/common"
 	AMBlock "github.com/ayachain/go-aya/vdb/mblock"
 	ATx "github.com/ayachain/go-aya/vdb/transaction"
@@ -82,7 +83,7 @@ const (
 	ATxPoolThreadMiningBuff								= 32
 
 	ATxPoolThreadChainInfo			ATxPoolThreadsName 	= "thread.chain.info"
-	ATxPoolThreadChainInfoBuff							= 1
+	ATxPoolThreadChainInfoBuff							= 16
 )
 
 type ATxPool struct {
@@ -102,9 +103,12 @@ type ATxPool struct {
 	channelTopics map[ATxPoolThreadsName] string
 
 	threadChans sync.Map
-
 	notary ACore.Notary
 	workingThreadWG sync.WaitGroup
+
+	syncMutx sync.Mutex
+	syncChainInfo *chaininfo.ChainInfo
+	syncCancel context.CancelFunc
 }
 
 func NewTxPool( ind *core.IpfsNode, gblk *ABlock.GenBlock, cvfs vdb.CVFS, miner ACore.Notary, acc EAccount.Account) *ATxPool {

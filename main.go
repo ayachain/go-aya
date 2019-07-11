@@ -245,6 +245,7 @@ func commandDetails(path []string) *cmdDetails {
 // it should be executed on a client. It returns an error if the command must
 // NOT be executed on either.
 func commandShouldRunOnDaemon(details cmdDetails, req *cmds.Request, cctx *oldcmds.Context) (http.Client, error) {
+
 	path := req.Path
 	// root command.
 	if len(path) < 1 {

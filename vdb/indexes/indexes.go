@@ -23,6 +23,11 @@ var LatestIndexKey = []byte("LATEST")
 
 var log = logging.MustGetLogger("IndexesServices")
 
+/// Deve
+const AIndexesKeyPathPrefix = "/aya/chain/indexes/dev/"
+/// Prod
+//const AIndexesKeyPathPrefix = "/aya/chain/indexes/"
+
 type aIndexes struct {
 
 	IndexesServices
@@ -37,7 +42,7 @@ type aIndexes struct {
 
 func CreateServices( ind *core.IpfsNode, chainId string ) IndexesServices {
 
-	adbpath := "/aya/chain/indexes/" + chainId + "f1"
+	adbpath := AIndexesKeyPathPrefix + chainId
 
 	var nd *merkledag.ProtoNode
 	dsk := datastore.NewKey(adbpath)

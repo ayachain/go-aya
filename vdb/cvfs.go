@@ -44,6 +44,7 @@ type CVFS interface {
 	Receipts() AReceipts.Services
 	Transactions() ATx.Services
 	Nodes() ANodes.Services
+	Restart( baseCid cid.Cid ) error
 
 	WriteTaskGroup( group *AWrok.TaskBatchGroup ) ( cid.Cid, error )
 
@@ -120,48 +121,28 @@ func LinkVFS( chainId string, baseCid cid.Cid, ind *core.IpfsNode ) (CVFS, error
 		chainId:chainId,
 	}
 
-	vfs.indexServices = AIndexes.CreateServices(vfs.inode, vfs.chainId)
-
-	/// ANodes VDBServices
-	if dir, err := AVdbComm.LookupDBPath(vfs.Root, ANodes.DBPath); err != nil {
-		goto experctedErr
+	if err := vfs.initServices(); err != nil {
+		return nil, err
 	} else {
-		vfs.servies.Store( ANodes.DBPath, ANodes.CreateServices(dir) )
+		return vfs, nil
+	}
+}
+
+func ( vfs *aCVFS ) Restart( baseCid cid.Cid ) error {
+
+	if err := vfs.Close(); err != nil {
+		return err
 	}
 
-	/// AAssetses VDBServices
-	if dir, err := AVdbComm.LookupDBPath(vfs.Root, AAssetses.DBPATH); err != nil {
-		goto experctedErr
-	} else {
-		vfs.servies.Store( AAssetses.DBPATH, AAssetses.CreateServices(dir) )
+	root, err := newMFSRoot( context.TODO(), baseCid, vfs.inode )
+
+	if err != nil {
+		return err
 	}
 
-	/// ABlock VDBServices
-	if dir, err := AVdbComm.LookupDBPath(vfs.Root, ABlock.DBPath); err != nil {
-		goto experctedErr
-	} else {
-		vfs.servies.Store( ABlock.DBPath, ABlock.CreateServices(dir, vfs.indexServices) )
-	}
+	vfs.Root = root
 
-	/// ATx VDBServices
-	if dir, err := AVdbComm.LookupDBPath(vfs.Root, ATx.DBPath); err != nil {
-		goto experctedErr
-	} else {
-		vfs.servies.Store( ATx.DBPath, ATx.CreateServices(dir) )
-	}
-
-	/// AReceipts VDBServices
-	if dir, err := AVdbComm.LookupDBPath(vfs.Root, AReceipts.DBPath); err != nil {
-		goto experctedErr
-	} else {
-		vfs.servies.Store( AReceipts.DBPath, AReceipts.CreateServices(dir) )
-	}
-
-	return vfs, nil
-
-experctedErr:
-
-	return nil, ErrVDBServicesNotExist
+	return vfs.initServices()
 }
 
 func ( vfs *aCVFS ) Nodes() ANodes.Services {
@@ -294,6 +275,52 @@ func ( vfs *aCVFS ) Close() error {
 	defer fmt.Println("AfterClose MainCVFS CID:" + nd.Cid().String())
 
 	return vfs.Root.Close()
+}
+
+func ( vfs *aCVFS ) initServices() error {
+
+	vfs.indexServices = AIndexes.CreateServices(vfs.inode, vfs.chainId)
+
+	/// ANodes VDBServices
+	if dir, err := AVdbComm.LookupDBPath(vfs.Root, ANodes.DBPath); err != nil {
+		goto experctedErr
+	} else {
+		vfs.servies.Store( ANodes.DBPath, ANodes.CreateServices(dir) )
+	}
+
+	/// AAssetses VDBServices
+	if dir, err := AVdbComm.LookupDBPath(vfs.Root, AAssetses.DBPATH); err != nil {
+		goto experctedErr
+	} else {
+		vfs.servies.Store( AAssetses.DBPATH, AAssetses.CreateServices(dir) )
+	}
+
+	/// ABlock VDBServices
+	if dir, err := AVdbComm.LookupDBPath(vfs.Root, ABlock.DBPath); err != nil {
+		goto experctedErr
+	} else {
+		vfs.servies.Store( ABlock.DBPath, ABlock.CreateServices(dir, vfs.indexServices) )
+	}
+
+	/// ATx VDBServices
+	if dir, err := AVdbComm.LookupDBPath(vfs.Root, ATx.DBPath); err != nil {
+		goto experctedErr
+	} else {
+		vfs.servies.Store( ATx.DBPath, ATx.CreateServices(dir) )
+	}
+
+	/// AReceipts VDBServices
+	if dir, err := AVdbComm.LookupDBPath(vfs.Root, AReceipts.DBPath); err != nil {
+		goto experctedErr
+	} else {
+		vfs.servies.Store( AReceipts.DBPath, AReceipts.CreateServices(dir) )
+	}
+
+	return nil
+
+experctedErr:
+
+	return ErrVDBServicesNotExist
 }
 
 func newMFSRoot( ctx context.Context, c cid.Cid, ind *core.IpfsNode ) ( *mfs.Root, error ) {
