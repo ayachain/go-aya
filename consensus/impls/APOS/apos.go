@@ -11,6 +11,7 @@ import (
 	"github.com/ayachain/go-aya/vdb"
 	ABlock "github.com/ayachain/go-aya/vdb/block"
 	ACInfo "github.com/ayachain/go-aya/vdb/chaininfo"
+	AChainInfo "github.com/ayachain/go-aya/vdb/chaininfo"
 	AMBlock "github.com/ayachain/go-aya/vdb/mblock"
 	AMined "github.com/ayachain/go-aya/vdb/minined"
 	ARsp "github.com/ayachain/go-aya/vdb/receipt"
@@ -183,6 +184,22 @@ func (n *APOSConsensusNotary) TrustOrNot( msg *pubsub.Message, mtype ACore.Notar
 		return
 
 	}()
+
+	return replayChan
+}
+
+func (n *APOSConsensusNotary) ShouldDoSync( info *AChainInfo.ChainInfo, cvfs vdb.CVFS ) <- chan bool {
+
+	replayChan := make(chan bool)
+
+	if DeveloperMode {
+
+		go func() {
+			replayChan <- true
+		}()
+
+		return replayChan
+	}
 
 	return replayChan
 }
