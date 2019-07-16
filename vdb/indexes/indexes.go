@@ -24,7 +24,7 @@ var LatestIndexKey = []byte("LATEST")
 var log = logging.MustGetLogger("IndexesServices")
 
 /// Deve
-const AIndexesKeyPathPrefix = "/aya/chain/indexes/dev/0716/"
+const AIndexesKeyPathPrefix = "/aya/chain/indexes/dev/0716/5/"
 /// Prod
 //const AIndexesKeyPathPrefix = "/aya/chain/indexes/"
 
@@ -252,7 +252,7 @@ func ( i *aIndexes ) PutIndexBy( num uint64, bhash EComm.Hash, ci cid.Cid ) erro
 		return err
 	}
 
-	log.Info("IndexesLatest:", ci.String())
+	//log.Info("IndexesLatest:", ci.String())
 
 	return nil
 }
