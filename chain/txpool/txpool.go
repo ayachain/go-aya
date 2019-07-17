@@ -175,11 +175,10 @@ func (pool *ATxPool) PowerOn( ctx context.Context ) error {
 		pool.runThreads(
 			ctx,
 			ATxPoolThreadTxPackage,
-			ATxPoolThreadMining,
+			//ATxPoolThreadMining,
 			ATxPoolThreadReceiptListen,
 			ATxPoolThreadExecutor,
 		)
-
 
 
 	case AtxPoolWorkModeMaster:
@@ -187,6 +186,7 @@ func (pool *ATxPool) PowerOn( ctx context.Context ) error {
 		pool.runThreads(
 			ctx,
 			//AtxThreadTxPackage,
+			ATxPoolThreadChainInfo,
 			ATxPoolThreadMining,
 			//AtxThreadReceiptListen,
 			ATxPoolThreadExecutor,
@@ -197,10 +197,11 @@ func (pool *ATxPool) PowerOn( ctx context.Context ) error {
 
 		pool.runThreads(
 			ctx,
+			ATxPoolThreadChainInfo,
 			//AtxThreadTxPackage,
 			//AtxThreadMining,
 			//AtxThreadReceiptListen,
-			ATxPoolThreadExecutor,
+			//ATxPoolThreadExecutor,
 		)
 
 	}
