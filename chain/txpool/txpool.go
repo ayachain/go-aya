@@ -119,6 +119,7 @@ func NewTxPool( ind *core.IpfsNode, gblk *ABlock.GenBlock, cvfs vdb.CVFS, miner 
 		ATxPoolThreadExecutor : crypto.Keccak256Hash([]byte(fmt.Sprintf("%v%v", topic, ATxPoolThreadExecutor))).String(),
 		ATxPoolThreadReceiptListen : crypto.Keccak256Hash([]byte(fmt.Sprintf("%v%v", topic, ATxPoolThreadReceiptListen))).String(),
 		ATxPoolThreadMining : crypto.Keccak256Hash([]byte(fmt.Sprintf("%v%v", topic, ATxPoolThreadMining))).String(),
+		ATxPoolThreadChainInfo: crypto.Keccak256Hash([]byte(fmt.Sprintf("%v%v", topic, ATxPoolThreadChainInfo))).String(),
 	}
 
 	oast, err := cvfs.Assetses().AssetsOf(acc.Address)
@@ -163,21 +164,23 @@ func (pool *ATxPool) PowerOn( ctx context.Context ) error {
 		pool.runThreads(
 			ctx,
 			//ATxPoolThreadTxListen,
-			ATxPoolThreadChainInfo,
 			//ATxPoolThreadTxPackage,
 			ATxPoolThreadMining,
 			//ATxPoolThreadReceiptListen,
 			ATxPoolThreadExecutor,
+			ATxPoolThreadChainInfo,
 		)
 
 	case AtxPoolWorkModeSuper:
 
 		pool.runThreads(
 			ctx,
+			ATxPoolThreadTxListen,
 			ATxPoolThreadTxPackage,
 			//ATxPoolThreadMining,
 			ATxPoolThreadReceiptListen,
 			ATxPoolThreadExecutor,
+			//ATxPoolThreadChainInfo,
 		)
 
 
@@ -185,11 +188,12 @@ func (pool *ATxPool) PowerOn( ctx context.Context ) error {
 
 		pool.runThreads(
 			ctx,
+			//ATxPoolThreadTxListen,
 			//AtxThreadTxPackage,
-			ATxPoolThreadChainInfo,
 			ATxPoolThreadMining,
 			//AtxThreadReceiptListen,
 			ATxPoolThreadExecutor,
+			ATxPoolThreadChainInfo,
 		)
 
 
@@ -316,7 +320,7 @@ func (pool *ATxPool) PublishTx( tx *ATx.Transaction ) error {
 /// Judging working mode
 func (pool *ATxPool) judgingMode() {
 
-	pool.workmode = AtxPoolWorkModeOblivioned
+	pool.workmode = AtxPoolWorkModeMaster
 	return
 
 }

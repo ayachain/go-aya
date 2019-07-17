@@ -46,6 +46,7 @@ func blockExecutorThread(ctx context.Context) {
 	go func() {
 
 		sub, err := pool.ind.PubSub.Subscribe( pool.channelTopics[ATxPoolThreadExecutor] )
+
 		if err != nil {
 			return
 		}
