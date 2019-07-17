@@ -54,6 +54,8 @@ func blockExecutorThread(ctx context.Context) {
 
 			msg, err := sub.Next(subCtx)
 
+			log.Info("MsgFrom:", msg.GetFrom().Pretty())
+
 			if err != nil {
 				return
 			}

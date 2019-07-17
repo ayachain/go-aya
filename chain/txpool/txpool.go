@@ -10,7 +10,6 @@ import (
 	"github.com/ayachain/go-aya/vdb"
 	AAssets "github.com/ayachain/go-aya/vdb/assets"
 	ABlock "github.com/ayachain/go-aya/vdb/block"
-	"github.com/ayachain/go-aya/vdb/chaininfo"
 	AvdbComm "github.com/ayachain/go-aya/vdb/common"
 	AMBlock "github.com/ayachain/go-aya/vdb/mblock"
 	ATx "github.com/ayachain/go-aya/vdb/transaction"
@@ -56,15 +55,15 @@ type ATxPoolThreadsName string
 
 const (
 
-	PackageTxsLimit 								= 2048
+	PackageTxsLimit 									= 2048
 
-	AtxPoolWorkModeNormal 			AtxPoolWorkMode = 0
+	AtxPoolWorkModeNormal 			AtxPoolWorkMode 	= 0
 
-	AtxPoolWorkModeMaster 			AtxPoolWorkMode = 1
+	AtxPoolWorkModeMaster 			AtxPoolWorkMode 	= 1
 
-	AtxPoolWorkModeSuper 			AtxPoolWorkMode = 2
+	AtxPoolWorkModeSuper 			AtxPoolWorkMode 	= 2
 
-	AtxPoolWorkModeOblivioned 		AtxPoolWorkMode = 3
+	AtxPoolWorkModeOblivioned 		AtxPoolWorkMode 	= 3
 
 
 	ATxPoolThreadTxListen			ATxPoolThreadsName 	= "thread.tx.listen"
@@ -107,8 +106,6 @@ type ATxPool struct {
 	workingThreadWG sync.WaitGroup
 
 	syncMutx sync.Mutex
-	syncChainInfo *chaininfo.ChainInfo
-	syncCancel context.CancelFunc
 }
 
 func NewTxPool( ind *core.IpfsNode, gblk *ABlock.GenBlock, cvfs vdb.CVFS, miner ACore.Notary, acc EAccount.Account) *ATxPool {
@@ -165,10 +162,11 @@ func (pool *ATxPool) PowerOn( ctx context.Context ) error {
 
 		pool.runThreads(
 			ctx,
-			ATxPoolThreadTxListen,
-			ATxPoolThreadTxPackage,
+			//ATxPoolThreadTxListen,
+			ATxPoolThreadChainInfo,
+			//ATxPoolThreadTxPackage,
 			ATxPoolThreadMining,
-			ATxPoolThreadReceiptListen,
+			//ATxPoolThreadReceiptListen,
 			ATxPoolThreadExecutor,
 		)
 
@@ -348,6 +346,10 @@ func (pool *ATxPool) runThreads( ctx context.Context, names ... ATxPoolThreadsNa
 
 		case ATxPoolThreadExecutor:
 			go blockExecutorThread(sctx)
+
+
+		case ATxPoolThreadChainInfo:
+			go syncListener(sctx)
 
 		}
 

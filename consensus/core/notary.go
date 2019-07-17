@@ -20,7 +20,6 @@ import (
 	AGroup "github.com/ayachain/go-aya/consensus/core/worker"
 	"github.com/ayachain/go-aya/vdb"
 	AMsgMBlock "github.com/ayachain/go-aya/vdb/mblock"
-	AChainInfo "github.com/ayachain/go-aya/vdb/chaininfo"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 )
 
@@ -41,7 +40,4 @@ type Notary interface {
 	MiningBlock( block *AMsgMBlock.MBlock, cvfs vdb.CacheCVFS ) (*AGroup.TaskBatchGroup, error)
 
 	TrustOrNot( msg *pubsub.Message, mtype NotaryMessageType, cvfs vdb.CVFS ) <- chan bool
-
-	ShouldDoSync( info *AChainInfo.ChainInfo, cvfs vdb.CVFS ) <- chan bool
-
 }

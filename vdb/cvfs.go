@@ -3,7 +3,6 @@ package vdb
 import (
 	"context"
 	"errors"
-	"fmt"
 	AWrok "github.com/ayachain/go-aya/consensus/core/worker"
 	"github.com/ayachain/go-aya/logs"
 	AAssetses "github.com/ayachain/go-aya/vdb/assets"
@@ -267,12 +266,10 @@ func ( vfs *aCVFS ) Close() error {
 		return err
 	}
 
-	nd, err := mfs.FlushPath(context.TODO(), vfs.Root, "/")
+	_, err := mfs.FlushPath(context.TODO(), vfs.Root, "/")
 	if err != nil {
 		return err
 	}
-
-	defer fmt.Println("AfterClose MainCVFS CID:" + nd.Cid().String())
 
 	return vfs.Root.Close()
 }
