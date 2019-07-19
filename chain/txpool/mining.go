@@ -4,9 +4,12 @@ import (
 	"context"
 	"fmt"
 	"github.com/ayachain/go-aya/consensus/core"
+	AElectoral "github.com/ayachain/go-aya/vdb/electoral"
 	AMsgMBlock "github.com/ayachain/go-aya/vdb/mblock"
 	AMsgMined "github.com/ayachain/go-aya/vdb/minined"
+	"github.com/ayachain/go-aya/vdb/node"
 	IBlocks "github.com/ipfs/go-block-format"
+	"strings"
 )
 
 func miningThread(ctx context.Context ) {
@@ -57,18 +60,56 @@ func miningThread(ctx context.Context ) {
 				return
 			}
 
-			if <- pool.notary.TrustOrNot(msg, core.NotaryMessageMiningBlock, pool.cvfs) {
+			if pool.workmode == AtxPoolWorkModeSuper {
 
-				cc, _ := pool.threadChans.Load(ATxPoolThreadMining)
+				nd, err := pool.cvfs.Nodes().GetNodeByPeerId( msg.GetFrom().Pretty() )
 
-				cc.(chan []byte) <- msg.Data
+				if err != nil || nd.Type != node.NodeTypeSuper {
+					/// TODO dissconnect this node
+					continue
+				}
 
+				if pool.packerState != AElectoral.ATxPackStateFollower {
+					continue
+				}
+
+				if strings.EqualFold( msg.GetFrom().ShortString(), pool.currentMaster ) {
+
+					mblock := &AMsgMBlock.MBlock{}
+
+					if err := mblock.RawMessageDecode(msg.Data); err != nil {
+						log.Error(err)
+						continue
+					}
+
+					pool.miningBlock = mblock
+
+					if err := pool.doBroadcast(mblock, pool.channelTopics[ATxPoolThreadMining] ); err != nil {
+
+						continue
+
+					}
+
+					// new electoral
+					pool.DoElectoral()
+				}
+
+			} else {
+
+				if <- pool.notary.TrustOrNot(msg, core.NotaryMessageMiningBlock, pool.cvfs) {
+
+					cc, _ := pool.threadChans.Load(ATxPoolThreadMining)
+
+					cc.(chan []byte) <- msg.Data
+
+				}
 			}
+
+
 
 		}
 
 	}()
-
 
 	for {
 

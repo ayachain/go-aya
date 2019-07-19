@@ -12,12 +12,10 @@ type reader interface {
 
 	GetFirst() *Node
 
-	GetLatest() *Node
+	GetSuperNodeList() []*Node
 }
 
 type writer interface {
-
-	Update( peerId string, node *Node ) error
 
 	Insert( peerId string, node *Node ) error
 

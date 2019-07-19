@@ -11,6 +11,7 @@ import (
 	AAssets "github.com/ayachain/go-aya/vdb/assets"
 	ABlock "github.com/ayachain/go-aya/vdb/block"
 	AvdbComm "github.com/ayachain/go-aya/vdb/common"
+	AElectoral "github.com/ayachain/go-aya/vdb/electoral"
 	AMBlock "github.com/ayachain/go-aya/vdb/mblock"
 	ATx "github.com/ayachain/go-aya/vdb/transaction"
 	EAccount "github.com/ethereum/go-ethereum/accounts"
@@ -83,6 +84,9 @@ const (
 
 	ATxPoolThreadChainInfo			ATxPoolThreadsName 	= "thread.chain.info"
 	ATxPoolThreadChainInfoBuff							= 16
+
+	ATxPoolThreadElectoral			ATxPoolThreadsName	= "thread.electoral"
+	ATxPoolThreadElectoralBuff							= 21
 )
 
 type ATxPool struct {
@@ -106,6 +110,11 @@ type ATxPool struct {
 	workingThreadWG sync.WaitGroup
 
 	syncMutx sync.Mutex
+
+	packerState AElectoral.ATxPackerState
+	currentMaster string
+	voteRetMapping sync.Map
+	onlineSuperNode []PingRet
 }
 
 func NewTxPool( ind *core.IpfsNode, gblk *ABlock.GenBlock, cvfs vdb.CVFS, miner ACore.Notary, acc EAccount.Account) *ATxPool {
@@ -120,6 +129,7 @@ func NewTxPool( ind *core.IpfsNode, gblk *ABlock.GenBlock, cvfs vdb.CVFS, miner 
 		ATxPoolThreadReceiptListen : crypto.Keccak256Hash([]byte(fmt.Sprintf("%v%v", topic, ATxPoolThreadReceiptListen))).String(),
 		ATxPoolThreadMining : crypto.Keccak256Hash([]byte(fmt.Sprintf("%v%v", topic, ATxPoolThreadMining))).String(),
 		ATxPoolThreadChainInfo: crypto.Keccak256Hash([]byte(fmt.Sprintf("%v%v", topic, ATxPoolThreadChainInfo))).String(),
+		ATxPoolThreadElectoral : crypto.Keccak256Hash([]byte(fmt.Sprintf("%v%v", topic, ATxPoolThreadElectoral))).String(),
 	}
 
 	oast, err := cvfs.Assetses().AssetsOf(acc.Address)
@@ -145,6 +155,7 @@ func NewTxPool( ind *core.IpfsNode, gblk *ABlock.GenBlock, cvfs vdb.CVFS, miner 
 		ownerAsset:oast,
 		notary:miner,
 		genBlock:gblk,
+		packerState:AElectoral.ATxPackStateUnknown,
 	}
 
 }
@@ -175,9 +186,10 @@ func (pool *ATxPool) PowerOn( ctx context.Context ) error {
 
 		pool.runThreads(
 			ctx,
+			ATxPoolThreadElectoral,
 			ATxPoolThreadTxListen,
 			ATxPoolThreadTxPackage,
-			//ATxPoolThreadMining,
+			ATxPoolThreadMining,
 			ATxPoolThreadReceiptListen,
 			ATxPoolThreadExecutor,
 			//ATxPoolThreadChainInfo,
@@ -248,6 +260,54 @@ func (pool *ATxPool) DoPackMBlock() {
 	cc.(chan []byte) <- nil
 
 	return
+}
+
+func (pool *ATxPool) DoElectoral() {
+
+	if pool.workmode != AtxPoolWorkModeSuper {
+		return
+	}
+
+	go func() {
+
+		if pool.packerState !=  AElectoral.ATxPackStateLookup {
+
+			pool.packerState = AElectoral.ATxPackStateLookup
+
+			sctx := context.WithValue( context.TODO(), "Pool", pool )
+
+			prets, err := pings(sctx)
+
+			if err != nil {
+				log.Warningf("DoElectoral:%v", err.Error())
+				return
+			}
+
+			if len(prets) > 0 {
+
+				pool.onlineSuperNode = prets
+
+				latest, err := pool.cvfs.Indexes().GetLatest()
+
+				if err != nil {
+					log.Warningf("DoElectoral:%v", err.Error())
+					return
+				}
+
+				vote := &AElectoral.Electoral{
+					BlockIndex:latest.BlockIndex + 1,
+					Address:prets[0].Node.Owner,
+				}
+
+				if err := pool.doBroadcast(vote, pool.channelTopics[ATxPoolThreadElectoral]); err != nil {
+					log.Warningf("DoElectoral:%v", err.Error())
+					return
+				}
+			}
+
+		}
+
+	}()
 }
 
 func (pool *ATxPool) AddConfrimReceipt( mbhash EComm.Hash, retcid cid.Cid, from EComm.Address) error {
@@ -355,6 +415,10 @@ func (pool *ATxPool) runThreads( ctx context.Context, names ... ATxPoolThreadsNa
 
 		case ATxPoolThreadChainInfo:
 			go syncListener(sctx)
+
+
+		case ATxPoolThreadElectoral:
+			go electoralThread(sctx)
 
 		}
 

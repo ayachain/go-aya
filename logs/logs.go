@@ -6,6 +6,8 @@ const (
 	AModules_TxPool					= "ATxPool"
 	AModules_CVFS					= "ACvfs"
 	AModules_CVFS_Indexes			= "IndexesServices"
+
+	AVDBServices_Electorals			= "ElectoralServices"
 )
 
 

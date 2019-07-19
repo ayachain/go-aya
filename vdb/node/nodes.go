@@ -67,10 +67,6 @@ func (api *aNodes) Shutdown() error {
 		api.dbSnapshot.Release()
 	}
 
-	//if err := api.mfsstorage.Close(); err != nil {
-	//	return err
-	//}
-
 	if err := api.ldb.Close(); err != nil {
 		log.Error(err)
 		return err
@@ -104,80 +100,6 @@ func (api *aNodes) GetNodeByPeerId( peerId string ) (*Node, error) {
 	return nd, nil
 }
 
-func (api *aNodes) GetFirst() *Node {
-
-	api.snLock.RLock()
-	defer api.snLock.RUnlock()
-
-	it := api.dbSnapshot.NewIterator( &util.Range{nil,nil}, nil )
-
-	defer it.Release()
-
-	var maxnd *Node
-
-	for it.Next() {
-
-		nd := &Node{}
-
-		if err := nd.Decode(it.Value()); err != nil {
-			continue
-		}
-
-		if maxnd == nil {
-
-			maxnd = nd
-			continue
-
-		} else {
-
-			if nd.Votes > maxnd.Votes {
-				maxnd = nd
-			}
-
-		}
-
-	}
-
-	return maxnd
-}
-
-func (api *aNodes) GetLatest() *Node {
-
-	api.snLock.RLock()
-	defer api.snLock.RUnlock()
-
-	it := api.dbSnapshot.NewIterator( &util.Range{nil,nil}, nil )
-
-	defer it.Release()
-
-	var minnd *Node
-
-	for it.Next() {
-
-		nd := &Node{}
-
-		if err := nd.Decode(it.Value()); err != nil {
-			continue
-		}
-
-		if minnd == nil {
-
-			minnd = nd
-			continue
-
-		} else {
-
-			if nd.Votes < minnd.Votes {
-				minnd = nd
-			}
-
-		}
-
-	}
-
-	return minnd
-}
-
 func (api *aNodes) UpdateSnapshot() error {
 
 	api.snLock.Lock()
@@ -204,4 +126,59 @@ func (api *aNodes) SyncCache() error {
 	}
 
 	return api.mfsstorage.Flush()
+}
+
+
+func (api *aNodes) GetSuperNodeList() []*Node {
+
+	api.snLock.RLock()
+	defer api.snLock.RUnlock()
+
+	var rets[] *Node
+
+	it := api.dbSnapshot.NewIterator( util.BytesPrefix( []byte(NodeTypeSuper) ), nil )
+
+	defer it.Release()
+
+	for it.Next() {
+
+		perrId := it.Value()
+
+		bs, err := api.dbSnapshot.Get(perrId, nil)
+
+		if err != nil {
+			panic(err)
+		}
+
+		nd := &Node{}
+
+		if err := nd.Decode(bs); err != nil {
+			rets = append(rets, nd)
+		}
+	}
+
+	return rets
+}
+
+
+func (api *aNodes) GetFirst() *Node {
+
+	api.snLock.RLock()
+	defer api.snLock.RUnlock()
+
+	if bs, err := api.dbSnapshot.Get( []byte("Super00000001"), nil ); err != nil {
+
+		return nil
+
+	} else {
+
+		nd := &Node{}
+
+		if err := nd.Decode(bs); err != nil {
+			return nil
+		}
+
+		return nd
+
+	}
 }

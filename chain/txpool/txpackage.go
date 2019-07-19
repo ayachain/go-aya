@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	AElectoral "github.com/ayachain/go-aya/vdb/electoral"
 	AMsgMBlock "github.com/ayachain/go-aya/vdb/mblock"
 	ATx "github.com/ayachain/go-aya/vdb/transaction"
 	blocks "github.com/ipfs/go-block-format"
@@ -55,6 +56,11 @@ func txPackageThread(ctx context.Context ) {
 			}
 
 			if pool.miningBlock != nil {
+				continue
+			}
+
+			/// If the current node is voted "Master", do packing mining block.
+			if pool.packerState != AElectoral.ATxPackStateMaster {
 				continue
 			}
 
