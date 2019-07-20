@@ -77,6 +77,7 @@ func txPackageThread(ctx context.Context ) {
 			mblk.ChainID = pool.genBlock.ChainID
 			mblk.Parent = bindex.Hash.String()
 			mblk.Timestamp = uint64(time.Now().Unix())
+			mblk.Packager = pool.ownerAccount.Address.String()
 
 			count := uint16(0)
 			var txs []ATx.Transaction
