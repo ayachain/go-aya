@@ -283,7 +283,9 @@ func (pool *ATxPool) DoElectoral() {
 				return
 			}
 
-			if len(prets) > 0 {
+
+			/// is online super node less 3, can not electoral
+			if len(prets) >= 3 {
 
 				pool.onlineSuperNode = prets
 
