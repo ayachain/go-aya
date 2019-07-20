@@ -49,6 +49,8 @@ type Block struct {
 	/// block sub transactions, is a ipfs block cid
 	Txc uint16				`json:"Txc"`
 	Txs string				`json:"Txs"`
+	
+	Packager string			`json:"Packager"`
 }
 
 /// only in create a new chain then use

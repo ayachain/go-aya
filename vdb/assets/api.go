@@ -8,7 +8,7 @@ import (
 const (
 	//Default assets record version code
 	DRVer 				= byte(1)
-	DBPATH 				= "/assets"
+	DBPath 				= "/assets"
 )
 
 type reader interface {

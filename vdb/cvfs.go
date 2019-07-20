@@ -8,7 +8,6 @@ import (
 	AAssetses "github.com/ayachain/go-aya/vdb/assets"
 	ABlock "github.com/ayachain/go-aya/vdb/block"
 	AVdbComm "github.com/ayachain/go-aya/vdb/common"
-	AElectorals "github.com/ayachain/go-aya/vdb/electoral"
 	AIndexes "github.com/ayachain/go-aya/vdb/indexes"
 	ANodes "github.com/ayachain/go-aya/vdb/node"
 	AReceipts "github.com/ayachain/go-aya/vdb/receipt"
@@ -44,7 +43,6 @@ type CVFS interface {
 	Receipts() AReceipts.Services
 	Transactions() ATx.Services
 	Nodes() ANodes.Services
-	Electorals() AElectorals.Services
 
 	Restart( baseCid cid.Cid ) error
 
@@ -147,13 +145,6 @@ func ( vfs *aCVFS ) Restart( baseCid cid.Cid ) error {
 	return vfs.initServices()
 }
 
-func ( vfs *aCVFS ) Electorals() AElectorals.Services {
-
-	v, _ :=  vfs.servies.Load(AElectorals.DBPath )
-
-	return v.(AElectorals.Services)
-}
-
 func ( vfs *aCVFS ) Nodes() ANodes.Services {
 
 	v, _ := vfs.servies.Load(ANodes.DBPath )
@@ -163,7 +154,7 @@ func ( vfs *aCVFS ) Nodes() ANodes.Services {
 
 func ( vfs *aCVFS ) Assetses() AAssetses.Services {
 
-	v, _ := vfs.servies.Load(AAssetses.DBPATH)
+	v, _ := vfs.servies.Load(AAssetses.DBPath)
 
 	return v.(AAssetses.Services)
 }
@@ -296,10 +287,10 @@ func ( vfs *aCVFS ) initServices() error {
 	}
 
 	/// AAssetses VDBServices
-	if dir, err := AVdbComm.LookupDBPath(vfs.Root, AAssetses.DBPATH); err != nil {
+	if dir, err := AVdbComm.LookupDBPath(vfs.Root, AAssetses.DBPath); err != nil {
 		goto experctedErr
 	} else {
-		vfs.servies.Store( AAssetses.DBPATH, AAssetses.CreateServices(dir) )
+		vfs.servies.Store( AAssetses.DBPath, AAssetses.CreateServices(dir) )
 	}
 
 	/// ABlock VDBServices
@@ -321,13 +312,6 @@ func ( vfs *aCVFS ) initServices() error {
 		goto experctedErr
 	} else {
 		vfs.servies.Store( AReceipts.DBPath, AReceipts.CreateServices(dir) )
-	}
-
-	/// AElectorals VDBServices
-	if dir, err := AVdbComm.LookupDBPath(vfs.Root, AElectorals.DBPath); err != nil {
-		goto experctedErr
-	} else {
-		vfs.servies.Store( AElectorals.DBPath, AElectorals.CreateServices(dir) )
 	}
 
 	return nil

@@ -31,7 +31,7 @@ func CreateServices( mdir *mfs.Directory ) Services {
 		Directory:mdir,
 	}
 
-	api.ldb, api.mfsstorage = AVdbComm.OpenExistedDB( mdir, DBPATH )
+	api.ldb, api.mfsstorage = AVdbComm.OpenExistedDB( mdir, DBPath )
 
 	api.dbSnapshot, err = api.ldb.GetSnapshot()
 	if err != nil {

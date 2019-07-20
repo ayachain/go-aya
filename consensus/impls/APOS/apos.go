@@ -32,7 +32,6 @@ type APOSConsensusNotary struct {
 
 	hst *history.History
 
-
 }
 
 func NewAPOSConsensusNotary( ind *core.IpfsNode ) *APOSConsensusNotary {

@@ -112,13 +112,13 @@ func electoralThread(ctx context.Context) {
 				continue
 			}
 
-			latestBlock, err := pool.cvfs.Indexes().GetLatest()
+			latestIndex, err := pool.cvfs.Indexes().GetLatest()
 			if err != nil {
 				log.Warning(err)
 				continue
 			}
 
-			latestPacker, err := pool.cvfs.Electorals().PackerOf(latestBlock.BlockIndex)
+			latestBlock, err := pool.cvfs.Blocks().GetBlocks(latestIndex.BlockIndex)
 			if err != nil {
 				log.Warning(err)
 				continue
@@ -128,7 +128,7 @@ func electoralThread(ctx context.Context) {
 
 			if !exist {
 
-				if strings.EqualFold(ele.Address.String(), latestPacker.Address.String()) {
+				if strings.EqualFold(ele.Address.String(), latestBlock[0].Packager ) {
 
 					pool.voteRetMapping.Store(ele.Address.String(), map[string]int{ele.Address.String():80})
 
@@ -143,7 +143,7 @@ func electoralThread(ctx context.Context) {
 
 				var vm = vmap.(map[string]int)
 
-				if strings.EqualFold(ele.Address.String(), latestPacker.Address.String()) {
+				if strings.EqualFold(ele.Address.String(), latestBlock[0].Packager ) {
 
 					vm[ele.Address.String()] = 80
 

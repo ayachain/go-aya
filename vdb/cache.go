@@ -17,7 +17,6 @@ type CacheCVFS interface {
 	Assetses() AAssetses.Caches
 	Receipts() AReceipts.Caches
 	Transactions() ATx.Caches
-
 	MergeGroup() *AWroker.TaskBatchGroup
 }
 
@@ -86,7 +85,7 @@ func (cache *aCacheCVFS) Blocks() ABlock.Caches {
 func (cache *aCacheCVFS) Assetses() AAssetses.Caches {
 
 	var err error
-	ser, exist := cache.cacheSers[AAssetses.DBPATH]
+	ser, exist := cache.cacheSers[AAssetses.DBPath]
 	if !exist {
 
 		ser, err = cache.rdonlyCVFS.Assetses().NewCache()
@@ -94,7 +93,7 @@ func (cache *aCacheCVFS) Assetses() AAssetses.Caches {
 			return nil
 		}
 
-		cache.cacheSers[AAssetses.DBPATH] = ser
+		cache.cacheSers[AAssetses.DBPath] = ser
 	}
 
 	wt, ok := ser.(AAssetses.Caches)
