@@ -169,7 +169,6 @@ func electoralThread(ctx context.Context) {
 				return true
 			})
 
-
 			if votedSum == len(pool.onlineSuperNode) {
 
 				// electoral finished
@@ -213,11 +212,10 @@ func electoralThread(ctx context.Context) {
 	}
 }
 
-type PingRet struct {
 
+type PingRet struct {
 	Node *node.Node
 	RTT time.Duration
-
 }
 
 

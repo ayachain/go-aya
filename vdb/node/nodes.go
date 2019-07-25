@@ -161,6 +161,37 @@ func (api *aNodes) GetSuperNodeList() []*Node {
 }
 
 
+func (api *aNodes) GetSuperMaterTotalVotes() uint64 {
+
+	api.snLock.RLock()
+	defer api.snLock.RUnlock()
+
+	var total uint64
+
+	it := api.dbSnapshot.NewIterator( util.BytesPrefix( []byte(NodeTypeSuper) ), nil )
+
+	defer it.Release()
+
+	for it.Next() {
+
+		perrId := it.Value()
+
+		bs, err := api.dbSnapshot.Get(perrId, nil)
+
+		if err != nil {
+			panic(err)
+		}
+
+		nd := &Node{}
+
+		if err := nd.Decode(bs); err != nil {
+			total += nd.Votes
+		}
+	}
+
+	return total
+}
+
 func (api *aNodes) GetFirst() *Node {
 
 	api.snLock.RLock()

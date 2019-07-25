@@ -40,4 +40,6 @@ type Notary interface {
 	MiningBlock( block *AMsgMBlock.MBlock, cvfs vdb.CacheCVFS ) (*AGroup.TaskBatchGroup, error)
 
 	TrustOrNot( msg *pubsub.Message, mtype NotaryMessageType, cvfs vdb.CVFS ) <- chan bool
+
+ 	NewBlockHasConfirm()
 }

@@ -10,7 +10,7 @@ type reader interface {
 
 	GetNodeByPeerId( peerId string ) (*Node, error)
 
-	GetFirst() *Node
+	GetSuperMaterTotalVotes() uint64
 
 	GetSuperNodeList() []*Node
 }

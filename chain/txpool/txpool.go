@@ -13,9 +13,9 @@ import (
 	AvdbComm "github.com/ayachain/go-aya/vdb/common"
 	AElectoral "github.com/ayachain/go-aya/vdb/electoral"
 	AMBlock "github.com/ayachain/go-aya/vdb/mblock"
+	AMsgMBlock "github.com/ayachain/go-aya/vdb/mblock"
 	ATx "github.com/ayachain/go-aya/vdb/transaction"
 	EAccount "github.com/ethereum/go-ethereum/accounts"
-	EComm "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-ipfs/core"
@@ -28,11 +28,8 @@ import (
 const AtxPoolVersion = "AyaTxPool 0.0.1"
 
 var (
-	ErrPackageThreadExpected 		= errors.New("an unrecoverable error occurred inside the thread")
 	ErrRawDBEndoedZeroLen 			= errors.New("ready to sent content is empty")
 	ErrMessageVerifyExpected 		= errors.New("message verify failed")
-	ErrStorageRawDataDecodeExpected = errors.New("decode raw data expected")
-	ErrStorageLowAPIExpected 		= errors.New("atx pool storage low api operation expected")
 )
 
 var(
@@ -60,11 +57,9 @@ const (
 
 	AtxPoolWorkModeNormal 			AtxPoolWorkMode 	= 0
 
-	AtxPoolWorkModeMaster 			AtxPoolWorkMode 	= 1
+	AtxPoolWorkModeSuper 			AtxPoolWorkMode 	= 1
 
-	AtxPoolWorkModeSuper 			AtxPoolWorkMode 	= 2
-
-	AtxPoolWorkModeOblivioned 		AtxPoolWorkMode 	= 3
+	AtxPoolWorkModeOblivioned 		AtxPoolWorkMode 	= 2
 
 
 	ATxPoolThreadTxListen			ATxPoolThreadsName 	= "thread.tx.listen"
@@ -192,32 +187,20 @@ func (pool *ATxPool) PowerOn( ctx context.Context ) error {
 			ATxPoolThreadMining,
 			ATxPoolThreadReceiptListen,
 			ATxPoolThreadExecutor,
-			//ATxPoolThreadChainInfo,
-		)
-
-
-	case AtxPoolWorkModeMaster:
-
-		pool.runThreads(
-			ctx,
-			//ATxPoolThreadTxListen,
-			//AtxThreadTxPackage,
-			ATxPoolThreadMining,
-			//AtxThreadReceiptListen,
-			ATxPoolThreadExecutor,
 			ATxPoolThreadChainInfo,
 		)
-
 
 	case AtxPoolWorkModeNormal:
 
 		pool.runThreads(
 			ctx,
+			//ATxPoolThreadElectoral,
+			//ATxPoolThreadTxListen,
+			//ATxPoolThreadTxPackage,
+			//ATxPoolThreadMining,
+			//ATxPoolThreadReceiptListen,
+			ATxPoolThreadExecutor,
 			ATxPoolThreadChainInfo,
-			//AtxThreadTxPackage,
-			//AtxThreadMining,
-			//AtxThreadReceiptListen,
-			//ATxPoolThreadExecutor,
 		)
 
 	}
@@ -312,59 +295,6 @@ func (pool *ATxPool) DoElectoral() {
 	}()
 }
 
-func (pool *ATxPool) AddConfrimReceipt( mbhash EComm.Hash, retcid cid.Cid, from EComm.Address) error {
-
-	/// If it is not possible to obtain the proof of "VoteRight" from the source, it means
-	/// that the result has no reference value and is discarded directly.
-	ast, err := pool.cvfs.Assetses().AssetsOf( from )
-	if err != nil {
-		return err
-	}
-
-	receiptKey := []byte(TxReceiptPrefix)
-	copy(receiptKey[1:], mbhash.Bytes())
-
-	exist, err := pool.storage.Has(receiptKey, nil)
-	if err != nil {
-		return ErrStorageLowAPIExpected
-	}
-
-	rcidstr := retcid.String()
-	receiptMap := make(map[string]uint64)
-	if exist {
-
-		value, err := pool.storage.Get(receiptKey, nil)
-		if err != nil {
-			return ErrStorageLowAPIExpected
-		}
-
-		if json.Unmarshal(value, receiptMap) != nil {
-			return ErrStorageRawDataDecodeExpected
-		}
-
-		ocount, vexist := receiptMap[rcidstr]
-		if vexist {
-			receiptMap[rcidstr] = ocount + ast.Vote
-		} else {
-			receiptMap[rcidstr] = ast.Vote
-		}
-
-	} else {
-		receiptMap[rcidstr] = ast.Vote
-	}
-
-	rmapbs, err := json.Marshal(receiptMap)
-	if err != nil {
-		return ErrStorageLowAPIExpected
-	}
-
-	if err := pool.storage.Put( receiptKey, rmapbs, nil ); err != nil {
-		return ErrStorageLowAPIExpected
-	}
-
-	return nil
-}
-
 func (pool *ATxPool) ReadOnlyCVFS() vdb.CVFS {
 	return pool.cvfs
 }
@@ -382,7 +312,8 @@ func (pool *ATxPool) PublishTx( tx *ATx.Transaction ) error {
 /// Judging working mode
 func (pool *ATxPool) judgingMode() {
 
-	pool.workmode = AtxPoolWorkModeMaster
+	pool.workmode = AtxPoolWorkModeSuper
+
 	return
 
 }
@@ -457,6 +388,46 @@ func (pool *ATxPool) addRawTransaction( tx *ATx.Transaction ) error {
 	}
 
 	pool.DoPackMBlock()
+
+	return nil
+}
+
+func (pool *ATxPool) removeExistedTxsFromMiningBlock( mblock *AMsgMBlock.MBlock ) error {
+
+	txsCid, err := cid.Decode(mblock.Txs)
+	if err != nil {
+		return err
+	}
+
+	iblock, err := pool.ind.Blocks.GetBlock(context.TODO(), txsCid)
+	if err != nil {
+		return err
+	}
+
+	txlist := make([]*ATx.Transaction, mblock.Txc)
+	if err := json.Unmarshal(iblock.RawData(), &txlist); err != nil {
+		return err
+	}
+
+	for _, tx := range txlist {
+
+		txraw := tx.Encode()
+		if len(txraw) <= 0 {
+			continue
+		}
+
+		key := crypto.Keccak256(txraw)
+
+		if exist, err := pool.storage.Has(key, nil); exist && err == nil {
+
+			if err := pool.storage.Delete( key, nil ); err != nil {
+				log.Warning(err)
+				continue
+			}
+
+		}
+
+	}
 
 	return nil
 }

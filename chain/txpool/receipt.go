@@ -117,7 +117,6 @@ func receiptListen(ctx context.Context ) {
 					return
 				}
 
-
 				cblock := pool.miningBlock.Confirm(rcidstr)
 
 				if err := pool.doBroadcast(cblock, pool.channelTopics[ATxPoolThreadExecutor] ); err != nil {

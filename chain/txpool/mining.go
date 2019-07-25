@@ -84,10 +84,12 @@ func miningThread(ctx context.Context ) {
 
 					pool.miningBlock = mblock
 
+					if err := pool.removeExistedTxsFromMiningBlock( mblock ); err != nil {
+						log.Error(err)
+					}
+
 					if err := pool.doBroadcast(mblock, pool.channelTopics[ATxPoolThreadMining] ); err != nil {
-
 						continue
-
 					}
 
 					// new electoral
@@ -104,8 +106,6 @@ func miningThread(ctx context.Context ) {
 
 				}
 			}
-
-
 
 		}
 
@@ -172,5 +172,4 @@ func miningThread(ctx context.Context ) {
 			}
 		}
 	}
-
 }

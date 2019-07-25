@@ -14,7 +14,6 @@ import (
 
 var (
 	ErrNodeAlreadyExist = errors.New("insert target node already exist.")
-
 )
 
 type aCache struct {
@@ -88,25 +87,34 @@ func (cache *aCache) MergerBatch() *leveldb.Batch {
 //
 //}
 
+func (cache *aCache) GetSuperMaterTotalVotes() uint64 {
 
-func (cache *aCache) GetFirst() *Node {
+	var total uint64
 
-	if bs, err := cache.source.Get( []byte(NodeTypeSuper + "0"), nil ); err != nil {
+	it := cache.source.NewIterator( util.BytesPrefix( []byte(NodeTypeSuper) ), nil )
 
-		return nil
+	defer it.Release()
 
-	} else {
+	for it.Next() {
+
+		perrId := it.Value()
+
+		bs, err := cache.source.Get(perrId, nil)
+
+		if err != nil {
+			panic(err)
+		}
 
 		nd := &Node{}
 
 		if err := nd.Decode(bs); err != nil {
-			return nil
+			total += nd.Votes
 		}
-
-		return nd
-
 	}
+
+	return total
 }
+
 
 func (cache *aCache) GetNodeByPeerId( peerId string ) (*Node, error) {
 

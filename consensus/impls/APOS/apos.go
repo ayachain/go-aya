@@ -19,7 +19,7 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-ipfs/core"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
-	"time"
+	"sync"
 )
 
 const DeveloperMode = true
@@ -31,6 +31,8 @@ type APOSConsensusNotary struct {
 	ind *core.IpfsNode
 
 	hst *history.History
+
+	mu sync.Mutex
 
 }
 
@@ -62,7 +64,6 @@ func (n *APOSConsensusNotary) MiningBlock( block *AMBlock.MBlock, cvfs vdb.Cache
 	}
 
 	for _, tx := range txlist {
-
 
 		// is transaction override
 		txc, err := cvfs.Transactions().GetTxCount(tx.From)
@@ -97,8 +98,13 @@ func (n *APOSConsensusNotary) MiningBlock( block *AMBlock.MBlock, cvfs vdb.Cache
 	return cvfs.MergeGroup(), nil
 }
 
-func nowTimeStemp() uint16 {
-	return uint16(time.Now().Unix())
+func (n *APOSConsensusNotary) NewBlockHasConfirm(  ) {
+
+	n.mu.Lock()
+	defer n.mu.Unlock()
+
+	n.hst.Clear()
+
 }
 
 func (n *APOSConsensusNotary) TrustOrNot( msg *pubsub.Message, mtype ACore.NotaryMessageType, cvfs vdb.CVFS ) <- chan bool {
@@ -116,6 +122,9 @@ func (n *APOSConsensusNotary) TrustOrNot( msg *pubsub.Message, mtype ACore.Notar
 
 	go func() {
 
+		n.mu.Lock()
+		defer n.mu.Unlock()
+
 		sender, err := cvfs.Nodes().GetNodeByPeerId(msg.GetFrom().String())
 		if err != nil {
 			replayChan <- false
@@ -128,7 +137,7 @@ func (n *APOSConsensusNotary) TrustOrNot( msg *pubsub.Message, mtype ACore.Notar
 
 		msgHash := crypto.Keccak256Hash(msg.Data)
 
-		threshold := cvfs.Nodes().GetFirst().Votes * 1
+		threshold := (cvfs.Nodes().GetSuperMaterTotalVotes() * 51) / 100
 
 		switch mtype {
 

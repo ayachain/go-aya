@@ -157,6 +157,8 @@ func blockExecutorThread(ctx context.Context) {
 				pool.DoPackMBlock()
 			}
 
+			pool.notary.NewBlockHasConfirm()
+
 			log.Infof("Confrim Block %08d:%v", cblock.Index, latestCid.String())
 		}
 	}
