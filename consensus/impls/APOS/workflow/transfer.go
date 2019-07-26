@@ -11,6 +11,8 @@ import (
 
 var expectedErr = errors.New("transfer expected")
 
+
+
 func DoTransfer( tx *ATx.Transaction, base vdb.CacheCVFS ) error {
 
 	if tx.Verify() {

@@ -27,6 +27,7 @@ type aCache struct {
 	delKeys [][]byte
 }
 
+
 func newCache( sourceDB *leveldb.Snapshot ) (Caches, error) {
 
 	memsto := storage.NewMemStorage()
@@ -43,6 +44,10 @@ func newCache( sourceDB *leveldb.Snapshot ) (Caches, error) {
 	}
 
 	return c, nil
+}
+
+func (cache *aCache) GetSnapshot() *leveldb.Snapshot {
+	return cache.source
 }
 
 func (cache *aCache) Close() {
@@ -201,6 +206,9 @@ func (cache *aCache) Insert( peerId string, node *Node ) error {
 		return cache.cdb.Put([]byte(peerId), node.Encode(), AvdbComm.WriteOpt)
 
 	}
+
+
+
 }
 
 

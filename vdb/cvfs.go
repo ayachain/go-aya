@@ -38,16 +38,14 @@ type CVFS interface {
 	Indexes() AIndexes.IndexesServices
 
 	// In IPFS DAG
+	Nodes() ANodes.Services
 	Blocks() ABlock.Services
 	Assetses() AAssetses.Services
 	Receipts() AReceipts.Services
 	Transactions() ATx.Services
-	Nodes() ANodes.Services
 
 	Restart( baseCid cid.Cid ) error
-
 	WriteTaskGroup( group *AWrok.TaskBatchGroup ) ( cid.Cid, error )
-
 	NewCVFSCache() (CacheCVFS, error)
 }
 

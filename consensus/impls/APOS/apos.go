@@ -33,7 +33,6 @@ type APOSConsensusNotary struct {
 	hst *history.History
 
 	mu sync.Mutex
-
 }
 
 func NewAPOSConsensusNotary( ind *core.IpfsNode ) *APOSConsensusNotary {
@@ -63,16 +62,22 @@ func (n *APOSConsensusNotary) MiningBlock( block *AMBlock.MBlock, cvfs vdb.Cache
 		return nil, err
 	}
 
-	for _, tx := range txlist {
+	for i, tx := range txlist {
 
 		// is transaction override
 		txc, err := cvfs.Transactions().GetTxCount(tx.From)
+
 		if err != nil {
 			continue
 		}
 
 		if tx.Tid < txc {
 			cvfs.Receipts().Put(tx.GetHash256(), block.Index, ARsp.ExpectedReceipt(APosComm.TxOverrided, nil).Encode())
+			continue
+		}
+
+		// Handle Cost
+		if workflow.DoCostHandle( tx, cvfs, i ) != nil {
 			continue
 		}
 
@@ -87,13 +92,15 @@ func (n *APOSConsensusNotary) MiningBlock( block *AMBlock.MBlock, cvfs vdb.Cache
 
 		default:
 
-			if err := workflow.DoTransfer(tx, cvfs); err != nil {
+			if err := workflow.DoTransfer( tx, cvfs ); err != nil {
 				return nil, err
 			}
 
 		}
-
 	}
+
+	// should pos block
+
 
 	return cvfs.MergeGroup(), nil
 }

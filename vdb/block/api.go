@@ -4,9 +4,15 @@ import AVdbComm "github.com/ayachain/go-aya/vdb/common"
 
 const DBPath = "/blocks"
 
+const BlockNameLatest = "latest"
+const BlockNameGen    = "gen"
+
 type reader interface {
 
 	GetBlocks( hashOrIndex...interface{} ) ([]*Block, error)
+
+	GetLatestPosBlockIndex() uint64
+
 }
 
 type writer interface {
@@ -14,6 +20,8 @@ type writer interface {
 	AppendBlocks( blocks...*Block )
 
 	WriteGenBlock( gen *GenBlock )
+
+	SetLatestPosBlockIndex( idx uint64 )
 }
 
 

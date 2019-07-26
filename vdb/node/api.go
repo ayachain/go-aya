@@ -2,6 +2,7 @@ package node
 
 import (
 	AVdbComm "github.com/ayachain/go-aya/vdb/common"
+	"github.com/syndtr/goleveldb/leveldb"
 )
 
 const DBPath = "/nodes"
@@ -13,6 +14,8 @@ type reader interface {
 	GetSuperMaterTotalVotes() uint64
 
 	GetSuperNodeList() []*Node
+
+	GetSnapshot() *leveldb.Snapshot
 }
 
 type writer interface {

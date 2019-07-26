@@ -1,6 +1,7 @@
 package block
 
 import (
+	"encoding/binary"
 	"errors"
 	AvdbComm "github.com/ayachain/go-aya/vdb/common"
 	AIndexes "github.com/ayachain/go-aya/vdb/indexes"
@@ -34,6 +35,36 @@ func newCache( sourceDB *leveldb.Snapshot, idxReader AIndexes.IndexesServices ) 
 	}
 
 	return c, nil
+}
+
+func (cache *aCache) GetLatestPosBlockIndex() uint64 {
+
+	if exist, err := cache.source.Has(LatestPosBlockIdxKey, nil); err != nil {
+
+		panic(err)
+
+	} else if !exist {
+
+		return 0
+
+	} else {
+
+		if bs, err := cache.source.Get(LatestPosBlockIdxKey, nil); err != nil {
+
+			return 0
+
+		} else {
+
+			return binary.BigEndian.Uint64(bs)
+
+		}
+
+	}
+
+}
+
+func (cache *aCache) SetLatestPosBlockIndex( idx uint64 ) {
+	_ = cache.cdb.Put(LatestPosBlockIdxKey, AvdbComm.BigEndianBytes(idx), AvdbComm.WriteOpt)
 }
 
 func (cache *aCache) GetBlocks( hashOrIndex...interface{} ) ([]*Block, error) {
@@ -107,6 +138,7 @@ func (cache *aCache) WriteGenBlock( gen *GenBlock ) {
 func (cache *aCache) Close() {
 	_ = cache.cdb.Close()
 }
+
 
 func (cache *aCache) MergerBatch() *leveldb.Batch {
 

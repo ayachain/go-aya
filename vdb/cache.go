@@ -5,6 +5,7 @@ import (
 	AAssetses "github.com/ayachain/go-aya/vdb/assets"
 	ABlock "github.com/ayachain/go-aya/vdb/block"
 	"github.com/ayachain/go-aya/vdb/common"
+	ANodes "github.com/ayachain/go-aya/vdb/node"
 	AReceipts "github.com/ayachain/go-aya/vdb/receipt"
 	ATx "github.com/ayachain/go-aya/vdb/transaction"
 )
@@ -17,7 +18,10 @@ type CacheCVFS interface {
 	Assetses() AAssetses.Caches
 	Receipts() AReceipts.Caches
 	Transactions() ATx.Caches
+	Nodes() ANodes.Caches
+
 	MergeGroup() *AWroker.TaskBatchGroup
+
 }
 
 
@@ -55,6 +59,32 @@ func (cache *aCacheCVFS) Close() error {
 	}
 
 	return nil
+
+}
+
+
+func (cache *aCacheCVFS) Nodes() ANodes.Caches {
+
+	var err error
+	ser, exist := cache.cacheSers[ANodes.DBPath]
+	if !exist {
+
+		ser, err = cache.rdonlyCVFS.Nodes().NewCache()
+		if err != nil {
+			return nil
+		}
+
+		cache.cacheSers[ANodes.DBPath] = ser
+	}
+
+
+	wt, ok := ser.(ANodes.Caches)
+
+	if !ok {
+		return nil
+	}
+
+	return wt
 
 }
 

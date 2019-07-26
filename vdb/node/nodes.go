@@ -10,6 +10,7 @@ import (
 	"sync"
 )
 
+
 type aNodes struct {
 
 	reader
@@ -160,6 +161,9 @@ func (api *aNodes) GetSuperNodeList() []*Node {
 	return rets
 }
 
+func (api *aNodes) GetSnapshot() *leveldb.Snapshot {
+	return api.dbSnapshot
+}
 
 func (api *aNodes) GetSuperMaterTotalVotes() uint64 {
 

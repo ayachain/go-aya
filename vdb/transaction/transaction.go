@@ -27,8 +27,6 @@ type Transaction struct {
 	Value			uint64			`json:"Value"`
 	Children		[]EComm.Hash	`json:"Children"`
 	Data			[]byte			`json:"Data"`
-	Steps			uint32			`json:"Steps"`
-	Price			uint32			`json:"Price"`
 	Tid				uint64			`json:"Tid"`
 	Sig				[]byte			`json:"Sig"`
 
@@ -61,8 +59,6 @@ func ( trsn *Transaction ) GetHash256( ) EComm.Hash {
 		buff.Write(hs.Bytes())
 	}
 	buff.Write(trsn.Data)
-	buff.Write( AVdbComm.BigEndianBytesUint32(trsn.Steps) )
-	buff.Write( AVdbComm.BigEndianBytesUint32(trsn.Price) )
 	buff.Write( AVdbComm.BigEndianBytes(trsn.Tid) )
 	//buff.Write( trsn.Sig )
 

@@ -1,6 +1,7 @@
 package block
 
 import (
+	"encoding/binary"
 	"errors"
 	ADB "github.com/ayachain/go-aya-alvm-adb"
 	AVdbComm "github.com/ayachain/go-aya/vdb/common"
@@ -10,7 +11,12 @@ import (
 	"github.com/prometheus/common/log"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/util"
+	"strings"
 	"sync"
+)
+
+var(
+	LatestPosBlockIdxKey 	= []byte("LatestPosBlockIndex")
 )
 
 type aBlocks struct {
@@ -48,6 +54,35 @@ func CreateServices( mdir *mfs.Directory, hapi AIndexes.IndexesServices ) Servic
 	return api
 }
 
+func (blks *aBlocks) GetLatestPosBlockIndex() uint64 {
+
+	blks.snLock.RLock()
+	defer blks.snLock.RUnlock()
+
+	if exist, err := blks.dbSnapshot.Has(LatestPosBlockIdxKey, nil); err != nil {
+
+		panic(err)
+
+	} else if !exist {
+
+		return 0
+
+	} else {
+
+		if bs, err := blks.dbSnapshot.Get(LatestPosBlockIdxKey, nil); err != nil {
+
+			return 0
+
+		} else {
+
+			return binary.BigEndian.Uint64(bs)
+
+		}
+
+	}
+
+}
+
 func (blks *aBlocks) GetBlocks( hashOrIndex...interface{} ) ([]*Block, error) {
 
 	blks.snLock.RLock()
@@ -60,6 +95,27 @@ func (blks *aBlocks) GetBlocks( hashOrIndex...interface{} ) ([]*Block, error) {
 		var bhash EComm.Hash
 
 		switch v.(type) {
+
+		case string:
+
+			switch strings.ToLower(v.(string)) {
+			case BlockNameLatest:
+
+				hd, err := blks.headAPI.GetLatest()
+				if err != nil {
+					return nil, err
+				}
+				bhash = hd.Hash
+
+
+			case BlockNameGen:
+
+				hd, err := blks.headAPI.GetIndex(0)
+				if err != nil {
+					return nil, err
+				}
+				bhash = hd.Hash
+			}
 
 		case uint64:
 
