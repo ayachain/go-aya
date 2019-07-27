@@ -22,7 +22,7 @@ import (
 	"sync"
 )
 
-const DeveloperMode = true
+const DeveloperMode = false
 
 type APOSConsensusNotary struct {
 

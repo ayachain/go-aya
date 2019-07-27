@@ -24,7 +24,7 @@ var LatestIndexKey = []byte("LATEST")
 var log = logging.MustGetLogger("IndexesServices")
 
 /// Deve
-const AIndexesKeyPathPrefix = "/aya/chain/indexes/dev/0717/11/"
+const AIndexesKeyPathPrefix = "/aya/chain/indexes/dev/0723/1/"
 /// Prod
 //const AIndexesKeyPathPrefix = "/aya/chain/indexes/"
 
@@ -73,7 +73,9 @@ func CreateServices( ind *core.IpfsNode, chainId string ) IndexesServices {
 		nd = pbnd
 
 	default:
+
 		nd = unixfs.EmptyDirNode()
+
 	}
 
 	root, err := mfs.NewRoot(
