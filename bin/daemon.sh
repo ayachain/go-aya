@@ -1,0 +1,3 @@
+#!/bin/bash
+
+aya daemon &

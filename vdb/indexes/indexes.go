@@ -48,8 +48,11 @@ func CreateServices( ind *core.IpfsNode, chainId string ) IndexesServices {
 	dsk := datastore.NewKey(adbpath)
 	val, err := ind.Repo.Datastore().Get(dsk)
 
+	//ind.Repo.Datastore().Delete(dsk)
+
 	switch {
 	case err == datastore.ErrNotFound || val == nil:
+
 		nd = unixfs.EmptyDirNode()
 
 	case err == nil:
@@ -75,7 +78,6 @@ func CreateServices( ind *core.IpfsNode, chainId string ) IndexesServices {
 	default:
 
 		nd = unixfs.EmptyDirNode()
-
 	}
 
 	root, err := mfs.NewRoot(

@@ -56,7 +56,12 @@ func syncListener(ctx context.Context ) {
 			return
 		}
 
-		if <- pool.notary.TrustOrNot(msg, core.NotaryMessageChainInfo, pool.cvfs ) {
+		select {
+		case <- ctx.Done():
+
+			return
+
+		case <- pool.notary.TrustOrNot(msg, core.NotaryMessageChainInfo, pool.cvfs) : {
 
 			info := &AChainInfo.ChainInfo{}
 
@@ -87,18 +92,19 @@ func syncListener(ctx context.Context ) {
 			}
 
 			// restart cvfs
-			if err := pool.cvfs.Restart( info.VDBRoot ); err != nil {
+			if err := pool.cvfs.Restart(info.VDBRoot); err != nil {
 				log.Warning(err)
 				goto loopBreakByErr
 			}
 
-			log.Infof("SyncBlockIndex %08d:%v, ", info.LatestBlock.Index, info.VDBRoot.String() )
+			log.Infof("SyncBlockIndex %08d:%v, ", info.LatestBlock.Index, info.VDBRoot.String())
 
-			loopBreakByErr:
+		loopBreakByErr:
 
-				pool.syncMutx.Unlock()
+			pool.syncMutx.Unlock()
 
-				continue
+			continue
+		}
 		}
 
 	}
