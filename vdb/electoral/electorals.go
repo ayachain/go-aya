@@ -72,7 +72,7 @@ func (aele *aElectorals) UpdatePingRet( pret *node.PingRet ) {
 	}
 
 
-	passCount := superNodesCount / 2
+	passCount := superNodesCount / 2 + 1
 
 	if onlineNodeCount <= passCount {
 		return

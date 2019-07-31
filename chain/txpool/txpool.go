@@ -22,6 +22,7 @@ import (
 	"github.com/ipfs/go-ipfs/core"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/storage"
+	"github.com/syndtr/goleveldb/leveldb/util"
 	"github.com/whyrusleeping/go-logging"
 	"sync"
 	"time"
@@ -107,12 +108,12 @@ type ATxPool struct {
 
 	syncMutx sync.Mutex
 
-
 	packerState AElectoral.ATxPackerState
-
 	latestPackerStateChangeTime int64
-
 	eleservices AElectoral.MemServices
+
+	txlenmu sync.Mutex
+	txlen uint
 }
 
 func NewTxPool( ind *core.IpfsNode, gblk *ABlock.GenBlock, cvfs vdb.CVFS, miner ACore.Notary, acc EAccount.Account) *ATxPool {
@@ -259,6 +260,33 @@ func (pool *ATxPool) GetWorkMode() AtxPoolWorkMode {
 	return pool.workmode
 }
 
+func (pool *ATxPool) GetState() *State {
+
+	s := &State{
+		Account: pool.ownerAccount.Address.String(),
+		Len:     uint64(pool.txlen),
+		MemorySize:0,
+		WorkMode: "Unknown",
+	}
+
+	sizes, err := pool.storage.SizeOf( []util.Range{ {nil,nil} } )
+	if err == nil {
+		s.MemorySize = sizes.Sum()
+	}
+
+	if pool.workmode == AtxPoolWorkModeSuper {
+
+		s.WorkMode = "Super"
+
+	} else {
+
+		s.WorkMode = "Normal"
+
+	}
+
+	return s
+}
+
 /// Private method
 /// Judging working mode
 func (pool *ATxPool) judgingMode() {
@@ -340,6 +368,9 @@ func (pool *ATxPool) doBroadcast( coder AvdbComm.AMessageEncode, topic string) e
 
 func (pool *ATxPool) addRawTransaction( tx *ATx.Transaction ) error {
 
+	pool.txlenmu.Lock()
+	defer pool.txlenmu.Unlock()
+
 	if !tx.Verify() {
 		return ErrMessageVerifyExpected
 	}
@@ -354,12 +385,17 @@ func (pool *ATxPool) addRawTransaction( tx *ATx.Transaction ) error {
 		return err
 	}
 
+	pool.txlen ++
+
 	pool.DoPackMBlock()
 
 	return nil
 }
 
 func (pool *ATxPool) removeExistedTxsFromMiningBlock( mblock *AMsgMBlock.MBlock ) error {
+
+	pool.txlenmu.Lock()
+	defer pool.txlenmu.Unlock()
 
 	txsCid, err := cid.Decode(mblock.Txs)
 	if err != nil {
@@ -391,6 +427,8 @@ func (pool *ATxPool) removeExistedTxsFromMiningBlock( mblock *AMsgMBlock.MBlock 
 				log.Warning(err)
 				continue
 			}
+
+			pool.txlen --
 
 		}
 

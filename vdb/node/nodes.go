@@ -220,12 +220,15 @@ func (api *aNodes) GetFirst() *Node {
 
 func (api *aNodes) GetSuperNodeCount() int64 {
 
-	sizes, err := api.ldb.SizeOf( []util.Range{ *util.BytesPrefix([]byte(NodeTypeSuper))} )
+	sit := api.ldb.NewIterator( util.BytesPrefix([]byte(NodeTypeSuper)), nil)
 
-	if err != nil {
-		return 0
+	defer sit.Release()
+
+	var s = int64(0)
+
+	for sit.Next() {
+		s ++
 	}
 
-	return sizes.Sum()
-
+	return s
 }
