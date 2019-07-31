@@ -14,6 +14,7 @@ import (
 	AElectoral "github.com/ayachain/go-aya/vdb/electoral"
 	AMBlock "github.com/ayachain/go-aya/vdb/mblock"
 	AMsgMBlock "github.com/ayachain/go-aya/vdb/mblock"
+	"github.com/ayachain/go-aya/vdb/node"
 	ATx "github.com/ayachain/go-aya/vdb/transaction"
 	EAccount "github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -23,6 +24,7 @@ import (
 	"github.com/syndtr/goleveldb/leveldb/storage"
 	"github.com/whyrusleeping/go-logging"
 	"sync"
+	"time"
 )
 
 const AtxPoolVersion = "AyaTxPool 0.0.1"
@@ -59,9 +61,6 @@ const (
 
 	AtxPoolWorkModeSuper 			AtxPoolWorkMode 	= 1
 
-	AtxPoolWorkModeOblivioned 		AtxPoolWorkMode 	= 2
-
-
 	ATxPoolThreadTxListen			ATxPoolThreadsName 	= "thread.tx.listen"
 	AtxPoolThreadTxListenBuff 					   		= 128
 
@@ -77,11 +76,13 @@ const (
 	ATxPoolThreadMining				ATxPoolThreadsName 	= "thread.block.mining"
 	ATxPoolThreadMiningBuff								= 32
 
-	ATxPoolThreadChainInfo			ATxPoolThreadsName 	= "thread.chain.info"
+	ATxPoolThreadChainInfo			ATxPoolThreadsName 	= "thread.chaininfo.listen"
 	ATxPoolThreadChainInfoBuff							= 16
 
-	ATxPoolThreadElectoral			ATxPoolThreadsName	= "thread.electoral"
+	ATxPoolThreadElectoral			ATxPoolThreadsName	= "thread.packer.electoral"
 	ATxPoolThreadElectoralBuff							= 21
+
+	ATxPoolThreadElectoralTimeout	ATxPoolThreadsName 	= "thread.packer.timeout"
 )
 
 type ATxPool struct {
@@ -106,10 +107,12 @@ type ATxPool struct {
 
 	syncMutx sync.Mutex
 
+
 	packerState AElectoral.ATxPackerState
-	currentMaster string
-	voteRetMapping sync.Map
-	onlineSuperNode []PingRet
+
+	latestPackerStateChangeTime int64
+
+	eleservices AElectoral.MemServices
 }
 
 func NewTxPool( ind *core.IpfsNode, gblk *ABlock.GenBlock, cvfs vdb.CVFS, miner ACore.Notary, acc EAccount.Account) *ATxPool {
@@ -151,6 +154,8 @@ func NewTxPool( ind *core.IpfsNode, gblk *ABlock.GenBlock, cvfs vdb.CVFS, miner 
 		notary:miner,
 		genBlock:gblk,
 		packerState:AElectoral.ATxPackStateUnknown,
+		latestPackerStateChangeTime:time.Now().Unix(),
+		eleservices:AElectoral.CreateServices(cvfs, 10),
 	}
 
 }
@@ -164,18 +169,6 @@ func (pool *ATxPool) PowerOn( ctx context.Context ) error {
 	defer fmt.Println("ATxPool Working Stoped.")
 
 	switch pool.workmode {
-
-	case AtxPoolWorkModeOblivioned:
-
-		pool.runThreads(
-			ctx,
-			//ATxPoolThreadTxListen,
-			//ATxPoolThreadTxPackage,
-			ATxPoolThreadMining,
-			//ATxPoolThreadReceiptListen,
-			ATxPoolThreadExecutor,
-			ATxPoolThreadChainInfo,
-		)
 
 	case AtxPoolWorkModeSuper:
 
@@ -245,56 +238,6 @@ func (pool *ATxPool) DoPackMBlock() {
 	return
 }
 
-func (pool *ATxPool) DoElectoral() {
-
-	if pool.workmode != AtxPoolWorkModeSuper {
-		return
-	}
-
-	go func() {
-
-		if pool.packerState !=  AElectoral.ATxPackStateLookup {
-
-			pool.packerState = AElectoral.ATxPackStateLookup
-
-			sctx := context.WithValue( context.TODO(), "Pool", pool )
-
-			prets, err := pings(sctx)
-
-			if err != nil {
-				log.Warningf("DoElectoral:%v", err.Error())
-				return
-			}
-
-
-			/// is online super node less 3, can not electoral
-			if len(prets) >= 3 {
-
-				pool.onlineSuperNode = prets
-
-				latest, err := pool.cvfs.Indexes().GetLatest()
-
-				if err != nil {
-					log.Warningf("DoElectoral:%v", err.Error())
-					return
-				}
-
-				vote := &AElectoral.Electoral{
-					BlockIndex:latest.BlockIndex + 1,
-					Address:prets[0].Node.Owner,
-				}
-
-				if err := pool.doBroadcast(vote, pool.channelTopics[ATxPoolThreadElectoral]); err != nil {
-					log.Warningf("DoElectoral:%v", err.Error())
-					return
-				}
-			}
-
-		}
-
-	}()
-}
-
 func (pool *ATxPool) ReadOnlyCVFS() vdb.CVFS {
 	return pool.cvfs
 }
@@ -308,14 +251,38 @@ func (pool *ATxPool) PublishTx( tx *ATx.Transaction ) error {
 	return pool.doBroadcast(tx, pool.channelTopics[ATxPoolThreadTxListen])
 }
 
+func (pool *ATxPool) ElectoralServices() AElectoral.MemServices {
+	return pool.eleservices
+}
+
+func (pool *ATxPool) GetWorkMode() AtxPoolWorkMode {
+	return pool.workmode
+}
+
 /// Private method
 /// Judging working mode
 func (pool *ATxPool) judgingMode() {
 
-	pool.workmode = AtxPoolWorkModeSuper
+	nd, err := pool.cvfs.Nodes().GetNodeByPeerId( pool.ind.Identity.Pretty() )
+
+	if err != nil {
+
+		pool.workmode = AtxPoolWorkModeNormal
+		log.Error("TxPool WorkMode [Normal]")
+
+	} else if nd.Type == node.NodeTypeSuper {
+
+		pool.workmode = AtxPoolWorkModeSuper
+		log.Info("TxPool WorkMode [Super]")
+
+	} else {
+
+		pool.workmode = AtxPoolWorkModeNormal
+		log.Error("TxPool WorkMode [Normal]")
+
+	}
 
 	return
-
 }
 
 func (pool *ATxPool) runThreads( ctx context.Context, names ... ATxPoolThreadsName ) {
@@ -430,4 +397,11 @@ func (pool *ATxPool) removeExistedTxsFromMiningBlock( mblock *AMsgMBlock.MBlock 
 	}
 
 	return nil
+}
+
+func (pool *ATxPool) changePackerState( s AElectoral.ATxPackerState ) {
+
+	pool.latestPackerStateChangeTime = time.Now().Unix()
+	pool.packerState = s
+
 }

@@ -76,6 +76,21 @@ func (cache *aCache) MergerBatch() *leveldb.Batch {
 }
 
 
+func (cache *aCache) GetSuperNodeCount() int64 {
+
+	it := cache.source.NewIterator( util.BytesPrefix([]byte(NodeTypeSuper)), nil)
+
+	var ret int64 = 0
+
+	for it.Next() {
+
+		ret ++
+	}
+
+	return ret
+}
+
+
 //func (cache *aCache) Update( peerId string, node *Node ) error {
 //
 //	exist, err := AvdbComm.CacheHas( cache.source, cache.cdb, []byte(peerId) )
@@ -169,9 +184,28 @@ func (cache *aCache) GetSuperNodeList() []*Node {
 	return rets
 }
 
+func (cache *aCache) InsertBootstrapNodes( nds []Node ) {
+
+	for i, v := range nds {
+
+		key := []byte( fmt.Sprintf("%v%d", NodeTypeSuper, i) )
+
+		value := v.Encode()
+
+		if err := cache.cdb.Put( []byte(v.PeerID), value, AvdbComm.WriteOpt ); err != nil {
+			panic(err)
+		}
+
+		if err := cache.cdb.Put( key, []byte(v.PeerID), AvdbComm.WriteOpt ); err != nil {
+			panic(err)
+		}
+
+	}
+}
+
 func (cache *aCache) Insert( peerId string, node *Node ) error {
 
-	if exist, err := AvdbComm.CacheHas( cache.source, cache.cdb, []byte(peerId) ); err == nil || exist {
+	if exist, err := AvdbComm.CacheHas( cache.source, cache.cdb, []byte(peerId) ); err == nil && exist {
 
 		return ErrNodeAlreadyExist
 
@@ -187,7 +221,9 @@ func (cache *aCache) Insert( peerId string, node *Node ) error {
 			return superNodes[i].Votes < superNodes[j].Votes
 		})
 
-		superNodes = superNodes[:21]
+		if len(superNodes) > 21 {
+			superNodes = superNodes[:21]
+		}
 
 		for i, v := range superNodes {
 

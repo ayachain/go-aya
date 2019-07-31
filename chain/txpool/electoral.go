@@ -8,15 +8,9 @@ import (
 	peer "github.com/libp2p/go-libp2p-peer"
 	pstore "github.com/libp2p/go-libp2p-peerstore"
 	"github.com/libp2p/go-libp2p/p2p/protocol/ping"
-	"github.com/pkg/errors"
-	"go4.org/sort"
 	"strings"
 	"sync"
 	"time"
-)
-
-var (
-	PingExpected = time.Minute * 3600
 )
 
 func electoralThread(ctx context.Context) {
@@ -27,6 +21,10 @@ func electoralThread(ctx context.Context) {
 
 	subCtx, subCancel := context.WithCancel(ctx)
 
+	pctx := context.WithValue(ctx, "Pool", pool)
+
+	fctx, fcancel := context.WithCancel(ctx)
+
 	pool.threadChans.Store(ATxPoolThreadElectoral, make(chan []byte, ATxPoolThreadElectoralBuff) )
 
 	pool.workingThreadWG.Add(1)
@@ -34,6 +32,12 @@ func electoralThread(ctx context.Context) {
 	defer func() {
 
 		subCancel()
+
+		fcancel()
+
+		<- fctx.Done()
+
+		<- pctx.Done()
 
 		<- subCtx.Done()
 
@@ -53,6 +57,7 @@ func electoralThread(ctx context.Context) {
 	}()
 
 
+	/// Recv other node vote
 	go func() {
 
 		sub, err := pool.ind.PubSub.Subscribe( pool.channelTopics[ATxPoolThreadElectoral] )
@@ -66,6 +71,7 @@ func electoralThread(ctx context.Context) {
 			msg, err := sub.Next(subCtx)
 
 			if err != nil {
+				log.Warning(err)
 				return
 			}
 
@@ -78,261 +84,171 @@ func electoralThread(ctx context.Context) {
 
 				if nd.Type == node.NodeTypeSuper {
 
-					cc, _ := pool.threadChans.Load(ATxPoolThreadElectoral)
+					ele := &AElectoral.Electoral{}
+					if err := ele.RawMessageDecode(msg.Data); err != nil {
+						log.Error(err)
+						continue
+					}
 
-					cc.(chan []byte) <- msg.Data
+					pool.eleservices.UpdateVote( ele )
 				}
 			}
 		}
 
 	}()
 
+	go func() {
+
+		for {
+
+			select {
+			case <- fctx.Done():
+
+				return
+
+			case packer := <- pool.eleservices.FightPacker():
+
+				if packer == nil {
+					continue
+				}
+
+				if strings.EqualFold( packer.PackerPeerID, pool.ind.Identity.Pretty() ) {
+
+					if idx, err := pool.cvfs.Indexes().GetLatest(); err != nil {
+
+						continue
+
+					} else {
+
+						if packer.PackBlockIndex == idx.BlockIndex + 1 {
+
+							pool.changePackerState(AElectoral.ATxPackStateMaster)
+							pool.DoPackMBlock()
+
+						}
+					}
+
+				} else {
+
+					pool.changePackerState(AElectoral.ATxPackStateFollower)
+
+				}
+			}
+
+		}
+
+	}()
+
+	doPingsAndElectoral(pctx)
+}
+
+
+func doPingsAndElectoral( ctx context.Context ) {
+
+	pool := ctx.Value("Pool").(*ATxPool)
+
 	for {
 
-		cc, _ := pool.threadChans.Load(ATxPoolThreadElectoral)
-
 		select {
+
 		case <- ctx.Done():
 
 			return
 
-		case rawmsg, isOpen := <- cc.(chan []byte):
+		default:
 
-			if !isOpen {
-				continue
-			}
-
-			if pool.packerState != AElectoral.ATxPackStateLookup {
-				continue
-			}
-
-			ele := &AElectoral.Electoral{}
-			if err := ele.RawMessageDecode(rawmsg); err != nil {
-				log.Error(err)
-				continue
-			}
-
-			latestIndex, err := pool.cvfs.Indexes().GetLatest()
-			if err != nil {
-				log.Warning(err)
-				continue
-			}
-
-			latestBlock, err := pool.cvfs.Blocks().GetBlocks(latestIndex.BlockIndex)
-			if err != nil {
-				log.Warning(err)
-				continue
-			}
-
-			vmap, exist := pool.voteRetMapping.Load( ele.Address.String() )
-
-			if !exist {
-
-				if strings.EqualFold(ele.Address.String(), latestBlock[0].Packager ) {
-
-					pool.voteRetMapping.Store(ele.Address.String(), map[string]int{ele.Address.String():80})
-
-				} else {
-
-					pool.voteRetMapping.Store(ele.Address.String(), map[string]int{ele.Address.String():100})
-				}
-
-				continue
-
-			} else {
-
-				var vm = vmap.(map[string]int)
-
-				if strings.EqualFold(ele.Address.String(), latestBlock[0].Packager ) {
-
-					vm[ele.Address.String()] = 80
-
-				} else {
-
-					vm[ele.Address.String()] = 100
-				}
-
-			}
-
-			var votedSum = 0
-
-			pool.voteRetMapping.Range(func(key, value interface{}) bool {
-
-				vm, ok := value.(map[string]int)
-
-				if !ok {
-					return false
-				}
-
-				votedSum += len(vm)
-
-				return true
-			})
-
-			if votedSum == len(pool.onlineSuperNode) {
-
-				// electoral finished
-				var master = ""
-				var maxVoteCount = 0
-
-				pool.voteRetMapping.Range(func(key, value interface{}) bool {
-
-					vm, ok := value.(map[string]int)
-
-					if !ok {
-						return false
-					}
-
-					var total = 0
-
-					for _, vmv := range vm {
-						total += vmv
-					}
-
-					if total > maxVoteCount {
-						maxVoteCount = total
-						master = key.(string)
-					}
-
-					return true
-				})
-
-				if strings.EqualFold( master, pool.ind.Identity.Pretty() ) {
-
-					pool.packerState = AElectoral.ATxPackStateNextMaster
-
-				} else {
-
-					pool.packerState = AElectoral.ATxPackStateFollower
-				}
-
-			}
+			time.Sleep( time.Second * 1 )
 
 		}
-	}
-}
 
+		superNodes := pool.cvfs.Nodes().GetSuperNodeList()
 
-type PingRet struct {
-	Node *node.Node
-	RTT time.Duration
-}
+		wg := sync.WaitGroup{}
 
+		for _, v := range superNodes {
 
-func pingFastest( ctx context.Context ) <- chan *node.Node {
+			if strings.EqualFold(v.PeerID, pool.ind.Identity.Pretty()) {
+				continue
+			}
 
-	replay := make(chan *node.Node, 1)
+			wg.Add(1)
 
-	pool := ctx.Value("Pool").(*ATxPool)
+			go func(n *node.Node) {
 
-	superNodes := pool.cvfs.Nodes().GetSuperNodeList()
+				defer wg.Done()
 
-	if len( pool.ind.Peerstore.Addrs(pool.ind.Identity) ) == 0 {
-		return nil
-	}
+				pid, err := peer.IDB58Decode(n.PeerID)
 
-	for _, v := range superNodes {
+				if err != nil {
+					pool.eleservices.UpdatePingRet( &node.PingRet{Node: n, RTT: AElectoral.KPingTimeout, UTime: time.Now().Unix()} )
+					return
+				}
 
-		if strings.EqualFold( v.PeerID, pool.ind.Identity.Pretty() ) {
+				if len( pool.ind.Peerstore.Addrs(pid) ) == 0 {
+
+					ctx, cancel := context.WithTimeout(context.TODO(), AElectoral.KPingTimeout)
+
+					p, err := pool.ind.Routing.FindPeer(ctx, pid)
+
+					cancel()
+
+					if err != nil {
+
+						pool.eleservices.UpdatePingRet( &node.PingRet{Node: n, RTT: AElectoral.KPingTimeout, UTime: time.Now().Unix()} )
+
+						return
+
+					} else {
+
+						pool.ind.Peerstore.AddAddrs(p.ID, p.Addrs, pstore.ConnectedAddrTTL)
+
+					}
+				}
+
+				ctx, cancel := context.WithTimeout( ctx, AElectoral.KPingTimeout )
+
+				r, ok := <- ping.Ping(ctx, pool.ind.PeerHost, pid)
+
+				cancel()
+
+				if !ok || r.Error != nil {
+					pool.eleservices.UpdatePingRet( &node.PingRet{Node: n, RTT: AElectoral.KPingTimeout, UTime: time.Now().Unix()} )
+					return
+				}
+
+				pool.eleservices.UpdatePingRet( &node.PingRet{Node: n, RTT: r.RTT, UTime: time.Now().Unix()} )
+
+			}(v)
+		}
+
+		wg.Wait()
+
+		if idx, err := pool.cvfs.Indexes().GetLatest(); err != nil {
+			log.Warningf("DoElectoral:%v", err.Error())
 			continue
+
+		} else {
+
+			packer := pool.eleservices.GetNearestOnlineNode( idx.BlockIndex + 1 )
+
+			if packer == nil {
+				continue
+			}
+
+			vote := &AElectoral.Electoral {
+				BestIndex:idx.BlockIndex,
+				BlockIndex:idx.BlockIndex + 1,
+				From:pool.ownerAccount.Address,
+				ToPeerId: packer.PeerID,
+				Time:time.Now().Unix(),
+			}
+
+			if err := pool.doBroadcast(vote, pool.channelTopics[ATxPoolThreadElectoral]); err != nil {
+				log.Warningf("DoElectoral:%v", err.Error())
+				continue
+			}
+
 		}
 
-		go func( n *node.Node ) {
-
-			pid, err := peer.IDB58Decode( n.PeerID )
-
-			if err != nil {
-				return
-			}
-
-			info, err := pool.ind.DHT.FindPeer( context.TODO(), pid )
-
-			if err != nil {
-				return
-			}
-
-			pool.ind.Peerstore.AddAddrs( info.ID, info.Addrs, pstore.ConnectedAddrTTL )
-
-			ctx, cancel := context.WithTimeout( ctx, time.Second * 5 )
-			defer cancel()
-
-			r, ok := <- ping.Ping(ctx, pool.ind.PeerHost, info.ID)
-
-			if !ok || r.Error != nil {
-				return
-			}
-
-			replay <- v
-
-		}( v )
 	}
-
-	return replay
-}
-
-
-func pings( ctx context.Context ) ([]PingRet, error) {
-
-	pool := ctx.Value("Pool").(*ATxPool)
-
-	superNodes := pool.cvfs.Nodes().GetSuperNodeList()
-
-	if len( pool.ind.Peerstore.Addrs(pool.ind.Identity) ) == 0 {
-		return nil, errors.New("self node not config address")
-	}
-
-	var pingrets []PingRet
-
-	wg := sync.WaitGroup{}
-
-	for _, v := range superNodes {
-
-		if strings.EqualFold( v.PeerID, pool.ind.Identity.Pretty() ) {
-			continue
-		}
-
-		wg.Add(1)
-		go func( n *node.Node ) {
-
-			pid, err := peer.IDB58Decode( n.PeerID )
-
-			if err != nil {
-				pingrets = append(pingrets, PingRet{Node:n, RTT:PingExpected})
-				return
-			}
-
-			defer wg.Done()
-
-			info, err := pool.ind.DHT.FindPeer( context.TODO(), pid )
-
-			if err != nil {
-				pingrets = append(pingrets, PingRet{Node:n, RTT:PingExpected})
-				return
-			}
-
-			pool.ind.Peerstore.AddAddrs( info.ID, info.Addrs, pstore.ConnectedAddrTTL )
-
-			ctx, cancel := context.WithTimeout( ctx, time.Second * 5 )
-			defer cancel()
-
-			r, ok := <- ping.Ping(ctx, pool.ind.PeerHost, info.ID)
-
-			if !ok || r.Error != nil {
-				pingrets = append(pingrets, PingRet{Node:n, RTT:PingExpected})
-				return
-			}
-
-			pingrets = append(pingrets, PingRet{Node:n, RTT:r.RTT})
-
-		}( v )
-
-	}
-
-	wg.Wait()
-
-	sort.Slice( pingrets, func(i, j int) bool {
-		return pingrets[i].RTT < pingrets[j].RTT
-	})
-
-	return pingrets, nil
 }

@@ -101,7 +101,6 @@ func (n *APOSConsensusNotary) MiningBlock( block *AMBlock.MBlock, cvfs vdb.Cache
 
 	// should pos block
 
-
 	return cvfs.MergeGroup(), nil
 }
 
@@ -133,6 +132,7 @@ func (n *APOSConsensusNotary) TrustOrNot( msg *pubsub.Message, mtype ACore.Notar
 		defer n.mu.Unlock()
 
 		sender, err := cvfs.Nodes().GetNodeByPeerId(msg.GetFrom().String())
+
 		if err != nil {
 			replayChan <- false
 		}

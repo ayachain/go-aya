@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	AVdbComm "github.com/ayachain/go-aya/vdb/common"
+	ANode "github.com/ayachain/go-aya/vdb/node"
 	EComm "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ipfs/go-cid"
@@ -56,8 +57,9 @@ type Block struct {
 /// only in create a new chain then use
 type GenBlock struct {
 	Block
-	Consensus	string	`json:"Consensus"`
+	Consensus string `json:"Consensus"`
 	Award map[string]uint64 `json:"Award"`
+	SuperNodes []ANode.Node `json:"SuperNodes"`
 }
 
 

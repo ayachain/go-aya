@@ -15,10 +15,14 @@ type reader interface {
 
 	GetSuperNodeList() []*Node
 
+	GetSuperNodeCount() int64
+
 	GetSnapshot() *leveldb.Snapshot
 }
 
 type writer interface {
+
+	InsertBootstrapNodes( nds []Node )
 
 	Insert( peerId string, node *Node ) error
 

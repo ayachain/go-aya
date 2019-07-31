@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/ayachain/go-aya/consensus/core"
 	AMsgMinied "github.com/ayachain/go-aya/vdb/minined"
-	"github.com/syndtr/goleveldb/leveldb"
 )
 
 func receiptListen(ctx context.Context ) {
@@ -100,32 +99,9 @@ func receiptListen(ctx context.Context ) {
 				continue
 			}
 
-			rcidstr := rcp.RetCID.String()
-
 			receiptKey := []byte(TxReceiptPrefix)
 
 			copy( receiptKey[1:], rcp.MBlockHash.Bytes() )
-
-			if pool.workmode == AtxPoolWorkModeOblivioned {
-
-				batch := &leveldb.Batch{}
-				batch.Delete(receiptKey)
-				batch.Delete(rcp.MBlockHash.Bytes())
-
-				if err := pool.storage.Write(batch, nil); err != nil {
-					log.Error(err)
-					return
-				}
-
-				cblock := pool.miningBlock.Confirm(rcidstr)
-
-				if err := pool.doBroadcast(cblock, pool.channelTopics[ATxPoolThreadExecutor] ); err != nil {
-					log.Error(err)
-					return
-				}
-
-			}
-
 		}
 
 	}

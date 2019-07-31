@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	AVdbComm "github.com/ayachain/go-aya/vdb/common"
 	EComm "github.com/ethereum/go-ethereum/common"
+	"time"
 )
 
 type NodeType string
@@ -12,6 +13,12 @@ const (
 	NodeTypeSuper 	NodeType = "Super"
 	NodeTypeMaster 	NodeType = "Master"
 )
+
+type PingRet struct {
+	Node *Node
+	UTime int64
+	RTT time.Duration
+}
 
 type Node struct {
 	

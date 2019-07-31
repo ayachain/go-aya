@@ -7,6 +7,7 @@ import (
 	"github.com/ayachain/go-aya/keystore"
 	KSCmd "github.com/ayachain/go-aya/keystore/cmd"
 	ALogs "github.com/ayachain/go-aya/logs"
+	NodeCMD "github.com/ayachain/go-aya/node/cmd"
 	TxCmd "github.com/ayachain/go-aya/tx/cmd"
 	WalletCMD "github.com/ayachain/go-aya/wallet/cmd"
 	cmds "github.com/ipfs/go-ipfs-cmds"
@@ -25,6 +26,7 @@ var ayacmd = &cmds.Command {
 		"chain"		: 	ChainCMD.ChainCMDS,
 		"wallet"	:	WalletCMD.WalletCMDS,
 		"tx"		:	TxCmd.TxCMDS,
+		"node"		:	NodeCMD.NodeCMDS,
 	},
 }
 

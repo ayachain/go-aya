@@ -7,7 +7,6 @@ import (
 	ATaskGroup "github.com/ayachain/go-aya/consensus/core/worker"
 	AMsgBlock "github.com/ayachain/go-aya/vdb/block"
 	AChainInfo "github.com/ayachain/go-aya/vdb/chaininfo"
-	AElectoral "github.com/ayachain/go-aya/vdb/electoral"
 	"github.com/ipfs/go-cid"
 )
 
@@ -150,12 +149,11 @@ func blockExecutorThread(ctx context.Context) {
 
 			_ = pool.UpdateBestBlock(cblock)
 
-			pool.miningBlock = nil
-
-			if pool.packerState == AElectoral.ATxPackStateNextMaster {
-				pool.packerState = AElectoral.ATxPackStateMaster
-				pool.DoPackMBlock()
+			if err := pool.removeExistedTxsFromMiningBlock( pool.miningBlock ); err != nil {
+				log.Error(err)
 			}
+
+			pool.miningBlock = nil
 
 			pool.notary.NewBlockHasConfirm()
 

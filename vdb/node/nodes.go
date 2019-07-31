@@ -153,7 +153,7 @@ func (api *aNodes) GetSuperNodeList() []*Node {
 
 		nd := &Node{}
 
-		if err := nd.Decode(bs); err != nil {
+		if err := nd.Decode(bs); err == nil {
 			rets = append(rets, nd)
 		}
 	}
@@ -216,4 +216,16 @@ func (api *aNodes) GetFirst() *Node {
 		return nd
 
 	}
+}
+
+func (api *aNodes) GetSuperNodeCount() int64 {
+
+	sizes, err := api.ldb.SizeOf( []util.Range{ *util.BytesPrefix([]byte(NodeTypeSuper))} )
+
+	if err != nil {
+		return 0
+	}
+
+	return sizes.Sum()
+
 }

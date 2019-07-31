@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	AvdbComm"github.com/ayachain/go-aya/vdb/common"
+	AvdbComm "github.com/ayachain/go-aya/vdb/common"
 	EComm "github.com/ethereum/go-ethereum/common"
 )
 
@@ -19,9 +19,11 @@ type Electoral struct {
 	AvdbComm.RawDBCoder				`json:"-"`
 	AvdbComm.AMessageEncode			`json:"-"`
 
+	BestIndex		uint64			`json:"B"`
 	BlockIndex		uint64			`json:"I"`
-	Address 		EComm.Address	`json:"A"`
-
+	From 			EComm.Address	`json:"A"`
+	ToPeerId		string			`json:"P"`
+	Time			int64			`json:"T"`
 }
 
 func (vote *Electoral) Encode() []byte {

@@ -28,6 +28,8 @@ type AyaChain interface {
 	Disconnect()
 	CVFServices() vdb.CVFS
 	PublishTx(tx *ATx.Transaction) error
+
+	GetTxPool() *txpool.ATxPool
 }
 
 
@@ -136,7 +138,7 @@ func AddChainLink( ctx context.Context, genBlock *ABlock.GenBlock, ind *core.Ipf
 	return nil
 }
 
-func GetChainByIdentifier(chainId string) AyaChain{
+func GetChainByIdentifier(chainId string) AyaChain {
 	return chains[chainId]
 }
 
@@ -150,6 +152,10 @@ func DisconnectionAll() {
 
 func (chain *aChain) Disconnect() {
 	chain.ctxCancel()
+}
+
+func (chain *aChain) GetTxPool() *txpool.ATxPool {
+	return chain.TxPool
 }
 
 func (chain *aChain) PublishTx(tx *ATx.Transaction) error {

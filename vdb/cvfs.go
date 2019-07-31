@@ -81,7 +81,7 @@ func CreateVFS( block *ABlock.GenBlock, ind *core.IpfsNode ) (cid.Cid, error) {
 	// Award
 	for addr, amount := range block.Award {
 
-		assetBn := AAssetses.NewAssets( amount, amount, 0 )
+		assetBn := AAssetses.NewAssets( amount, amount, amount )
 
 		writer.Assetses().PutNewAssets( EComm.HexToAddress(addr), assetBn )
 
@@ -89,6 +89,9 @@ func CreateVFS( block *ABlock.GenBlock, ind *core.IpfsNode ) (cid.Cid, error) {
 
 	// Block
 	writer.Blocks().WriteGenBlock( block )
+
+	// Bootstrap Nodes
+	writer.Nodes().InsertBootstrapNodes( block.SuperNodes )
 
 	group := writer.MergeGroup()
 
@@ -101,6 +104,8 @@ func CreateVFS( block *ABlock.GenBlock, ind *core.IpfsNode ) (cid.Cid, error) {
 	if err := cvfs.Indexes().PutIndexBy( 0, block.GetHash(), baseCid); err != nil {
 		return cid.Undef, err
 	}
+
+	log.Debugf("CID:%v", baseCid.String())
 
 	return baseCid, nil
 }
