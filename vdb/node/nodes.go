@@ -188,7 +188,7 @@ func (api *aNodes) GetSuperMaterTotalVotes() uint64 {
 
 		nd := &Node{}
 
-		if err := nd.Decode(bs); err != nil {
+		if err := nd.Decode(bs); err == nil {
 			total += nd.Votes
 		}
 	}

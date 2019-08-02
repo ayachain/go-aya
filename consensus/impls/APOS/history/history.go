@@ -64,6 +64,8 @@ func (h *History) CanConsensus ( hash string, node *node.Node, threshold uint64 
 
 	} else {
 
+		h.mdb[hash] = map[string]uint64{}
+
 		h.mdb[hash][node.PeerID] = node.Votes
 
 		return false
