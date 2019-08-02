@@ -127,7 +127,7 @@ func (cache *aCache) GetSuperMaterTotalVotes() uint64 {
 
 		nd := &Node{}
 
-		if err := nd.Decode(bs); err != nil {
+		if err := nd.Decode(bs); err == nil {
 			total += nd.Votes
 		}
 	}
@@ -172,7 +172,7 @@ func (cache *aCache) GetSuperNodeList() []*Node {
 
 		nd := &Node{}
 
-		if err := nd.Decode(bs); err != nil {
+		if err := nd.Decode(bs); err == nil {
 			rets = append(rets, nd)
 		}
 	}

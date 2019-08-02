@@ -110,7 +110,7 @@ func (t *Transaction) Write( group *worker.TaskBatchGroup ) error {
 		}
 
 		if err := tx.Write(batch, &opt.WriteOptions{Sync:true}); err != nil {
-			return nil
+			return ErrDBTargetNotExist
 		}
 
 	}
