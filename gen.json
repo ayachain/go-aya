@@ -24,15 +24,15 @@
     {
       "Type": "Super",
       "Votes": 1000000000000,
-      "PeerID": "QmQgTSEAq2Q5adZrm8NaQ1dkjhQhbwoQ4d5v6kKgoRcbdr",
-      "Owner": "0x8E0A21BCDb37eF545f4b04ef30a773F137DCb372",
+      "PeerID": "QmRkgBZcs8sSFW6ruksT9jvSjXgq29bTVguMW2zaUX7nrx",
+      "Owner": "0x17C6594CCf4798DB4eF9fE169A8C269847520D3c",
       "Sig": ""
     },
     {
       "Type": "Super",
       "Votes": 1000000000000,
-      "PeerID": "QmRkgBZcs8sSFW6ruksT9jvSjXgq29bTVguMW2zaUX7nrx",
-      "Owner": "0x17C6594CCf4798DB4eF9fE169A8C269847520D3c",
+      "PeerID": "QmQgTSEAq2Q5adZrm8NaQ1dkjhQhbwoQ4d5v6kKgoRcbdr",
+      "Owner": "0x8E0A21BCDb37eF545f4b04ef30a773F137DCb372",
       "Sig": ""
     }
   ]
