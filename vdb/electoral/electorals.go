@@ -3,6 +3,7 @@ package electoral
 import (
 	"github.com/ayachain/go-aya/vdb"
 	"github.com/ayachain/go-aya/vdb/node"
+	"github.com/prometheus/common/log"
 	"sync"
 	"time"
 )
@@ -48,15 +49,8 @@ func (aele *aElectorals) UpdateVote( electoral *Electoral ) {
 	defer aele.votoMu.Unlock()
 
 	aele.votoMapping[electoral.From.String()] = electoral
-}
 
-
-func (aele *aElectorals) UpdatePingRet( pret *node.PingRet ) {
-
-	aele.pingMu.Lock()
-	defer aele.pingMu.Unlock()
-
-	aele.pingMapping[pret.Node.PeerID] = pret
+	log.Infof( "From:%v -> PeerID:%v", electoral.From.String(), electoral.ToPeerId )
 
 	onlineNodeCount := 0
 	superNodesCount := int(aele.vfs.Nodes().GetSuperNodeCount())
@@ -71,10 +65,9 @@ func (aele *aElectorals) UpdatePingRet( pret *node.PingRet ) {
 
 	}
 
-
 	passCount := superNodesCount / 2 + 1
 
-	if onlineNodeCount <= passCount {
+	if onlineNodeCount < passCount {
 		return
 	}
 
@@ -113,6 +106,15 @@ func (aele *aElectorals) UpdatePingRet( pret *node.PingRet ) {
 
 	}
 
+}
+
+
+func (aele *aElectorals) UpdatePingRet( pret *node.PingRet ) {
+
+	aele.pingMu.Lock()
+	defer aele.pingMu.Unlock()
+
+	aele.pingMapping[pret.Node.PeerID] = pret
 }
 
 
@@ -192,7 +194,7 @@ func (aele *aElectorals) GetNodesPingStates() []*ConnState {
 
 	for _, nd := range snds {
 
-		if pret, exist := aele.pingMapping[ nd.PeerID ]; exist {
+		if pret, exist := aele.pingMapping[nd.PeerID]; exist {
 
 			if ele, ok := aele.votoMapping[nd.PeerID]; !ok {
 
