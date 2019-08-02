@@ -56,6 +56,11 @@ func receiptListen(ctx context.Context ) {
 				return
 			}
 
+			rcp := &AMsgMinied.Minined{}
+			if err := rcp.RawMessageDecode( msg.Data ); err == nil {
+				log.Infof( "FromPeerID:%v MBlock:%v RetCID:%v", msg.GetFrom().Pretty(), rcp.MBlockHash.String(), rcp.RetCID.String() )
+			}
+
 			if <- pool.notary.TrustOrNot(msg, core.NotaryMessageMinedRet, pool.cvfs) {
 
 				cc, _ := pool.threadChans.Load(ATxPoolThreadReceiptListen)
