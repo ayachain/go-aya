@@ -81,7 +81,7 @@ func CreateVFS( block *ABlock.GenBlock, ind *core.IpfsNode ) (cid.Cid, error) {
 	// Award
 	for addr, amount := range block.Award {
 
-		assetBn := AAssetses.NewAssets( amount / 2, amount / 2, amount )
+		assetBn := AAssetses.NewAssets( amount / 2, amount, amount / 2 )
 
 		writer.Assetses().PutNewAssets( EComm.HexToAddress(addr), assetBn )
 

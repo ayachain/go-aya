@@ -50,8 +50,10 @@ func DoCostHandle( tx *ATx.Transaction, base vdb.CacheCVFS, txindex int ) error 
 			costRecver = &AAsset.Assets{Version: AAsset.DRVer, Avail: StaticCostValue, Vote: StaticCostValue, Locked: 0}
 
 		} else {
+
 			costRecver.Avail += StaticCostValue
 			costRecver.Vote += StaticCostValue
+
 		}
 
 		base.Assetses().Put(recvAddr, costRecver)
