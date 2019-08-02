@@ -60,6 +60,14 @@ func miningThread(ctx context.Context ) {
 				return
 			}
 
+			if <- pool.notary.TrustOrNot(msg, core.NotaryMessageMiningBlock, pool.cvfs) {
+
+				cc, _ := pool.threadChans.Load(ATxPoolThreadMining)
+
+				cc.(chan []byte) <- msg.Data
+
+			}
+
 			if pool.workmode == AtxPoolWorkModeSuper {
 
 				nd, err := pool.cvfs.Nodes().GetNodeByPeerId( msg.GetFrom().Pretty() )
@@ -109,15 +117,9 @@ func miningThread(ctx context.Context ) {
 
 			}
 
-			if <- pool.notary.TrustOrNot(msg, core.NotaryMessageMiningBlock, pool.cvfs) {
-
-				cc, _ := pool.threadChans.Load(ATxPoolThreadMining)
-
-				cc.(chan []byte) <- msg.Data
-
-			}
-
 		}
+
+
 
 	}()
 
