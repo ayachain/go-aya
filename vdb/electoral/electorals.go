@@ -3,7 +3,6 @@ package electoral
 import (
 	"github.com/ayachain/go-aya/vdb"
 	"github.com/ayachain/go-aya/vdb/node"
-	"github.com/prometheus/common/log"
 	"sync"
 	"time"
 )
@@ -103,8 +102,6 @@ func (aele *aElectorals) UpdateVote( electoral *Electoral ) {
 		aele.latestPacker = &EleRet{ lidx.BlockIndex + 1, winner }
 
 		aele.packerChan <- aele.latestPacker
-
-		log.Infof("Winner : %v -> %d", aele.latestPacker.PackerPeerID, aele.latestPacker.PackBlockIndex)
 	}
 
 }
