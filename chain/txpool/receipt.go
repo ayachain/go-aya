@@ -99,9 +99,13 @@ func receiptListen(ctx context.Context ) {
 				continue
 			}
 
-			receiptKey := []byte(TxReceiptPrefix)
+			cblock := pool.miningBlock.Confirm(rcp.RetCID.String())
 
-			copy( receiptKey[1:], rcp.MBlockHash.Bytes() )
+			if err := pool.doBroadcast(cblock, pool.channelTopics[ATxPoolThreadExecutor] ); err != nil {
+				log.Error(err)
+				return
+			}
+
 		}
 
 	}

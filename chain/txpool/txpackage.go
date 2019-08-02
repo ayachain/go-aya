@@ -9,7 +9,6 @@ import (
 	ATx "github.com/ayachain/go-aya/vdb/transaction"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/syndtr/goleveldb/leveldb"
-	"github.com/syndtr/goleveldb/leveldb/util"
 	"time"
 )
 
@@ -88,7 +87,7 @@ func txPackageThread(ctx context.Context ) {
 				return
 			}
 
-			it := sshot.NewIterator(&util.Range{Start: TxHashIteratorStart, Limit: TxHashIteratorLimit}, nil)
+			it := sshot.NewIterator(nil, nil)
 
 			batch := &leveldb.Batch{}
 
