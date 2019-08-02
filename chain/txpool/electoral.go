@@ -170,6 +170,7 @@ func doPingsAndElectoral( ctx context.Context ) {
 		for _, v := range superNodes {
 
 			if strings.EqualFold(v.PeerID, pool.ind.Identity.Pretty()) {
+				pool.eleservices.UpdatePingRet( &node.PingRet{Node: v, RTT: 0, UTime: time.Now().Unix()} )
 				continue
 			}
 
