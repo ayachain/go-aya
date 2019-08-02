@@ -7,6 +7,7 @@ import (
 	ATaskGroup "github.com/ayachain/go-aya/consensus/core/worker"
 	AMsgBlock "github.com/ayachain/go-aya/vdb/block"
 	AChainInfo "github.com/ayachain/go-aya/vdb/chaininfo"
+	AElectoral"github.com/ayachain/go-aya/vdb/electoral"
 	"github.com/ipfs/go-cid"
 )
 
@@ -156,6 +157,8 @@ func blockExecutorThread(ctx context.Context) {
 			pool.miningBlock = nil
 
 			pool.notary.NewBlockHasConfirm()
+
+			pool.changePackerState(AElectoral.ATxPackStateLookup)
 
 			log.Infof("Confrim Block %08d:%v", cblock.Index, latestCid.String())
 		}

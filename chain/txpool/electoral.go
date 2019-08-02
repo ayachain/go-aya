@@ -120,7 +120,7 @@ func electoralThread(ctx context.Context) {
 
 					} else {
 
-						if packer.PackBlockIndex == idx.BlockIndex + 1 {
+						if pool.packerState == AElectoral.ATxPackStateLookup && packer.PackBlockIndex == idx.BlockIndex + 1 {
 
 							pool.changePackerState(AElectoral.ATxPackStateMaster)
 							pool.DoPackMBlock()

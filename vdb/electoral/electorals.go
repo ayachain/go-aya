@@ -126,7 +126,7 @@ func (aele *aElectorals) GetNearestOnlineNode( bindex uint64 ) *node.Node {
 
 	for i := idx; i < uint64(len(nds)); i++ {
 
-		tnd := nds[idx]
+		tnd := nds[i]
 
 		if ping, exist := aele.pingMapping[tnd.PeerID]; !exist {
 
@@ -134,7 +134,7 @@ func (aele *aElectorals) GetNearestOnlineNode( bindex uint64 ) *node.Node {
 
 		} else {
 
-			if ping.RTT < time.Second * 10 {
+			if ping.RTT != KPingTimeout {
 				return tnd
 			}
 
@@ -144,7 +144,7 @@ func (aele *aElectorals) GetNearestOnlineNode( bindex uint64 ) *node.Node {
 
 	for i := uint64(0); i < uint64(len(nds)); i++ {
 
-		tnd := nds[idx]
+		tnd := nds[i]
 
 		if ping, exist := aele.pingMapping[tnd.PeerID]; !exist {
 
@@ -152,7 +152,7 @@ func (aele *aElectorals) GetNearestOnlineNode( bindex uint64 ) *node.Node {
 
 		} else {
 
-			if ping.RTT < time.Second * 10 {
+			if ping.RTT != KPingTimeout {
 				return tnd
 			}
 

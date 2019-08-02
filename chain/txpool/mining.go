@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/ayachain/go-aya/consensus/core"
-	AElectoral "github.com/ayachain/go-aya/vdb/electoral"
 	AMsgMBlock "github.com/ayachain/go-aya/vdb/mblock"
 	AMsgMined "github.com/ayachain/go-aya/vdb/minined"
 	"github.com/ayachain/go-aya/vdb/node"
@@ -70,20 +69,37 @@ func miningThread(ctx context.Context ) {
 					continue
 				}
 
-				if pool.packerState != AElectoral.ATxPackStateFollower {
+				mblock := &AMsgMBlock.MBlock{}
+
+				if err := mblock.RawMessageDecode(msg.Data); err != nil {
+					log.Error(err)
 					continue
 				}
 
-				if strings.EqualFold( msg.GetFrom().Pretty(), pool.eleservices.LatestPacker().PackerPeerID ) {
+				if pool.miningBlock != nil && !strings.EqualFold(pool.miningBlock.GetHash().String(), mblock.GetHash().String()) {
 
-					mblock := &AMsgMBlock.MBlock{}
+					continue
 
-					if err := mblock.RawMessageDecode(msg.Data); err != nil {
-						log.Error(err)
+				} else {
+
+					if pool.miningBlock == nil {
+
+						pool.miningBlock = mblock
+
+					} else if pool.miningBlock.Index < mblock.Index {
+
+						pool.miningBlock = mblock
+
+					} else {
+
 						continue
+
 					}
 
-					pool.miningBlock = mblock
+				}
+
+				if strings.EqualFold( msg.GetFrom().Pretty(), pool.eleservices.LatestPacker().PackerPeerID ) &&
+					!strings.EqualFold( msg.GetFrom().Pretty(), pool.ind.Identity.Pretty() ) {
 
 					if err := pool.doBroadcast(mblock, pool.channelTopics[ATxPoolThreadMining] ); err != nil {
 						continue
