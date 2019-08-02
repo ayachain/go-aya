@@ -1,5 +1,7 @@
 #!/bin/bash
 
+git pull
+
 go build
 
 mv ./go-aya /usr/local/bin/aya
