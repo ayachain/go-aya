@@ -154,7 +154,7 @@ func NewTxPool( ind *core.IpfsNode, gblk *ABlock.GenBlock, cvfs vdb.CVFS, miner 
 		ownerAsset:oast,
 		notary:miner,
 		genBlock:gblk,
-		packerState:AElectoral.ATxPackStateUnknown,
+		packerState:AElectoral.ATxPackStateLookup,
 		latestPackerStateChangeTime:time.Now().Unix(),
 		eleservices:AElectoral.CreateServices(cvfs, 10),
 	}

@@ -159,7 +159,7 @@ func doPingsAndElectoral( ctx context.Context ) {
 
 		default:
 
-			time.Sleep( time.Second * 1 )
+			time.Sleep( time.Second * 5 )
 
 		}
 

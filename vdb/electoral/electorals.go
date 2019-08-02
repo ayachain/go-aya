@@ -3,7 +3,6 @@ package electoral
 import (
 	"github.com/ayachain/go-aya/vdb"
 	"github.com/ayachain/go-aya/vdb/node"
-	"github.com/prometheus/common/log"
 	"sync"
 	"time"
 )
@@ -50,7 +49,7 @@ func (aele *aElectorals) UpdateVote( electoral *Electoral ) {
 
 	aele.votoMapping[electoral.From.String()] = electoral
 
-	log.Infof( "From:%v -> PeerID:%v", electoral.From.String(), electoral.ToPeerId )
+	//log.Infof( "From:%v -> PeerID:%v", electoral.From.String(), electoral.ToPeerId )
 
 	onlineNodeCount := 0
 	superNodesCount := int(aele.vfs.Nodes().GetSuperNodeCount())
