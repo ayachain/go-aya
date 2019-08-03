@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/ayachain/go-aya/chain/txpool/txlist"
 	ACore "github.com/ayachain/go-aya/consensus/core"
 	"github.com/ayachain/go-aya/logs"
 	"github.com/ayachain/go-aya/vdb"
@@ -13,16 +14,13 @@ import (
 	AvdbComm "github.com/ayachain/go-aya/vdb/common"
 	AElectoral "github.com/ayachain/go-aya/vdb/electoral"
 	AMBlock "github.com/ayachain/go-aya/vdb/mblock"
-	AMsgMBlock "github.com/ayachain/go-aya/vdb/mblock"
 	"github.com/ayachain/go-aya/vdb/node"
 	ATx "github.com/ayachain/go-aya/vdb/transaction"
 	EAccount "github.com/ethereum/go-ethereum/accounts"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ipfs/go-cid"
+	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-ipfs/core"
-	"github.com/syndtr/goleveldb/leveldb"
-	"github.com/syndtr/goleveldb/leveldb/storage"
-	"github.com/syndtr/goleveldb/leveldb/util"
 	"github.com/whyrusleeping/go-logging"
 	"sync"
 	"time"
@@ -83,7 +81,8 @@ type ATxPool struct {
 
 	cvfs vdb.CVFS
 
-	storage *leveldb.DB
+	mining map[common.Address]*txlist.TxList
+	queue map[common.Address]*txlist.TxList
 
 	ownerAccount EAccount.Account
 	ownerAsset *AAssets.Assets
@@ -104,9 +103,6 @@ type ATxPool struct {
 	packerState AElectoral.ATxPackerState
 	latestPackerStateChangeTime int64
 	eleservices AElectoral.MemServices
-
-	txlenmu sync.Mutex
-	txlen uint
 }
 
 func NewTxPool( ind *core.IpfsNode, gblk *ABlock.GenBlock, cvfs vdb.CVFS, miner ACore.Notary, acc EAccount.Account) *ATxPool {
@@ -134,11 +130,9 @@ func NewTxPool( ind *core.IpfsNode, gblk *ABlock.GenBlock, cvfs vdb.CVFS, miner 
 		}
 	}
 
-	memstore := storage.NewMemStorage()
-	db, err := leveldb.Open(memstore, AvdbComm.OpenDBOpt)
-
 	return &ATxPool{
-		storage:db,
+		mining:make(map[common.Address]*txlist.TxList),
+		queue:make(map[common.Address]*txlist.TxList),
 		cvfs:cvfs,
 		workmode:AtxPoolWorkModeNormal,
 		ind:ind,
@@ -198,10 +192,6 @@ func (pool *ATxPool) PowerOn( ctx context.Context ) error {
 
 		pool.workingThreadWG.Wait()
 
-		if err := pool.storage.Close(); err != nil {
-			log.Error(err)
-		}
-
 		return ctx.Err()
 	}
 }
@@ -255,16 +245,20 @@ func (pool *ATxPool) GetWorkMode() AtxPoolWorkMode {
 
 func (pool *ATxPool) GetState() *State {
 
-	s := &State{
-		Account: pool.ownerAccount.Address.String(),
-		Len:     uint64(pool.txlen),
-		MemorySize:0,
-		WorkMode: "Unknown",
+	queueSum := 0
+	for k := range pool.queue {
+		queueSum += pool.queue[k].Len()
 	}
 
-	sizes, err := pool.storage.SizeOf( []util.Range{ {nil,nil} } )
-	if err == nil {
-		s.MemorySize = sizes.Sum()
+	pendingSum := 0
+	for k := range pool.mining {
+		pendingSum += pool.mining[k].Len()
+	}
+
+	s := &State{
+		Account: pool.ownerAccount.Address.String(),
+		Queue: queueSum,
+		Pending: pendingSum,
 	}
 
 	if pool.workmode == AtxPoolWorkModeSuper {
@@ -278,6 +272,146 @@ func (pool *ATxPool) GetState() *State {
 	}
 
 	return s
+}
+
+func (pool *ATxPool) PushTransaction( tx *ATx.Transaction ) error {
+
+	if !tx.Verify() {
+		return ErrMessageVerifyExpected
+	}
+
+	if list, exist := pool.queue[tx.From]; !exist {
+
+		pool.queue[tx.From] = txlist.NewTxList(tx)
+
+		return nil
+
+	} else {
+
+		return list.AddTx(tx)
+	}
+
+}
+
+func (pool *ATxPool) MoveTxsToMining( txs []*ATx.Transaction ) error {
+
+	for _, stx := range txs {
+
+		if tlist, exist := pool.queue[stx.From]; exist {
+
+			tlist.RemoveFromTid( stx.Tid )
+
+			if plist, pexist := pool.mining[stx.From]; pexist {
+
+				_ = plist.AddTx(stx)
+
+			} else {
+
+				pool.mining[stx.From] = txlist.NewTxList(stx)
+
+			}
+
+		}
+
+	}
+
+	return nil
+
+}
+
+func (pool *ATxPool) ConfirmTxs( txs []*ATx.Transaction ) error {
+
+	for _, stx := range txs {
+
+		removed := false
+
+		if tlist, exist := pool.mining[stx.From]; exist {
+
+			removed = tlist.RemoveFromTid( stx.Tid )
+
+		}
+
+		if !removed {
+
+			if tlist, exist := pool.queue[stx.From]; exist {
+
+				_ = tlist.RemoveFromTid( stx.Tid )
+
+			}
+
+		}
+
+	}
+
+	return nil
+}
+
+func (pool *ATxPool) CreateMiningBlock() *AMBlock.MBlock {
+
+	if pool.packerState != AElectoral.ATxPackStateMaster {
+		return nil
+	}
+
+	var packtxs []*ATx.Transaction
+
+	for addr, txl := range pool.queue {
+
+		if txcount, err := pool.cvfs.Transactions().GetTxCount(addr); err != nil {
+
+			continue
+
+		} else {
+
+			if ftx := txl.FrontTx(); ftx != nil && ftx.Tid == txcount {
+
+				//can packing to this mining block
+				if txs := txl.GetLinearTxsFromFront(); txs != nil {
+
+					packtxs = append(packtxs, txs...)
+
+				}
+
+			}
+
+		}
+
+	}
+
+	if len(packtxs) < 0 {
+		return nil
+	}
+
+	txsblockcontent, err := json.Marshal(packtxs)
+	if err != nil {
+		log.Error(err)
+		return nil
+	}
+
+	iblk := blocks.NewBlock(txsblockcontent)
+	err = pool.ind.Blocks.AddBlock(iblk)
+	if err != nil {
+		log.Error(err)
+		return nil
+	}
+
+	// Create block
+	bindex, err := pool.cvfs.Indexes().GetLatest()
+	if err != nil {
+		log.Error(err)
+		return nil
+	}
+
+	mblk := &AMBlock.MBlock{}
+	mblk.ExtraData = ""
+	mblk.Index = bindex.BlockIndex + 1
+	mblk.ChainID = pool.genBlock.ChainID
+	mblk.Parent = bindex.Hash.String()
+	mblk.Timestamp = uint64(time.Now().Unix())
+	mblk.Packager = pool.ownerAccount.Address.String()
+	mblk.Txc = uint16(len(packtxs))
+	mblk.Txs = iblk.Cid().String()
+
+	return mblk
 }
 
 /// Private method
@@ -357,77 +491,6 @@ func (pool *ATxPool) doBroadcast( coder AvdbComm.AMessageEncode, topic string) e
 
 	return pool.ind.PubSub.Publish( topic, cbs )
 
-}
-
-func (pool *ATxPool) addRawTransaction( tx *ATx.Transaction ) error {
-
-	pool.txlenmu.Lock()
-	defer pool.txlenmu.Unlock()
-
-	if !tx.Verify() {
-		return ErrMessageVerifyExpected
-	}
-
-	txraw := tx.Encode()
-	if len(txraw) <= 0 {
-		return ErrMessageVerifyExpected
-	}
-
-	key := crypto.Keccak256(txraw)
-	if err := pool.storage.Put(key, txraw, nil); err != nil {
-		return err
-	}
-
-	pool.txlen ++
-
-	pool.DoPackMBlock()
-
-	return nil
-}
-
-func (pool *ATxPool) removeExistedTxsFromMiningBlock( mblock *AMsgMBlock.MBlock ) error {
-
-	pool.txlenmu.Lock()
-	defer pool.txlenmu.Unlock()
-
-	txsCid, err := cid.Decode(mblock.Txs)
-	if err != nil {
-		return err
-	}
-
-	iblock, err := pool.ind.Blocks.GetBlock(context.TODO(), txsCid)
-	if err != nil {
-		return err
-	}
-
-	txlist := make([]*ATx.Transaction, mblock.Txc)
-	if err := json.Unmarshal(iblock.RawData(), &txlist); err != nil {
-		return err
-	}
-
-	for _, tx := range txlist {
-
-		txraw := tx.Encode()
-		if len(txraw) <= 0 {
-			continue
-		}
-
-		key := crypto.Keccak256(txraw)
-
-		if exist, err := pool.storage.Has(key, nil); exist && err == nil {
-
-			if err := pool.storage.Delete( key, nil ); err != nil {
-				log.Warning(err)
-				continue
-			}
-
-			pool.txlen --
-
-		}
-
-	}
-
-	return nil
 }
 
 func (pool *ATxPool) changePackerState( s AElectoral.ATxPackerState ) {

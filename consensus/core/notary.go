@@ -20,6 +20,7 @@ import (
 	AGroup "github.com/ayachain/go-aya/consensus/core/worker"
 	"github.com/ayachain/go-aya/vdb"
 	AMsgMBlock "github.com/ayachain/go-aya/vdb/mblock"
+	ATx "github.com/ayachain/go-aya/vdb/transaction"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 )
 
@@ -37,7 +38,7 @@ const (
 
 type Notary interface {
 
-	MiningBlock( block *AMsgMBlock.MBlock, cvfs vdb.CacheCVFS ) (*AGroup.TaskBatchGroup, error)
+	MiningBlock( block *AMsgMBlock.MBlock, cvfs vdb.CacheCVFS, txs []*ATx.Transaction ) (*AGroup.TaskBatchGroup, error)
 
 	TrustOrNot( msg *pubsub.Message, mtype NotaryMessageType, cvfs vdb.CVFS ) <- chan bool
 

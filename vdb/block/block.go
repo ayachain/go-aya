@@ -2,13 +2,16 @@ package block
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	AVdbComm "github.com/ayachain/go-aya/vdb/common"
 	ANode "github.com/ayachain/go-aya/vdb/node"
+	"github.com/ayachain/go-aya/vdb/transaction"
 	EComm "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-ipfs/core"
 )
 
 const MessagePrefix = byte('b')
@@ -118,6 +121,29 @@ func ( b *Block ) RawMessageDecode( bs []byte ) error {
 	}
 
 	return b.Decode(bs[1:])
+
+}
+
+
+func ( b *Block ) ReadTxsFromDAG(ctx context.Context, ind *core.IpfsNode) []*transaction.Transaction {
+
+	txscid, err := cid.Decode(b.Txs)
+	if err != nil {
+		return nil
+	}
+
+	iblk, err := ind.Blocks.GetBlock(ctx, txscid)
+	if err != nil {
+		return nil
+	}
+
+	txlist := make([]*transaction.Transaction, b.Txc)
+
+	if err := json.Unmarshal( iblk.RawData(), txlist ); err != nil {
+		return nil
+	} else {
+		return txlist
+	}
 
 }
 

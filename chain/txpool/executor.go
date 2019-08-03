@@ -2,13 +2,16 @@ package txpool
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/ayachain/go-aya/consensus/core"
 	ATaskGroup "github.com/ayachain/go-aya/consensus/core/worker"
 	AMsgBlock "github.com/ayachain/go-aya/vdb/block"
 	AChainInfo "github.com/ayachain/go-aya/vdb/chaininfo"
 	AElectoral"github.com/ayachain/go-aya/vdb/electoral"
+	ATx "github.com/ayachain/go-aya/vdb/transaction"
 	"github.com/ipfs/go-cid"
+	"time"
 )
 
 func blockExecutorThread(ctx context.Context) {
@@ -148,15 +151,40 @@ func blockExecutorThread(ctx context.Context) {
 				return
 			}
 
-			_ = pool.UpdateBestBlock(cblock)
+			/// read txs from ipfs dag services
+			txscid, err := cid.Decode(cblock.Txs)
+			if err != nil {
+				log.Error(err)
+				continue
+			}
 
-			if err := pool.removeExistedTxsFromMiningBlock( pool.miningBlock ); err != nil {
+			dagReadCtx, dagReadCancel := context.WithTimeout(context.TODO(), time.Second * 10)
+
+			iblock, err := pool.ind.Blocks.GetBlock(dagReadCtx, txscid)
+
+			dagReadCancel()
+
+			if err != nil {
+				log.Error(err)
+				continue
+			}
+
+			txlist := make([]*ATx.Transaction, cblock.Txc)
+
+			if err := json.Unmarshal(iblock.RawData(), &txlist); err != nil {
+				log.Error(err)
+				continue
+			}
+
+			if err := pool.ConfirmTxs( txlist ); err != nil {
 				log.Error(err)
 			}
 
-			pool.miningBlock = nil
-
 			pool.notary.NewBlockHasConfirm()
+
+			_ = pool.UpdateBestBlock(cblock)
+
+			pool.miningBlock = nil
 
 			pool.changePackerState(AElectoral.ATxPackStateLookup)
 

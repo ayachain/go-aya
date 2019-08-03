@@ -201,8 +201,6 @@ func (cache *aCacheCVFS) MergeGroup() *AWroker.TaskBatchGroup {
 
 		if db, exist := cache.cacheSers[path]; exist {
 
-			log.Infof("MergeGroup:%v", path)
-
 			vdbs, ok := db.(common.VDBCacheServices)
 
 			if ok {

@@ -2,7 +2,6 @@ package APOS
 
 import (
 	"context"
-	"encoding/json"
 	ACore "github.com/ayachain/go-aya/consensus/core"
 	AGroup "github.com/ayachain/go-aya/consensus/core/worker"
 	APosComm "github.com/ayachain/go-aya/consensus/impls/APOS/common"
@@ -16,11 +15,12 @@ import (
 	ARsp "github.com/ayachain/go-aya/vdb/receipt"
 	ATx "github.com/ayachain/go-aya/vdb/transaction"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-ipfs/core"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	"github.com/pkg/errors"
 	"github.com/prometheus/common/log"
 	"sync"
+	"time"
 )
 
 const DeveloperMode = false
@@ -46,26 +46,26 @@ func NewAPOSConsensusNotary( ind *core.IpfsNode ) *APOSConsensusNotary {
 	return notary
 }
 
-func (n *APOSConsensusNotary) MiningBlock( block *AMBlock.MBlock, cvfs vdb.CacheCVFS ) (*AGroup.TaskBatchGroup, error) {
+
+func (n *APOSConsensusNotary) MiningBlock( block *AMBlock.MBlock, cvfs vdb.CacheCVFS, txs []*ATx.Transaction ) (*AGroup.TaskBatchGroup, error) {
 
 	log.Infof("Begin MiningBlock:%d - %v BestCID:%v", block.Index, block.GetHash().String(), cvfs.BestCID().String())
 
-	txsCid, err := cid.Decode(block.Txs)
-	if err != nil {
-		return nil, err
+	if txs == nil {
+
+		ctx, cancel := context.WithTimeout( context.TODO(), time.Second * 32 )
+
+		txs = block.ReadTxsFromDAG(ctx, n.ind)
+
+		cancel()
+
+		if txs == nil || len(txs) <= 0 {
+			return nil, errors.New("read mining block timeout")
+		}
+
 	}
 
-	iblock, err := n.ind.Blocks.GetBlock(context.TODO(), txsCid)
-	if err != nil {
-		return nil, err
-	}
-
-	txlist := make([]*ATx.Transaction, block.Txc)
-	if err := json.Unmarshal(iblock.RawData(), &txlist); err != nil {
-		return nil, err
-	}
-
-	for i, tx := range txlist {
+	for i, tx := range txs {
 
 		// is transaction override
 		txc, err := cvfs.Transactions().GetTxCount(tx.From)

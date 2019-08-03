@@ -4,9 +4,9 @@ type State struct {
 
 	Account string
 
-	Len uint64
+	Pending int
 
-	MemorySize int64
+	Queue int
 
 	WorkMode string
 }

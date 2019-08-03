@@ -9,6 +9,7 @@ import (
 	"github.com/ayachain/go-aya/vdb/node"
 	IBlocks "github.com/ipfs/go-block-format"
 	"strings"
+	"time"
 )
 
 func miningThread(ctx context.Context ) {
@@ -151,7 +152,23 @@ func miningThread(ctx context.Context ) {
 				return
 			}
 
-			group, err := pool.notary.MiningBlock(mblock, cVFS)
+			rctx, rcancel := context.WithTimeout(context.TODO(), time.Second * 32)
+
+			txlist := mblock.ReadTxsFromDAG(rctx, pool.ind)
+
+			rcancel()
+
+			if txlist == nil || len(txlist) <= 0 {
+				log.Warning("listen a empty tx mining block")
+				continue
+			}
+
+			if err := pool.MoveTxsToMining(txlist); err != nil {
+				log.Warning(err)
+			}
+
+			group, err := pool.notary.MiningBlock(mblock, cVFS, txlist)
+
 			if err != nil {
 
 				if err := cVFS.Close(); err != nil {

@@ -71,7 +71,6 @@ func electoralThread(ctx context.Context) {
 			msg, err := sub.Next(subCtx)
 
 			if err != nil {
-				log.Warning(err)
 				return
 			}
 
@@ -122,7 +121,7 @@ func electoralThread(ctx context.Context) {
 
 						if pool.packerState == AElectoral.ATxPackStateLookup && packer.PackBlockIndex == idx.BlockIndex + 1 {
 
-							if pool.txlen > 0 {
+							if pool.GetState().Queue > 0 {
 								pool.changePackerState(AElectoral.ATxPackStateMaster)
 								pool.DoPackMBlock()
 							}
