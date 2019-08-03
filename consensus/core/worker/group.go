@@ -41,11 +41,15 @@ func (tbg *TaskBatchGroup) Encode() []byte {
 
 	for k, batch := range tbg.batchs {
 
-		batchbs := batch.Dump()
+		if batch != nil {
 
-		head = append(head, fmt.Sprintf("%s:%d", k, len(batchbs)))
+			batchbs := batch.Dump()
 
-		batchBuff.Write(batchbs)
+			head = append(head, fmt.Sprintf("%s:%d", k, len(batchbs)))
+
+			batchBuff.Write(batchbs)
+
+		}
 	}
 
 	headBs, err := json.Marshal(head)
