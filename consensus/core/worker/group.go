@@ -72,7 +72,7 @@ func (tbg *TaskBatchGroup) Encode() []byte {
 
 	hashbs := logbuf.Bytes()
 
-	log.Debugf( "BatchGroupHash : %v", crypto.Keccak256Hash(hashbs).String() )
+	log.Infof( "BatchGroupHash : %v", crypto.Keccak256Hash(hashbs).String() )
 
 	return hashbs
 }
