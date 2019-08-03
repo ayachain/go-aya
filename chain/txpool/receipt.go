@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/ayachain/go-aya/consensus/core"
 	AMsgMinied "github.com/ayachain/go-aya/vdb/minined"
-	"github.com/ethereum/go-ethereum/crypto"
 )
 
 func receiptListen(ctx context.Context ) {
@@ -58,22 +57,9 @@ func receiptListen(ctx context.Context ) {
 			}
 
 			rcp := &AMsgMinied.Minined{}
-			if err := rcp.RawMessageDecode( msg.Data ); err == nil {
 
-				if b, err := pool.ind.Blocks.GetBlock( context.TODO(), rcp.RetCID); err != nil {
-
-					log.Infof( "FromPeerID:%v MBlock:%v RetCID:%v", msg.GetFrom().Pretty(), rcp.MBlockHash.String(), rcp.RetCID.String() )
-
-				} else {
-
-					log.Infof( "FromPeerID:%v MBlock:%v RetCID:%v BlockHash:%v",
-						msg.GetFrom().Pretty(),
-						rcp.MBlockHash.String(),
-						rcp.RetCID.String(),
-						crypto.Keccak256Hash(b.RawData()).String())
-				}
-
-
+			if err := rcp.RawMessageDecode( msg.Data ); err != nil {
+				continue
 			}
 
 			if <- pool.notary.TrustOrNot(msg, core.NotaryMessageMinedRet, pool.cvfs) {

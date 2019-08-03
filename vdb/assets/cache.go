@@ -3,6 +3,8 @@ package assets
 import (
 	AvdbComm "github.com/ayachain/go-aya/vdb/common"
 	EComm "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/prometheus/common/log"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/storage"
 )
@@ -62,6 +64,8 @@ func (cache *aCache) MergerBatch() *leveldb.Batch {
 	it := cache.cdb.NewIterator(nil, nil)
 
 	for it.Next() {
+
+		log.Infof("BatchPut(Key:%v - ValueHash:%v)", string(it.Key()), crypto.Keccak256Hash(it.Value()).String() )
 
 		batch.Put( it.Key(), it.Value() )
 

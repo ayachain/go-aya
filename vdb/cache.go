@@ -196,9 +196,14 @@ func (cache *aCacheCVFS) MergeGroup() *AWroker.TaskBatchGroup {
 
 	for k, db := range cache.cacheSers {
 
+		log.Infof("MergeGroup:%v", k)
+
 		vdbs, ok := db.(common.VDBCacheServices)
+
 		if ok {
+
 			group.GetBatchMap()[k] = vdbs.MergerBatch()
+
 		}
 
 	}
