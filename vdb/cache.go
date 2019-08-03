@@ -18,11 +18,18 @@ type CacheCVFS interface {
 	BestCID() cid.Cid
 
 	Blocks() ABlock.Caches
+
 	Nodes() ANodes.Caches
+
 	Assetses() AAssetses.Caches
+
 	Receipts() AReceipts.Caches
+
 	MergeGroup() *AWroker.TaskBatchGroup
+
 	Transactions() ATx.Caches
+
+	SortableDBPaths() []string
 
 }
 
@@ -69,6 +76,26 @@ func (cache *aCacheCVFS) Close() error {
 
 }
 
+
+func (cache *aCacheCVFS) SortableDBPaths() []string {
+
+	return []string{
+
+		/*
+		/nodes
+		/blocks
+		/assets
+		/receipts
+		/transactions
+		*/
+
+		ANodes.DBPath,
+		ABlock.DBPath,
+		AAssetses.DBPath,
+		AReceipts.DBPath,
+		ATx.DBPath,
+	}
+}
 
 func (cache *aCacheCVFS) Nodes() ANodes.Caches {
 
@@ -165,7 +192,6 @@ func (cache *aCacheCVFS) Receipts() AReceipts.Caches {
 	return wt
 }
 
-
 func (cache *aCacheCVFS) Transactions() ATx.Caches {
 
 	var err error
@@ -194,19 +220,35 @@ func (cache *aCacheCVFS) MergeGroup() *AWroker.TaskBatchGroup {
 
 	group := AWroker.NewGroup()
 
-	for k, db := range cache.cacheSers {
+	dbpaths := cache.SortableDBPaths()
 
-		log.Infof("MergeGroup:%v", k)
+	for _, path := range dbpaths {
 
-		vdbs, ok := db.(common.VDBCacheServices)
+		if db, exist := cache.cacheSers[path]; exist {
 
-		if ok {
+			log.Infof("MergeGroup:%v", path)
 
-			group.GetBatchMap()[k] = vdbs.MergerBatch()
+			vdbs, ok := db.(common.VDBCacheServices)
+
+			if ok {
+
+				batch := vdbs.MergerBatch()
+
+				if batch.Len() > 0 {
+
+					group.GetBatchMap()[path] = batch
+
+				} else {
+
+					group.GetBatchMap()[path] = nil
+				}
+
+			}
 
 		}
 
 	}
+
 
 	return group
 }

@@ -56,7 +56,6 @@ func (cache *aCache) Close() {
 	_ = cache.cdb.Close()
 }
 
-
 func (cache *aCache) MergerBatch() *leveldb.Batch {
 
 	batch := &leveldb.Batch{}
