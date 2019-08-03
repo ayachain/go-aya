@@ -20,6 +20,8 @@ var OpenDBOpt = &opt.Options{
 	//OpenFilesCacheCapacity:0,
 }
 
+var StorageDBPaths = []string{"/nodes", "/blocks", "/assets", "/receipts", "/transactions"}
+
 var WriteOpt = &opt.WriteOptions{
 	NoWriteMerge:false,
 	Sync:true,

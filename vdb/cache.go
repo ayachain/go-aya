@@ -5,6 +5,7 @@ import (
 	AAssetses "github.com/ayachain/go-aya/vdb/assets"
 	ABlock "github.com/ayachain/go-aya/vdb/block"
 	"github.com/ayachain/go-aya/vdb/common"
+	AVDBComm "github.com/ayachain/go-aya/vdb/common"
 	ANodes "github.com/ayachain/go-aya/vdb/node"
 	AReceipts "github.com/ayachain/go-aya/vdb/receipt"
 	ATx "github.com/ayachain/go-aya/vdb/transaction"
@@ -28,9 +29,6 @@ type CacheCVFS interface {
 	MergeGroup() *AWroker.TaskBatchGroup
 
 	Transactions() ATx.Caches
-
-	SortableDBPaths() []string
-
 }
 
 
@@ -74,27 +72,6 @@ func (cache *aCacheCVFS) Close() error {
 
 	return nil
 
-}
-
-
-func (cache *aCacheCVFS) SortableDBPaths() []string {
-
-	return []string{
-
-		/*
-		/nodes
-		/blocks
-		/assets
-		/receipts
-		/transactions
-		*/
-
-		ANodes.DBPath,
-		ABlock.DBPath,
-		AAssetses.DBPath,
-		AReceipts.DBPath,
-		ATx.DBPath,
-	}
 }
 
 func (cache *aCacheCVFS) Nodes() ANodes.Caches {
@@ -220,9 +197,7 @@ func (cache *aCacheCVFS) MergeGroup() *AWroker.TaskBatchGroup {
 
 	group := AWroker.NewGroup()
 
-	dbpaths := cache.SortableDBPaths()
-
-	for _, path := range dbpaths {
+	for _, path := range AVDBComm.StorageDBPaths {
 
 		if db, exist := cache.cacheSers[path]; exist {
 
@@ -248,7 +223,6 @@ func (cache *aCacheCVFS) MergeGroup() *AWroker.TaskBatchGroup {
 		}
 
 	}
-
 
 	return group
 }

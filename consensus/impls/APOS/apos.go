@@ -105,15 +105,7 @@ func (n *APOSConsensusNotary) MiningBlock( block *AMBlock.MBlock, cvfs vdb.Cache
 	// should pos block
 	//workflow.CanPos( block, cvfs )
 
-	batchGroup := cvfs.MergeGroup()
-
-	if bs := batchGroup.Encode(); len(bs) != 0 {
-
-		log.Infof("MinedResultBatchGroupHash:%v", crypto.Keccak256Hash(bs).String())
-	}
-
-	//return cvfs.MergeGroup(), nil
-	return batchGroup, nil
+	return cvfs.MergeGroup(), nil
 }
 
 func (n *APOSConsensusNotary) NewBlockHasConfirm(  ) {

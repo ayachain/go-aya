@@ -40,13 +40,19 @@ type CVFS interface {
 
 	// In IPFS DAG
 	Nodes() ANodes.Services
+
 	Blocks() ABlock.Services
+
 	Assetses() AAssetses.Services
+
 	Receipts() AReceipts.Services
+
 	Transactions() ATx.Services
 
 	Restart( baseCid cid.Cid ) error
+
 	WriteTaskGroup( group *AWrok.TaskBatchGroup ) ( cid.Cid, error )
+
 	NewCVFSCache() (CacheCVFS, error)
 
 	BestCID() cid.Cid

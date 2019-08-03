@@ -37,18 +37,21 @@ func (tbg *TaskBatchGroup) Encode() []byte {
 
 	batchBuff := bytes.NewBuffer([]byte{})
 
-	head := []string{}
+	var head []string
 
-	for k, batch := range tbg.batchs {
+	for _, k := range AVdbComm.StorageDBPaths {
 
-		if batch != nil {
+		if batch, exist := tbg.batchs[k]; exist {
 
-			batchbs := batch.Dump()
+			if batch != nil {
 
-			head = append(head, fmt.Sprintf("%s:%d", k, len(batchbs)))
+				batchbs := batch.Dump()
 
-			batchBuff.Write(batchbs)
+				head = append(head, fmt.Sprintf("%s:%d", k, len(batchbs)))
 
+				batchBuff.Write(batchbs)
+
+			}
 		}
 	}
 
