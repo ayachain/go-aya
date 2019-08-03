@@ -30,36 +30,36 @@ type Block struct {
 	AVdbComm.AMessageEncode `json:"-"`
 
 	/// block index
-	Index uint64 			`json:"Index"`
+	Index uint64 			`json:"Index,omitempty"`
 
 	/// chain id
-	ChainID string 			`json:"ChainID"`
+	ChainID string 			`json:"ChainID,omitempty"`
 
 	/// prev block hash is a ipfs block CID
-	Parent  string 			`json:"Parent"`
+	Parent  string 			`json:"Parent,omitempty"`
 
 	/// full block data CID, is cvfs root CID
-	ExtraData string 		`json:"ExtraData"`
+	ExtraData string 		`json:"ExtraData,omitempty"`
 
 	/// broadcasting time super master node package this block times.
-	Timestamp uint64 		`json:"Timestamp"`
+	Timestamp uint64 		`json:"Timestamp,omitempty"`
 
 	/// append data
-	AppendData []byte 		`json:"Append"`
+	AppendData []byte 		`json:"Append,omitempty"`
 
 	/// block sub transactions, is a ipfs block cid
-	Txc uint16				`json:"Txc"`
-	Txs string				`json:"Txs"`
+	Txc uint16				`json:"Txc,omitempty"`
+	Txs string				`json:"Txs,omitempty"`
 	
-	Packager string			`json:"Packager"`
+	Packager string			`json:"Packager,omitempty"`
 }
 
 /// only in create a new chain then use
 type GenBlock struct {
 	Block
-	Consensus string `json:"Consensus"`
-	Award map[string]uint64 `json:"Award"`
-	SuperNodes []ANode.Node `json:"SuperNodes"`
+	Consensus string `json:"Consensus,omitempty"`
+	Award map[string]uint64 `json:"Award,omitempty"`
+	SuperNodes []ANode.Node `json:"SuperNodes,omitempty"`
 }
 
 

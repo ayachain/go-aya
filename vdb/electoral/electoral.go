@@ -19,11 +19,11 @@ type Electoral struct {
 	AvdbComm.RawDBCoder				`json:"-"`
 	AvdbComm.AMessageEncode			`json:"-"`
 
-	BestIndex		uint64			`json:"B"`
-	BlockIndex		uint64			`json:"I"`
-	From 			EComm.Address	`json:"A"`
-	ToPeerId		string			`json:"P"`
-	Time			int64			`json:"T"`
+	BestIndex		uint64			`json:"BestIndex, omitempty"`
+	BlockIndex		uint64			`json:"PackIndex, omitempty"`
+	From 			EComm.Address	`json:"From, omitempty"`
+	ToPeerId		string			`json:"ToPeerId, omitempty"`
+	Time			int64			`json:"Time, omitempty"`
 }
 
 func (vote *Electoral) Encode() []byte {

@@ -24,15 +24,15 @@ type Node struct {
 	
 	AVdbComm.RawDBCoder     `json:"-"`
 	
-	Type NodeType 			`json:"Type"`
+	Type NodeType 			`json:"Type, omitempty"`
 	
-	Votes uint64			`json:"Votes"`
+	Votes uint64			`json:"Votes, omitempty"`
 
-	PeerID string			`json:"PeerID"`
+	PeerID string			`json:"PeerID, omitempty"`
 
-	Owner EComm.Address		`json:"Owner"`
+	Owner EComm.Address		`json:"Owner, omitempty"`
 	
-	Sig []byte				`json:"Sig"`
+	Sig []byte				`json:"Sig, omitempty"`
 
 }
 

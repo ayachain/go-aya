@@ -18,13 +18,13 @@ var (
 
 type ChainInfo struct {
 
-	AvdbComm.RawDBCoder			`json:"-"`
-	AvdbComm.AMessageEncode		`json:"-"`
+	AvdbComm.RawDBCoder				`json:"-"`
+	AvdbComm.AMessageEncode			`json:"-"`
 
-	GenHash 		EComm.Hash	 	`json:"G"`
-	VDBRoot			cid.Cid			`json:"V"`
-	Indexes			cid.Cid 		`json:"H"`
-	LatestBlock		*ABlock.Block	`json:"B"`
+	GenHash 		EComm.Hash	 	`json:"GenHash, omitempty"`
+	VDBRoot			cid.Cid			`json:"VDBRoot, omitempty"`
+	Indexes			cid.Cid 		`json:"Indexes, omitempty"`
+	LatestBlock		*ABlock.Block	`json:"LatestBlock, omitempty"`
 }
 
 func (info *ChainInfo) Encode() []byte {

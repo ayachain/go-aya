@@ -21,14 +21,14 @@ type Transaction struct {
 	AVdbComm.RawDBCoder				`json:"-"`
 	AVdbComm.AMessageEncode			`json:"-"`
 
-	BlockIndex		uint64			`json:"Index"`
-	From 			EComm.Address	`json:"From"`
-	To				EComm.Address	`json:"To"`
-	Value			uint64			`json:"Value"`
-	Children		[]EComm.Hash	`json:"Children"`
-	Data			[]byte			`json:"Data"`
-	Tid				uint64			`json:"Tid"`
-	Sig				[]byte			`json:"Sig"`
+	BlockIndex		uint64			`json:"Index, omitempty"`
+	From 			EComm.Address	`json:"From, omitempty"`
+	To				EComm.Address	`json:"To, omitempty"`
+	Value			uint64			`json:"Value, omitempty"`
+	Children		[]EComm.Hash	`json:"Children, omitempty"`
+	Data			[]byte			`json:"Data, omitempty"`
+	Tid				uint64			`json:"Tid, omitempty"`
+	Sig				[]byte			`json:"Sig, omitempty"`
 
 }
 
