@@ -69,6 +69,8 @@ type aCVFS struct {
 	servies sync.Map
 	indexServices AIndexes.IndexesServices
 	chainId string
+
+	smu sync.Mutex
 }
 
 func CreateVFS( block *ABlock.GenBlock, ind *core.IpfsNode ) (cid.Cid, error) {
@@ -144,10 +146,18 @@ func LinkVFS( chainId string, baseCid cid.Cid, ind *core.IpfsNode ) (CVFS, error
 }
 
 func ( vfs *aCVFS ) BestCID() cid.Cid {
+
+	vfs.smu.Lock()
+	defer vfs.smu.Unlock()
+
 	return vfs.bestCID
+
 }
 
 func ( vfs *aCVFS ) Restart( baseCid cid.Cid ) error {
+
+	vfs.smu.Lock()
+	defer vfs.smu.Unlock()
 
 	if strings.EqualFold(baseCid.String(), vfs.bestCID.String()) {
 		return nil
@@ -171,12 +181,18 @@ func ( vfs *aCVFS ) Restart( baseCid cid.Cid ) error {
 
 func ( vfs *aCVFS ) Nodes() ANodes.Services {
 
+	vfs.smu.Lock()
+	defer vfs.smu.Unlock()
+
 	v, _ := vfs.servies.Load(ANodes.DBPath )
 
 	return v.(ANodes.Services)
 }
 
 func ( vfs *aCVFS ) Assetses() AAssetses.Services {
+
+	vfs.smu.Lock()
+	defer vfs.smu.Unlock()
 
 	v, _ := vfs.servies.Load(AAssetses.DBPath)
 
@@ -185,6 +201,9 @@ func ( vfs *aCVFS ) Assetses() AAssetses.Services {
 
 func ( vfs *aCVFS ) Blocks() ABlock.Services {
 
+	vfs.smu.Lock()
+	defer vfs.smu.Unlock()
+
 	v, _ := vfs.servies.Load(ABlock.DBPath)
 
 	return v.(ABlock.Services)
@@ -192,18 +211,27 @@ func ( vfs *aCVFS ) Blocks() ABlock.Services {
 
 func ( vfs *aCVFS ) Transactions() ATx.Services {
 
+	vfs.smu.Lock()
+	defer vfs.smu.Unlock()
+
 	v, _ := vfs.servies.Load(ATx.DBPath)
 
 	return v.(ATx.Services)
 }
 
 func ( vfs *aCVFS ) Receipts() AReceipts.Services {
+
+	vfs.smu.Lock()
+	defer vfs.smu.Unlock()
+
 	v, _ := vfs.servies.Load(AReceipts.DBPath)
 	return v.(AReceipts.Services)
 }
 
 func ( vfs *aCVFS ) Indexes() AIndexes.IndexesServices {
+
 	return vfs.indexServices
+
 }
 
 func ( vfs *aCVFS ) NewCVFSCache() (CacheCVFS, error) {
@@ -211,6 +239,9 @@ func ( vfs *aCVFS ) NewCVFSCache() (CacheCVFS, error) {
 }
 
 func ( vfs *aCVFS ) WriteTaskGroup( group *AWrok.TaskBatchGroup) (cid.Cid, error) {
+
+	vfs.smu.Lock()
+	defer vfs.smu.Unlock()
 
 	var err error
 
@@ -221,6 +252,10 @@ func ( vfs *aCVFS ) WriteTaskGroup( group *AWrok.TaskBatchGroup) (cid.Cid, error
 	}
 
 	for dbkey, batch := range bmap {
+
+		if batch == nil {
+			continue
+		}
 
 		services, exist := vfs.servies.Load(dbkey)
 		if !exist {
@@ -259,7 +294,7 @@ func ( vfs *aCVFS ) WriteTaskGroup( group *AWrok.TaskBatchGroup) (cid.Cid, error
 	}
 
 	//Update Snapshot
-	for dbkey, _ := range bmap {
+	for dbkey := range bmap {
 
 		vdbser, _ := vfs.servies.Load(dbkey)
 
@@ -272,6 +307,9 @@ func ( vfs *aCVFS ) WriteTaskGroup( group *AWrok.TaskBatchGroup) (cid.Cid, error
 }
 
 func ( vfs *aCVFS ) Close() error {
+
+	vfs.smu.Lock()
+	defer vfs.smu.Unlock()
 
 	vfs.servies.Range(func(k,v interface{})bool{
 
@@ -300,6 +338,9 @@ func ( vfs *aCVFS ) Close() error {
 }
 
 func ( vfs *aCVFS ) initServices() error {
+
+	vfs.smu.Lock()
+	defer vfs.smu.Unlock()
 
 	vfs.indexServices = AIndexes.CreateServices(vfs.inode, vfs.chainId)
 
