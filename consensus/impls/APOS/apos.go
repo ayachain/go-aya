@@ -19,6 +19,7 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-ipfs/core"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	"github.com/prometheus/common/log"
 	"sync"
 )
 
@@ -152,6 +153,8 @@ func (n *APOSConsensusNotary) TrustOrNot( msg *pubsub.Message, mtype ACore.Notar
 
 			if msg.Data[0] == ACInfo.MessagePrefix {
 
+				log.Infof("ListenMessage : %v -> %v (ChainInfo)", sender.PeerID, msgHash.String())
+
 				replayChan <- n.hst.CanConsensus(msgHash.String(), sender, threshold)
 
 			}
@@ -159,6 +162,8 @@ func (n *APOSConsensusNotary) TrustOrNot( msg *pubsub.Message, mtype ACore.Notar
 		case ACore.NotaryMessageTransaction:
 
 			if msg.Data[0] == ATx.MessagePrefix {
+
+				log.Infof("ListenMessage : %v -> %v (Transaction)", sender.PeerID, msgHash.String())
 
 				tx := &ATx.Transaction{}
 
@@ -173,6 +178,8 @@ func (n *APOSConsensusNotary) TrustOrNot( msg *pubsub.Message, mtype ACore.Notar
 
 			if msg.Data[0] == AMBlock.MessagePrefix {
 
+				log.Infof("ListenMessage : %v -> %v (MiningBlock)", sender.PeerID, msgHash.String())
+
 				replayChan <- n.hst.CanConsensus(msgHash.String(), sender, threshold)
 
 			}
@@ -181,6 +188,8 @@ func (n *APOSConsensusNotary) TrustOrNot( msg *pubsub.Message, mtype ACore.Notar
 
 			if msg.Data[0] == ABlock.MessagePrefix {
 
+				log.Infof("ListenMessage : %v -> %v (ConfirmBlock)", sender.PeerID, msgHash.String())
+
 				replayChan <- n.hst.CanConsensus(msgHash.String(), sender, threshold)
 
 			}
@@ -188,6 +197,8 @@ func (n *APOSConsensusNotary) TrustOrNot( msg *pubsub.Message, mtype ACore.Notar
 		case ACore.NotaryMessageMinedRet:
 
 			if msg.Data[0] == AMined.MessagePrefix {
+
+				log.Infof("ListenMessage : %v -> %v (MinedReceipt)", sender.PeerID, msgHash.String())
 
 				replayChan <- n.hst.CanConsensus(msgHash.String(), sender, threshold)
 
