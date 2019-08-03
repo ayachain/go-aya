@@ -21,6 +21,7 @@ import (
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/opt"
 	"github.com/whyrusleeping/go-logging"
+	"strings"
 	"sync"
 )
 
@@ -47,13 +48,17 @@ type CVFS interface {
 	Restart( baseCid cid.Cid ) error
 	WriteTaskGroup( group *AWrok.TaskBatchGroup ) ( cid.Cid, error )
 	NewCVFSCache() (CacheCVFS, error)
+
+	BestCID() cid.Cid
 }
 
 type aCVFS struct {
 
 	CVFS
+
 	*mfs.Root
 
+	bestCID cid.Cid
 	inode *core.IpfsNode
 	servies sync.Map
 	indexServices AIndexes.IndexesServices
@@ -122,6 +127,7 @@ func LinkVFS( chainId string, baseCid cid.Cid, ind *core.IpfsNode ) (CVFS, error
 		Root:root,
 		inode:ind,
 		chainId:chainId,
+		bestCID:baseCid,
 	}
 
 	if err := vfs.initServices(); err != nil {
@@ -131,7 +137,15 @@ func LinkVFS( chainId string, baseCid cid.Cid, ind *core.IpfsNode ) (CVFS, error
 	}
 }
 
+func ( vfs *aCVFS ) BestCID() cid.Cid {
+	return vfs.bestCID
+}
+
 func ( vfs *aCVFS ) Restart( baseCid cid.Cid ) error {
+
+	if strings.EqualFold(baseCid.String(), vfs.bestCID.String()) {
+		return nil
+	}
 
 	if err := vfs.Close(); err != nil {
 		return err
@@ -144,6 +158,7 @@ func ( vfs *aCVFS ) Restart( baseCid cid.Cid ) error {
 	}
 
 	vfs.Root = root
+	vfs.bestCID = baseCid
 
 	return vfs.initServices()
 }
@@ -343,6 +358,8 @@ func newMFSRoot( ctx context.Context, c cid.Cid, ind *core.IpfsNode ) ( *mfs.Roo
 	}
 
 	mroot, err := mfs.NewRoot(ctx, ind.DAG, pbnd, func(i context.Context, i2 cid.Cid) error {
+
+
 		return nil
 	})
 

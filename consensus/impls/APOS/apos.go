@@ -48,6 +48,8 @@ func NewAPOSConsensusNotary( ind *core.IpfsNode ) *APOSConsensusNotary {
 
 func (n *APOSConsensusNotary) MiningBlock( block *AMBlock.MBlock, cvfs vdb.CacheCVFS ) (*AGroup.TaskBatchGroup, error) {
 
+	log.Infof("Begin MiningBlock:%d - %v BestCID:%v", block.Index, block.GetHash(), cvfs.BestCID().String())
+
 	txsCid, err := cid.Decode(block.Txs)
 	if err != nil {
 		return nil, err
@@ -101,8 +103,16 @@ func (n *APOSConsensusNotary) MiningBlock( block *AMBlock.MBlock, cvfs vdb.Cache
 	}
 
 	// should pos block
+	workflow.CanPos( block, cvfs )
 
-	return cvfs.MergeGroup(), nil
+	batchGroup := cvfs.MergeGroup()
+
+	if bs := batchGroup.Encode(); len(bs) != 0 {
+		log.Infof("MinedResultBatchGroupHash:%v", crypto.Keccak256Hash(bs).String())
+	}
+
+	//return cvfs.MergeGroup(), nil
+	return batchGroup, nil
 }
 
 func (n *APOSConsensusNotary) NewBlockHasConfirm(  ) {

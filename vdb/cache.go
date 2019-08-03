@@ -8,19 +8,21 @@ import (
 	ANodes "github.com/ayachain/go-aya/vdb/node"
 	AReceipts "github.com/ayachain/go-aya/vdb/receipt"
 	ATx "github.com/ayachain/go-aya/vdb/transaction"
+	"github.com/ipfs/go-cid"
 )
 
 type CacheCVFS interface {
 
 	Close() error
 
+	BestCID() cid.Cid
+
 	Blocks() ABlock.Caches
+	Nodes() ANodes.Caches
 	Assetses() AAssetses.Caches
 	Receipts() AReceipts.Caches
-	Transactions() ATx.Caches
-	Nodes() ANodes.Caches
-
 	MergeGroup() *AWroker.TaskBatchGroup
+	Transactions() ATx.Caches
 
 }
 
@@ -32,8 +34,8 @@ type aCacheCVFS struct {
 	rdonlyCVFS	CVFS
 
 	cacheSers map[string]interface{}
-}
 
+}
 
 func NewCacheCVFS( rdonlyCVFS CVFS ) (*aCacheCVFS, error) {
 
@@ -44,6 +46,11 @@ func NewCacheCVFS( rdonlyCVFS CVFS ) (*aCacheCVFS, error) {
 	}
 
 	return cache, nil
+}
+
+func (cache *aCacheCVFS) BestCID() cid.Cid {
+
+	return cache.rdonlyCVFS.BestCID()
 }
 
 

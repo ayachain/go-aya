@@ -24,7 +24,7 @@ var LatestIndexKey = []byte("LATEST")
 var log = logging.MustGetLogger("IndexesServices")
 
 /// Deve
-const AIndexesKeyPathPrefix = "/aya/chain/indexes/dev/0803/1/"
+const AIndexesKeyPathPrefix = "/aya/chain/indexes/dev/0803/2/"
 /// Prod
 //const AIndexesKeyPathPrefix = "/aya/chain/indexes/"
 
