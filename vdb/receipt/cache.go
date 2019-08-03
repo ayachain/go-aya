@@ -84,8 +84,6 @@ func (cache *aCache) MergerBatch() *leveldb.Batch {
 
 	for it.Next() {
 
-		log.Infof("BatchPut ValueHash:%v)", crypto.Keccak256Hash(it.Value()).String() )
-
 		batch.Put( it.Key(), it.Value() )
 
 	}
