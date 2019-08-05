@@ -24,6 +24,9 @@ var getCMD = &cmds.Command{
 			return ARsponse.EmitErrorResponse(re, errors.New("not exist chain connection") )
 		}
 
+		// find in txpool
+		//chain.GetTxPool().
+
 		tx, err := chain.CVFServices().Transactions().GetTxByHash( EComm.HexToHash(req.Arguments[1]) )
 		if err != nil {
 			return ARsponse.EmitErrorResponse(re, errors.New("not exist transaction hash") )

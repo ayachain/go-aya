@@ -7,13 +7,22 @@ import (
 	AVdbComm "github.com/ayachain/go-aya/vdb/common"
 	EComm "github.com/ethereum/go-ethereum/common"
 	"github.com/ipfs/go-mfs"
+	"github.com/pkg/errors"
 	"github.com/prometheus/common/log"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/util"
 	"sync"
 )
 
-var TxCountPrefix = []byte("TxCount_")
+var (
+
+	TxOutCountPrefix = []byte("TOC_")
+
+	TxTotalCountPrefix = []byte("TTC_")
+
+	TxHistoryPrefix = []byte("TH_")
+
+)
 
 type aTransactions struct {
 
@@ -84,7 +93,7 @@ func (txs *aTransactions) GetTxCount( address EComm.Address ) (uint64, error) {
 	txs.snLock.RLock()
 	defer txs.snLock.RUnlock()
 
-	key := append(TxCountPrefix, address.Bytes()... )
+	key := append(TxOutCountPrefix, address.Bytes()... )
 
 	v, err := txs.dbSnapshot.Get(key, nil)
 
@@ -172,4 +181,66 @@ func (api *aTransactions) SyncCache() error {
 	}
 
 	return api.mfsstorage.Flush()
+}
+
+
+func (api *aTransactions) GetHistoryHash( address EComm.Address, offset uint64, size uint64) []EComm.Hash {
+
+	itkey := append(TxHistoryPrefix, address.Bytes()...)
+
+	it := api.ldb.NewIterator( util.BytesPrefix(itkey), nil )
+
+	var hashs []EComm.Hash
+
+	for it.Next() {
+		hashs = append(hashs, EComm.BytesToHash(it.Value()))
+	}
+
+	return hashs
+
+}
+
+func (api *aTransactions) GetHistoryContent( address EComm.Address, offset uint64, size uint64) ([]*Transaction, error) {
+
+	itkey := append(TxHistoryPrefix, address.Bytes()...)
+
+	it := api.ldb.NewIterator( util.BytesPrefix(itkey), nil )
+	defer it.Release()
+
+	var txs []*Transaction
+
+	if offset > 0 {
+
+		seekKey := append(itkey, AVdbComm.BigEndianBytes(offset)...)
+
+		if !it.Seek(seekKey) {
+			return nil, errors.New("seek history key expected ")
+		}
+	}
+
+	s := uint64(0)
+
+	for it.Next() {
+
+		if s >= size - 1 {
+			break
+		}
+
+		bs, err := api.ldb.Get(it.Value(), nil)
+		if err != nil {
+			return nil, err
+		}
+
+		tx := &Transaction{}
+
+		if err := tx.Decode(bs); err != nil {
+			return nil, err
+		}
+
+		txs = append(txs, tx)
+
+		s ++
+	}
+
+	return txs, nil
 }

@@ -11,6 +11,7 @@ var TxCMDS = &cmds.Command{
 		"get"	 		: getCMD,
 		"receipt"		: receiptCMD,
 		"pool"			: poolCMD,
+		"list"			: listCMD,
 	},
 
 }

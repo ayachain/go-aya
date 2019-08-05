@@ -15,6 +15,9 @@ type reader interface {
 
 	GetTxCount( address EComm.Address ) (uint64, error)
 
+	GetHistoryHash( address EComm.Address, offset uint64, size uint64) []EComm.Hash
+
+	GetHistoryContent( address EComm.Address, offset uint64, size uint64) ([]*Transaction, error)
 }
 
 
@@ -24,16 +27,13 @@ type writer interface {
 
 
 type Services interface {
-
 	AVdbComm.VDBSerices
 	reader
 }
 
 
 type Caches interface {
-
 	AVdbComm.VDBCacheServices
-
 	reader
 	writer
 }

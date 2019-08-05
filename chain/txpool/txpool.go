@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"github.com/ayachain/go-aya/chain/txpool/txlist"
 	ACore "github.com/ayachain/go-aya/consensus/core"
-	APosComm "github.com/ayachain/go-aya/consensus/impls/APOS/common"
 	"github.com/ayachain/go-aya/logs"
 	"github.com/ayachain/go-aya/vdb"
 	AAssets "github.com/ayachain/go-aya/vdb/assets"
@@ -18,7 +17,7 @@ import (
 	"github.com/ayachain/go-aya/vdb/node"
 	ATx "github.com/ayachain/go-aya/vdb/transaction"
 	EAccount "github.com/ethereum/go-ethereum/accounts"
-	"github.com/ethereum/go-ethereum/common"
+	EComm "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-ipfs/core"
@@ -84,8 +83,8 @@ type ATxPool struct {
 
 	cvfs vdb.CVFS
 
-	mining map[common.Address]*txlist.TxList
-	queue map[common.Address]*txlist.TxList
+	mining map[EComm.Address]*txlist.TxList
+	queue map[EComm.Address]*txlist.TxList
 
 	ownerAccount EAccount.Account
 	ownerAsset *AAssets.Assets
@@ -134,8 +133,8 @@ func NewTxPool( ind *core.IpfsNode, gblk *ABlock.GenBlock, cvfs vdb.CVFS, miner 
 	}
 
 	return &ATxPool{
-		mining:make(map[common.Address]*txlist.TxList),
-		queue:make(map[common.Address]*txlist.TxList),
+		mining:make(map[EComm.Address]*txlist.TxList),
+		queue:make(map[EComm.Address]*txlist.TxList),
 		cvfs:cvfs,
 		workmode:AtxPoolWorkModeNormal,
 		ind:ind,
@@ -278,6 +277,12 @@ func (pool *ATxPool) GetState() *State {
 	return s
 }
 
+//func (pool *ATxPool) TxExist( hash EComm.Hash ) (exist bool, mname string) {
+//
+//
+//
+//}
+
 func (pool *ATxPool) PushTransaction( tx *ATx.Transaction ) error {
 
 	if !tx.Verify() {
@@ -288,12 +293,6 @@ func (pool *ATxPool) PushTransaction( tx *ATx.Transaction ) error {
 	txsum, err := pool.cvfs.Transactions().GetTxCount(tx.From)
 	if err != nil || tx.Tid < txsum {
 		return ErrTxVerifyExpected
-	}
-
-	/// verify avail > value + cost
-	ast, err := pool.cvfs.Assetses().AssetsOf(tx.From)
-	if err != nil || ast.Vote < tx.Value + APosComm.StaticCostValue {
-		return ErrTxVerifyInsufficientFunds
 	}
 
 	if list, exist := pool.queue[tx.From]; !exist {

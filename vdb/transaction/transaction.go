@@ -16,6 +16,25 @@ var (
 	ErrMsgPrefix = errors.New("not a chain info message")
 )
 
+type TransactionType int
+
+const (
+
+	NormalTransfer		TransactionType = 0
+
+	UnrecordedTransfer 	TransactionType = 1
+)
+
+
+var StaticCostMapping = map[TransactionType]uint64{
+
+	NormalTransfer 		: 250000,
+
+	UnrecordedTransfer 	: 100000,
+
+}
+
+
 type Transaction struct {
 
 	AVdbComm.RawDBCoder				`json:"-"`
@@ -27,6 +46,7 @@ type Transaction struct {
 	Value			uint64			`json:"Value,omitempty"`
 	Children		[]EComm.Hash	`json:"Children,omitempty"`
 	Data			[]byte			`json:"Data,omitempty"`
+	Type			TransactionType	`json:"Type,omitempty"`
 	Tid				uint64			`json:"Tid,omitempty"`
 	Sig				[]byte			`json:"Sig,omitempty"`
 

@@ -10,9 +10,8 @@ const(
 	TxInsufficientFunds = "Insufficient funds"
 	TxConfirm = "Confirm"
 	TxOverrided = "Transaction Override"
+	TxUnsupportTransactionType = "Unsupported transaction type"
 
-
-	StaticCostValue = 10000
 )
 
 

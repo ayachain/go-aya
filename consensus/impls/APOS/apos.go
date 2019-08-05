@@ -86,18 +86,22 @@ func (n *APOSConsensusNotary) MiningBlock( block *AMBlock.MBlock, cvfs vdb.Cache
 
 		cvfs.Transactions().Put(tx, block.Index)
 
-		switch string(tx.Data) {
+		switch tx.Type {
 
 		//case "UNLOCK", "LOCK":
 		//	if err := workflow.DoLockAmount(tx, group, vdb); err != nil {
 		//		return nil, err
 		//	}
 
-		default:
+		case ATx.NormalTransfer :
 
 			if err := workflow.DoTransfer( tx, cvfs ); err != nil {
 				return nil, err
 			}
+
+		default:
+
+			cvfs.Receipts().Put(tx.GetHash256(), block.Index, ARsp.ExpectedReceipt(APosComm.TxUnsupportTransactionType, nil).Encode())
 
 		}
 	}

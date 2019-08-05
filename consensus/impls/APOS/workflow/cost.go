@@ -26,7 +26,7 @@ func DoCostHandle( tx *ATx.Transaction, base vdb.CacheCVFS, txindex int ) error 
 		}
 
 		// expected
-		if astfrom.Avail < APosComm.StaticCostValue || astfrom.Vote < APosComm.StaticCostValue {
+		if astfrom.Avail < ATx.StaticCostMapping[tx.Type] || astfrom.Vote < ATx.StaticCostMapping[tx.Type] {
 
 			base.Receipts().Put( txHash, tx.BlockIndex, ARsp.ExpectedReceipt(APosComm.TxInsufficientFunds, nil).Encode() )
 
@@ -34,8 +34,8 @@ func DoCostHandle( tx *ATx.Transaction, base vdb.CacheCVFS, txindex int ) error 
 		}
 
 		// success
-		astfrom.Avail -= APosComm.StaticCostValue
-		astfrom.Vote -= APosComm.StaticCostValue
+		astfrom.Avail -= ATx.StaticCostMapping[tx.Type]
+		astfrom.Vote -= ATx.StaticCostMapping[tx.Type]
 
 		// cost
 		superNodes := base.Nodes().GetSuperNodeList()
@@ -43,12 +43,12 @@ func DoCostHandle( tx *ATx.Transaction, base vdb.CacheCVFS, txindex int ) error 
 		costRecver, _ := base.Assetses().AssetsOf(recvAddr)
 		if costRecver == nil {
 
-			costRecver = &AAsset.Assets{Version: AAsset.DRVer, Avail: APosComm.StaticCostValue, Vote: APosComm.StaticCostValue, Locked: 0}
+			costRecver = &AAsset.Assets{Version: AAsset.DRVer, Avail: ATx.StaticCostMapping[tx.Type], Vote: ATx.StaticCostMapping[tx.Type], Locked: 0}
 
 		} else {
 
-			costRecver.Avail += APosComm.StaticCostValue
-			costRecver.Vote += APosComm.StaticCostValue
+			costRecver.Avail += ATx.StaticCostMapping[tx.Type]
+			costRecver.Vote += ATx.StaticCostMapping[tx.Type]
 
 		}
 
