@@ -9,4 +9,6 @@ type State struct {
 	Queue int
 
 	WorkMode string
+
+	Version string
 }

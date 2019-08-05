@@ -9,10 +9,6 @@ import (
 	ATx "github.com/ayachain/go-aya/vdb/transaction"
 )
 
-const (
-	StaticCostValue = 10000
-)
-
 func DoCostHandle( tx *ATx.Transaction, base vdb.CacheCVFS, txindex int ) error {
 
 	if tx.Verify() {
@@ -30,7 +26,7 @@ func DoCostHandle( tx *ATx.Transaction, base vdb.CacheCVFS, txindex int ) error 
 		}
 
 		// expected
-		if astfrom.Avail < StaticCostValue || astfrom.Vote < StaticCostValue {
+		if astfrom.Avail < APosComm.StaticCostValue || astfrom.Vote < APosComm.StaticCostValue {
 
 			base.Receipts().Put( txHash, tx.BlockIndex, ARsp.ExpectedReceipt(APosComm.TxInsufficientFunds, nil).Encode() )
 
@@ -38,8 +34,8 @@ func DoCostHandle( tx *ATx.Transaction, base vdb.CacheCVFS, txindex int ) error 
 		}
 
 		// success
-		astfrom.Avail -= StaticCostValue
-		astfrom.Vote -= StaticCostValue
+		astfrom.Avail -= APosComm.StaticCostValue
+		astfrom.Vote -= APosComm.StaticCostValue
 
 		// cost
 		superNodes := base.Nodes().GetSuperNodeList()
@@ -47,12 +43,12 @@ func DoCostHandle( tx *ATx.Transaction, base vdb.CacheCVFS, txindex int ) error 
 		costRecver, _ := base.Assetses().AssetsOf(recvAddr)
 		if costRecver == nil {
 
-			costRecver = &AAsset.Assets{Version: AAsset.DRVer, Avail: StaticCostValue, Vote: StaticCostValue, Locked: 0}
+			costRecver = &AAsset.Assets{Version: AAsset.DRVer, Avail: APosComm.StaticCostValue, Vote: APosComm.StaticCostValue, Locked: 0}
 
 		} else {
 
-			costRecver.Avail += StaticCostValue
-			costRecver.Vote += StaticCostValue
+			costRecver.Avail += APosComm.StaticCostValue
+			costRecver.Vote += APosComm.StaticCostValue
 
 		}
 

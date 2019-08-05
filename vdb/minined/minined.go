@@ -20,8 +20,8 @@ type Minined struct {
 	AvdbComm.RawDBCoder			`json:"-"`
 	AvdbComm.AMessageEncode		`json:"-"`
 	
-	MBlockHash EComm.Hash		`json:"MiningBlockHash, omitempty"`
-	RetCID cid.Cid				`json:"BatchGroupCID, omitempty"`
+	MBlockHash EComm.Hash		`json:"MiningBlockHash,omitempty"`
+	RetCID cid.Cid				`json:"BatchGroupCID,omitempty"`
 }
 
 

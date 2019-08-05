@@ -3,6 +3,7 @@ package txlist
 import (
 	"container/list"
 	ATx "github.com/ayachain/go-aya/vdb/transaction"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/pkg/errors"
 	"sync"
 )
@@ -10,6 +11,14 @@ import (
 var (
 	ErrTIDIsAlReadyExist = errors.New("tx hash already exist in pool")
 )
+
+
+type htx struct {
+
+	tx *ATx.Transaction
+
+	hash common.Hash
+}
 
 type TxList struct {
 
@@ -23,7 +32,10 @@ func NewTxList( tx *ATx.Transaction ) *TxList {
 
 	l := list.New()
 
-	l.PushBack(tx)
+	l.PushBack( &htx{
+		tx:tx,
+		hash:tx.GetHash256(),
+	})
 
 	return &TxList{
 		list:l,
@@ -49,7 +61,7 @@ func (l *TxList) FrontTx() *ATx.Transaction {
 		return nil
 	}
 
-	return l.list.Front().Value.(*ATx.Transaction)
+	return l.list.Front().Value.(*htx).tx
 }
 
 
@@ -68,7 +80,7 @@ func (l *TxList) RemoveFromTid( tid uint64 ) bool {
 
 	for i := l.list.Front(); i != nil; i = i.Next() {
 
-		if i.Value.(*ATx.Transaction).Tid == tid {
+		if i.Value.(*htx).tx.Tid == tid {
 
 			l.list.Remove(i)
 			return true
@@ -92,12 +104,12 @@ func (l *TxList) GetLinearTxsFromFront() []*ATx.Transaction {
 
 	var txs []*ATx.Transaction
 
-	stid := l.list.Front().Value.(*ATx.Transaction).Tid
+	stid := l.list.Front().Value.(*htx).tx.Tid
 
 	for i := l.list.Front(); i != nil; i = i.Next() {
 
-		if i.Value.(*ATx.Transaction).Tid == stid {
-			txs = append(txs, i.Value.(*ATx.Transaction))
+		if i.Value.(*htx).tx.Tid == stid {
+			txs = append(txs, i.Value.(*htx).tx)
 			stid ++
 
 		} else {
@@ -118,7 +130,7 @@ func (l *TxList) AddTx( transaction *ATx.Transaction ) error {
 
 	if l.list.Len() == 0 {
 
-		l.list.PushBack( transaction )
+		l.list.PushBack( &htx{tx:transaction, hash:transaction.GetHash256()} )
 
 		return nil
 
@@ -126,13 +138,13 @@ func (l *TxList) AddTx( transaction *ATx.Transaction ) error {
 
 		for i := l.list.Front(); i != nil; i = i.Next() {
 
-			if i.Value.(*ATx.Transaction).Tid == transaction.Tid {
+			if i.Value.(*htx).tx.Tid == transaction.Tid {
 
 				return ErrTIDIsAlReadyExist
 
-			} else if i.Value.(*ATx.Transaction).Tid > transaction.Tid {
+			} else if i.Value.(*htx).tx.Tid > transaction.Tid {
 
-				l.list.InsertAfter( transaction, i )
+				l.list.InsertAfter( &htx{tx:transaction, hash:transaction.GetHash256()}, i )
 
 				return nil
 
@@ -140,7 +152,7 @@ func (l *TxList) AddTx( transaction *ATx.Transaction ) error {
 
 				if i == l.list.Back() {
 
-					l.list.PushBack(transaction)
+					l.list.PushBack( &htx{tx:transaction, hash:transaction.GetHash256()} )
 
 					return nil
 

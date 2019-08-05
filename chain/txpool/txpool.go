@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/ayachain/go-aya/chain/txpool/txlist"
 	ACore "github.com/ayachain/go-aya/consensus/core"
+	APosComm "github.com/ayachain/go-aya/consensus/impls/APOS/common"
 	"github.com/ayachain/go-aya/logs"
 	"github.com/ayachain/go-aya/vdb"
 	AAssets "github.com/ayachain/go-aya/vdb/assets"
@@ -31,6 +32,8 @@ const AtxPoolVersion = "AyaTxPool 0.0.1"
 var (
 	ErrRawDBEndoedZeroLen 			= errors.New("ready to sent content is empty")
 	ErrMessageVerifyExpected 		= errors.New("message verify failed")
+	ErrTxVerifyExpected				= errors.New("tx tid verify expected")
+	ErrTxVerifyInsufficientFunds	= errors.New("insufficient funds ( value + cost )")
 )
 
 var log = logging.MustGetLogger(logs.AModules_TxPool)
@@ -111,13 +114,13 @@ func NewTxPool( ind *core.IpfsNode, gblk *ABlock.GenBlock, cvfs vdb.CVFS, miner 
 	topic := crypto.Keccak256Hash( []byte( AtxPoolVersion + gblk.ChainID ) )
 
 	topicmap := map[ATxPoolThreadsName]string{
-		ATxPoolThreadTxListen : crypto.Keccak256Hash([]byte(fmt.Sprintf("%v%v", topic, ATxPoolThreadTxListen))).String(),
-		ATxPoolThreadTxPackage : crypto.Keccak256Hash([]byte(fmt.Sprintf("%v%v", topic, ATxPoolThreadTxPackage))).String(),
-		ATxPoolThreadExecutor : crypto.Keccak256Hash([]byte(fmt.Sprintf("%v%v", topic, ATxPoolThreadExecutor))).String(),
-		ATxPoolThreadReceiptListen : crypto.Keccak256Hash([]byte(fmt.Sprintf("%v%v", topic, ATxPoolThreadReceiptListen))).String(),
-		ATxPoolThreadMining : crypto.Keccak256Hash([]byte(fmt.Sprintf("%v%v", topic, ATxPoolThreadMining))).String(),
-		ATxPoolThreadChainInfo: crypto.Keccak256Hash([]byte(fmt.Sprintf("%v%v", topic, ATxPoolThreadChainInfo))).String(),
-		ATxPoolThreadElectoral : crypto.Keccak256Hash([]byte(fmt.Sprintf("%v%v", topic, ATxPoolThreadElectoral))).String(),
+		ATxPoolThreadTxListen 		: crypto.Keccak256Hash([]byte(fmt.Sprintf("%v%v", topic, ATxPoolThreadTxListen))).String(),
+		ATxPoolThreadTxPackage 		: crypto.Keccak256Hash([]byte(fmt.Sprintf("%v%v", topic, ATxPoolThreadTxPackage))).String(),
+		ATxPoolThreadExecutor 		: crypto.Keccak256Hash([]byte(fmt.Sprintf("%v%v", topic, ATxPoolThreadExecutor))).String(),
+		ATxPoolThreadReceiptListen 	: crypto.Keccak256Hash([]byte(fmt.Sprintf("%v%v", topic, ATxPoolThreadReceiptListen))).String(),
+		ATxPoolThreadMining 		: crypto.Keccak256Hash([]byte(fmt.Sprintf("%v%v", topic, ATxPoolThreadMining))).String(),
+		ATxPoolThreadChainInfo		: crypto.Keccak256Hash([]byte(fmt.Sprintf("%v%v", topic, ATxPoolThreadChainInfo))).String(),
+		ATxPoolThreadElectoral 		: crypto.Keccak256Hash([]byte(fmt.Sprintf("%v%v", topic, ATxPoolThreadElectoral))).String(),
 	}
 
 	oast, err := cvfs.Assetses().AssetsOf(acc.Address)
@@ -256,9 +259,10 @@ func (pool *ATxPool) GetState() *State {
 	}
 
 	s := &State{
-		Account: pool.ownerAccount.Address.String(),
-		Queue: queueSum,
-		Pending: pendingSum,
+		Account	: pool.ownerAccount.Address.String(),
+		Queue	: queueSum,
+		Pending	: pendingSum,
+		Version	: AtxPoolVersion,
 	}
 
 	if pool.workmode == AtxPoolWorkModeSuper {
@@ -278,6 +282,18 @@ func (pool *ATxPool) PushTransaction( tx *ATx.Transaction ) error {
 
 	if !tx.Verify() {
 		return ErrMessageVerifyExpected
+	}
+
+	/// verify tid
+	txsum, err := pool.cvfs.Transactions().GetTxCount(tx.From)
+	if err != nil || tx.Tid < txsum {
+		return ErrTxVerifyExpected
+	}
+
+	/// verify avail > value + cost
+	ast, err := pool.cvfs.Assetses().AssetsOf(tx.From)
+	if err != nil || ast.Vote < tx.Value + APosComm.StaticCostValue {
+		return ErrTxVerifyInsufficientFunds
 	}
 
 	if list, exist := pool.queue[tx.From]; !exist {
@@ -344,6 +360,7 @@ func (pool *ATxPool) ConfirmTxs( txs []*ATx.Transaction ) error {
 	}
 
 	return nil
+
 }
 
 func (pool *ATxPool) CreateMiningBlock() *AMBlock.MBlock {
@@ -368,6 +385,10 @@ func (pool *ATxPool) CreateMiningBlock() *AMBlock.MBlock {
 				if txs := txl.GetLinearTxsFromFront(); txs != nil {
 
 					packtxs = append(packtxs, txs...)
+
+					if len(packtxs) > PackageTxsLimit {
+						break
+					}
 
 				}
 

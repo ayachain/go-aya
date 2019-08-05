@@ -9,9 +9,9 @@ type Receipt struct {
 
 	ArawdbComm.RawDBCoder 	`json:"-"`
 
-	Stat int				`json:"Stat, omitempty"`
-	Message string			`json:"Msg, omitempty"`
-	Event 	[]string		`json:"Events, omitempty"`
+	Stat int				`json:"Stat,omitempty"`
+	Message string			`json:"Msg,omitempty"`
+	Event 	[]string		`json:"Events,omitempty"`
 }
 
 func (r *Receipt) Encode() []byte {

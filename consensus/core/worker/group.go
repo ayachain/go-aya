@@ -7,8 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	AVdbComm "github.com/ayachain/go-aya/vdb/common"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/prometheus/common/log"
 	"github.com/syndtr/goleveldb/leveldb"
 	"strconv"
 	"strings"
@@ -70,11 +68,7 @@ func (tbg *TaskBatchGroup) Encode() []byte {
 		return nil
 	}
 
-	hashbs := logbuf.Bytes()
-
-	log.Infof( "BatchGroupHash : %v", crypto.Keccak256Hash(hashbs).String() )
-
-	return hashbs
+	return logbuf.Bytes()
 }
 
 func (tgb *TaskBatchGroup) Decode( bs []byte ) error {

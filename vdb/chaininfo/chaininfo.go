@@ -21,10 +21,10 @@ type ChainInfo struct {
 	AvdbComm.RawDBCoder				`json:"-"`
 	AvdbComm.AMessageEncode			`json:"-"`
 
-	GenHash 		EComm.Hash	 	`json:"GenHash, omitempty"`
-	VDBRoot			cid.Cid			`json:"VDBRoot, omitempty"`
-	Indexes			cid.Cid 		`json:"Indexes, omitempty"`
-	LatestBlock		*ABlock.Block	`json:"LatestBlock, omitempty"`
+	GenHash 		EComm.Hash	 	`json:"GenHash,omitempty"`
+	VDBRoot			cid.Cid			`json:"VDBRoot,omitempty"`
+	Indexes			cid.Cid 		`json:"Indexes,omitempty"`
+	LatestBlock		*ABlock.Block	`json:"LatestBlock,omitempty"`
 }
 
 func (info *ChainInfo) Encode() []byte {

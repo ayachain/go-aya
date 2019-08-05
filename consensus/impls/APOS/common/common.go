@@ -11,6 +11,8 @@ const(
 	TxConfirm = "Confirm"
 	TxOverrided = "Transaction Override"
 
+
+	StaticCostValue = 10000
 )
 
 
