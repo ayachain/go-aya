@@ -139,7 +139,7 @@ func ( b *Block ) ReadTxsFromDAG(ctx context.Context, ind *core.IpfsNode) []*tra
 
 	txlist := make([]*transaction.Transaction, b.Txc)
 
-	if err := json.Unmarshal( iblk.RawData(), txlist ); err != nil {
+	if err := json.Unmarshal( iblk.RawData(), &txlist ); err != nil {
 		return nil
 	} else {
 		return txlist
