@@ -2,6 +2,7 @@ package main
 
 import (
 	AappCMD "github.com/ayachain/go-aya/aapp/cmd"
+	BlockCMD "github.com/ayachain/go-aya/block/cmd"
 	"github.com/ayachain/go-aya/chain"
 	ChainCMD "github.com/ayachain/go-aya/chain/cmd"
 	"github.com/ayachain/go-aya/keystore"
@@ -27,6 +28,7 @@ var ayacmd = &cmds.Command {
 		"wallet"	:	WalletCMD.WalletCMDS,
 		"tx"		:	TxCmd.TxCMDS,
 		"node"		:	NodeCMD.NodeCMDS,
+		"block"		:	BlockCMD.BlockCMDS,
 	},
 }
 

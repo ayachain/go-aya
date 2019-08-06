@@ -3,6 +3,7 @@ package cmd
 import (
 	"errors"
 	AChain "github.com/ayachain/go-aya/chain"
+	"github.com/ayachain/go-aya/chain/txpool"
 	ARsponse "github.com/ayachain/go-aya/response"
 	EComm "github.com/ethereum/go-ethereum/common"
 	cmds "github.com/ipfs/go-ipfs-cmds"
@@ -25,7 +26,16 @@ var getCMD = &cmds.Command{
 		}
 
 		// find in txpool
-		//chain.GetTxPool().
+		txhash := EComm.HexToHash(req.Arguments[1])
+		if exist, qname := chain.GetTxPool().TxExist(txhash); exist && qname != txpool.ATxPoolQueueNameUnknown {
+
+			tx := chain.GetTxPool().GetTx( txhash, qname )
+
+			if tx != nil {
+				return ARsponse.EmitSuccessResponse(re, tx)
+			}
+
+		}
 
 		tx, err := chain.CVFServices().Transactions().GetTxByHash( EComm.HexToHash(req.Arguments[1]) )
 		if err != nil {

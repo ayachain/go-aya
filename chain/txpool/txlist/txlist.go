@@ -43,6 +43,33 @@ func NewTxList( tx *ATx.Transaction ) *TxList {
 
 }
 
+func (l *TxList) Exist( hash common.Hash ) bool {
+
+	for i := l.list.Front(); i != nil; i = i.Next() {
+
+		if i.Value.(*htx).hash == hash {
+			return true
+		}
+
+	}
+
+	return false
+}
+
+func (l *TxList) Get( hash common.Hash ) *ATx.Transaction {
+
+	for i := l.list.Front(); i != nil; i = i.Next() {
+
+		if i.Value.(*htx).hash == hash {
+			return i.Value.(*htx).tx
+		}
+
+	}
+
+	return nil
+}
+
+
 func (l *TxList) Len() int {
 
 	l.wmu.Lock()

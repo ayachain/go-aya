@@ -47,7 +47,13 @@ type AtxPoolWorkMode uint8
 
 type ATxPoolThreadsName string
 
+type ATxPoolQueueName string
+
 const (
+
+	ATxPoolQueueNameUnknown			ATxPoolQueueName	= "Unknown"
+	ATxPoolQueueNameMining			ATxPoolQueueName	= "MiningPool"
+	ATxPoolQueueNameQueue			ATxPoolQueueName  	= "QueuePool"
 
 	PackageTxsLimit 									= 2048
 
@@ -85,6 +91,9 @@ type ATxPool struct {
 
 	mining map[EComm.Address]*txlist.TxList
 	queue map[EComm.Address]*txlist.TxList
+
+	mnmu sync.Mutex
+	qemu sync.Mutex
 
 	ownerAccount EAccount.Account
 	ownerAsset *AAssets.Assets
@@ -277,13 +286,92 @@ func (pool *ATxPool) GetState() *State {
 	return s
 }
 
-//func (pool *ATxPool) TxExist( hash EComm.Hash ) (exist bool, mname string) {
-//
-//
-//
-//}
+func (pool *ATxPool) GetMiningBlock() *AMBlock.MBlock {
+	return pool.miningBlock
+}
+
+func (pool *ATxPool) TxExist( hash EComm.Hash ) (exist bool, mname ATxPoolQueueName) {
+
+	pool.qemu.Lock()
+	defer pool.qemu.Unlock()
+
+	pool.mnmu.Lock()
+	defer pool.mnmu.Unlock()
+
+	for _, tlist := range pool.mining {
+
+		if tlist.Exist(hash) {
+
+			return true, ATxPoolQueueNameMining
+
+		}
+
+	}
+
+	for _, tlist := range pool.queue {
+
+		if tlist.Exist(hash) {
+
+			return true, ATxPoolQueueNameQueue
+
+		}
+
+
+	}
+
+	return false, ATxPoolQueueNameUnknown
+
+}
+
+func (pool *ATxPool) GetTx( hash EComm.Hash, mname ATxPoolQueueName ) *ATx.Transaction {
+
+	switch mname {
+
+	case ATxPoolQueueNameMining :
+
+		pool.qemu.Lock()
+		defer pool.qemu.Unlock()
+
+		for _, tlist := range pool.mining {
+
+			if tlist.Exist(hash) {
+
+				return tlist.Get(hash)
+
+			}
+
+		}
+
+		return nil
+
+
+	case ATxPoolQueueNameQueue :
+
+		pool.mnmu.Lock()
+		defer pool.mnmu.Unlock()
+
+		for _, tlist := range pool.mining {
+
+			if tlist.Exist(hash) {
+
+				return tlist.Get(hash)
+
+			}
+
+		}
+	}
+
+	return nil
+
+}
 
 func (pool *ATxPool) PushTransaction( tx *ATx.Transaction ) error {
+
+	pool.qemu.Lock()
+	defer pool.qemu.Unlock()
+
+	pool.mnmu.Lock()
+	defer pool.mnmu.Unlock()
 
 	if !tx.Verify() {
 		return ErrMessageVerifyExpected
@@ -310,6 +398,12 @@ func (pool *ATxPool) PushTransaction( tx *ATx.Transaction ) error {
 
 func (pool *ATxPool) MoveTxsToMining( txs []*ATx.Transaction ) error {
 
+	pool.qemu.Lock()
+	defer pool.qemu.Unlock()
+
+	pool.mnmu.Lock()
+	defer pool.mnmu.Unlock()
+
 	for _, stx := range txs {
 
 		if tlist, exist := pool.queue[stx.From]; exist {
@@ -335,6 +429,12 @@ func (pool *ATxPool) MoveTxsToMining( txs []*ATx.Transaction ) error {
 }
 
 func (pool *ATxPool) ConfirmTxs( txs []*ATx.Transaction ) error {
+
+	pool.qemu.Lock()
+	defer pool.qemu.Unlock()
+
+	pool.mnmu.Lock()
+	defer pool.mnmu.Unlock()
 
 	for _, stx := range txs {
 
@@ -363,6 +463,12 @@ func (pool *ATxPool) ConfirmTxs( txs []*ATx.Transaction ) error {
 }
 
 func (pool *ATxPool) CreateMiningBlock() *AMBlock.MBlock {
+
+	pool.qemu.Lock()
+	defer pool.qemu.Unlock()
+
+	pool.mnmu.Lock()
+	defer pool.mnmu.Unlock()
 
 	if pool.packerState != AElectoral.ATxPackStateMaster {
 		return nil
