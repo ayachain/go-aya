@@ -73,7 +73,7 @@ func ( trsn *Transaction ) GetHash256( ) EComm.Hash {
 	buff.Write( trsn.From.Bytes() )
 	buff.Write( trsn.To.Bytes() )
 	buff.Write( AVdbComm.BigEndianBytes(trsn.Value) )
-	buff.Write(trsn.Data)
+	buff.Write( trsn.Data )
 	buff.Write( AVdbComm.BigEndianBytes(trsn.Tid) )
 	//buff.Write( trsn.Sig )
 

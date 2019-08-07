@@ -261,15 +261,15 @@ func (pool *ATxPool) GetState() *State {
 		queueSum += pool.queue[k].Len()
 	}
 
-	pendingSum := 0
+	miningSum := 0
 	for k := range pool.mining {
-		pendingSum += pool.mining[k].Len()
+		miningSum += pool.mining[k].Len()
 	}
 
 	s := &State{
 		Account	: pool.ownerAccount.Address.String(),
 		Queue	: queueSum,
-		Pending	: pendingSum,
+		Mining	: miningSum,
 		Version	: AtxPoolVersion,
 	}
 
@@ -362,37 +362,6 @@ func (pool *ATxPool) GetTx( hash EComm.Hash, mname ATxPoolQueueName ) *ATx.Trans
 	}
 
 	return nil
-
-}
-
-func (pool *ATxPool) PushTransaction( tx *ATx.Transaction ) error {
-
-	pool.qemu.Lock()
-	defer pool.qemu.Unlock()
-
-	pool.mnmu.Lock()
-	defer pool.mnmu.Unlock()
-
-	if !tx.Verify() {
-		return ErrMessageVerifyExpected
-	}
-
-	/// verify tid
-	txsum, err := pool.cvfs.Transactions().GetTxCount(tx.From)
-	if err != nil || tx.Tid < txsum {
-		return ErrTxVerifyExpected
-	}
-
-	if list, exist := pool.queue[tx.From]; !exist {
-
-		pool.queue[tx.From] = txlist.NewTxList(tx)
-
-		return nil
-
-	} else {
-
-		return list.AddTx(tx)
-	}
 
 }
 
@@ -623,5 +592,36 @@ func (pool *ATxPool) changePackerState( s AElectoral.ATxPackerState ) {
 
 	pool.latestPackerStateChangeTime = time.Now().Unix()
 	pool.packerState = s
+
+}
+
+func (pool *ATxPool) pushTransaction( tx *ATx.Transaction ) error {
+
+	pool.qemu.Lock()
+	defer pool.qemu.Unlock()
+
+	pool.mnmu.Lock()
+	defer pool.mnmu.Unlock()
+
+	if !tx.Verify() {
+		return ErrMessageVerifyExpected
+	}
+
+	/// verify tid
+	txsum, err := pool.cvfs.Transactions().GetTxCount(tx.From)
+	if err != nil || tx.Tid < txsum {
+		return ErrTxVerifyExpected
+	}
+
+	if list, exist := pool.queue[tx.From]; !exist {
+
+		pool.queue[tx.From] = txlist.NewTxList(tx)
+
+		return nil
+
+	} else {
+
+		return list.AddTx(tx)
+	}
 
 }

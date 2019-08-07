@@ -92,7 +92,7 @@ func txListenThread(ctx context.Context ) {
 				continue
 			}
 
-			if err := pool.PushTransaction(tx); err != nil {
+			if err := pool.pushTransaction(tx); err != nil {
 				log.Error(err)
 				continue
 			}

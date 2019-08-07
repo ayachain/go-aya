@@ -24,7 +24,7 @@ var LatestIndexKey = []byte("LATEST")
 var log = logging.MustGetLogger("IndexesServices")
 
 /// Deve
-const AIndexesKeyPathPrefix = "/aya/chain/indexes/dev/0807/1/"
+const AIndexesKeyPathPrefix = "/aya/chain/indexes/dev/0807/3/"
 /// Prod
 //const AIndexesKeyPathPrefix = "/aya/chain/indexes/"
 
@@ -34,10 +34,13 @@ type aIndexes struct {
 	AVdbComm.VDBSerices
 
 	mfsroot *mfs.Root
-
 	mfsstorage *ADB.MFSStorage
+
 	ldb *leveldb.DB
 	snLock sync.RWMutex
+
+	ind *core.IpfsNode
+	chainId string
 }
 
 func CreateServices( ind *core.IpfsNode, chainId string ) IndexesServices {
@@ -46,9 +49,6 @@ func CreateServices( ind *core.IpfsNode, chainId string ) IndexesServices {
 
 	var nd *merkledag.ProtoNode
 	dsk := datastore.NewKey(adbpath)
-
-	//ind.Repo.Datastore().Delete(dsk)
-
 	val, err := ind.Repo.Datastore().Get(dsk)
 
 	switch {
@@ -81,15 +81,18 @@ func CreateServices( ind *core.IpfsNode, chainId string ) IndexesServices {
 		nd = unixfs.EmptyDirNode()
 	}
 
+	api := &aIndexes{
+		ind:ind,
+		chainId:chainId,
+	}
+
 	root, err := mfs.NewRoot(
 		context.TODO(),
 		ind.DAG,
 		nd,
 		func(ctx context.Context, fcid cid.Cid) error {
-
 			ind.Pinning.PinWithMode(fcid, pin.Any)
-
-			return ind.Repo.Datastore().Put(dsk, fcid.Bytes())
+			return nil
 		},
 	)
 
@@ -112,10 +115,8 @@ func CreateServices( ind *core.IpfsNode, chainId string ) IndexesServices {
 			ind.DAG,
 			unixfs.EmptyDirNode(),
 			func(ctx context.Context, fcid cid.Cid) error {
-
 				ind.Pinning.PinWithMode(fcid, pin.Any)
-
-				return ind.Repo.Datastore().Put(dsk, fcid.Bytes())
+				return nil
 			},
 		)
 
@@ -135,11 +136,9 @@ func CreateServices( ind *core.IpfsNode, chainId string ) IndexesServices {
 
 	}
 
-	api := &aIndexes{
-		ldb:mfsdb,
-		mfsroot:root,
-		mfsstorage:mfsstorage,
-	}
+	api.ldb = mfsdb
+	api.mfsroot = root
+	api.mfsstorage = mfsstorage
 
 	return api
 }
@@ -257,8 +256,6 @@ func ( i *aIndexes ) PutIndexBy( num uint64, bhash EComm.Hash, ci cid.Cid ) erro
 		return err
 	}
 
-	//log.Info("IndexesLatest:", ci.String())
-
 	return nil
 }
 
@@ -279,5 +276,10 @@ func (api *aIndexes) Flush() cid.Cid {
 		return cid.Undef
 	}
 
-	return nd.Cid()
+	dsk := datastore.NewKey(AIndexesKeyPathPrefix + api.chainId)
+	if err := api.ind.Repo.Datastore().Put(dsk, nd.Cid().Bytes()); err != nil {
+		return cid.Undef
+	} else {
+		return nd.Cid()
+	}
 }

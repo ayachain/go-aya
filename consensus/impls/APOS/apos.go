@@ -18,7 +18,6 @@ import (
 	"github.com/ipfs/go-ipfs/core"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/pkg/errors"
-	"github.com/prometheus/common/log"
 	"sync"
 	"time"
 )
@@ -48,8 +47,6 @@ func NewAPOSConsensusNotary( ind *core.IpfsNode ) *APOSConsensusNotary {
 
 
 func (n *APOSConsensusNotary) MiningBlock( block *AMBlock.MBlock, cvfs vdb.CacheCVFS, txs []*ATx.Transaction ) (*AGroup.TaskBatchGroup, error) {
-
-	log.Infof("Begin MiningBlock:%d - %v BestCID:%v", block.Index, block.GetHash().String(), cvfs.BestCID().String())
 
 	if txs == nil {
 
