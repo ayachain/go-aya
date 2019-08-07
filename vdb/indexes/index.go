@@ -10,8 +10,8 @@ import (
 type Index struct {
 	common.RawDBCoder		`json:"-"`
 
-	BlockIndex 	uint64 		`json:"Index,omitempty"`
-	Hash		EComm.Hash 	`json:"Hash,omitempty"`
+	BlockIndex 	uint64 		`json:"Index"`
+	Hash		EComm.Hash 	`json:"Hash"`
 	FullCID 	cid.Cid 	`json:"FullCID,omitempty"`
 }
 

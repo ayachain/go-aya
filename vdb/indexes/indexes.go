@@ -24,7 +24,7 @@ var LatestIndexKey = []byte("LATEST")
 var log = logging.MustGetLogger("IndexesServices")
 
 /// Deve
-const AIndexesKeyPathPrefix = "/aya/chain/indexes/dev/0806/1/"
+const AIndexesKeyPathPrefix = "/aya/chain/indexes/dev/0807/1/"
 /// Prod
 //const AIndexesKeyPathPrefix = "/aya/chain/indexes/"
 
@@ -264,12 +264,14 @@ func ( i *aIndexes ) PutIndexBy( num uint64, bhash EComm.Hash, ci cid.Cid ) erro
 
 
 func (api *aIndexes) UpdateSnapshot() error {
-
 	return nil
 }
 
-
 func (api *aIndexes) Flush() cid.Cid {
+
+	if err := api.ldb.CompactRange(util.Range{}); err != nil {
+		log.Error(err)
+	}
 
 	nd, err := mfs.FlushPath( context.TODO(), api.mfsroot, "/")
 
@@ -278,14 +280,4 @@ func (api *aIndexes) Flush() cid.Cid {
 	}
 
 	return nd.Cid()
-}
-
-
-func (api *aIndexes) SyncCache() error {
-
-	if err := api.ldb.CompactRange(util.Range{nil,nil}); err != nil {
-		log.Error(err)
-	}
-
-	return api.mfsstorage.Flush()
 }

@@ -40,14 +40,13 @@ type Transaction struct {
 	AVdbComm.RawDBCoder				`json:"-"`
 	AVdbComm.AMessageEncode			`json:"-"`
 
-	BlockIndex		uint64			`json:"Index,omitempty"`
+	BlockIndex		uint64			`json:"Index"`
 	From 			EComm.Address	`json:"From,omitempty"`
 	To				EComm.Address	`json:"To,omitempty"`
-	Value			uint64			`json:"Value,omitempty"`
-	Children		[]EComm.Hash	`json:"Children,omitempty"`
+	Value			uint64			`json:"Value"`
 	Data			[]byte			`json:"Data,omitempty"`
-	Type			TransactionType	`json:"Type,omitempty"`
-	Tid				uint64			`json:"Tid,omitempty"`
+	Type			TransactionType	`json:"Type"`
+	Tid				uint64			`json:"Tid"`
 	Sig				[]byte			`json:"Sig,omitempty"`
 
 }
@@ -74,10 +73,6 @@ func ( trsn *Transaction ) GetHash256( ) EComm.Hash {
 	buff.Write( trsn.From.Bytes() )
 	buff.Write( trsn.To.Bytes() )
 	buff.Write( AVdbComm.BigEndianBytes(trsn.Value) )
-
-	for _, hs := range trsn.Children {
-		buff.Write(hs.Bytes())
-	}
 	buff.Write(trsn.Data)
 	buff.Write( AVdbComm.BigEndianBytes(trsn.Tid) )
 	//buff.Write( trsn.Sig )

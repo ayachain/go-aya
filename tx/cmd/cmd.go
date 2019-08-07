@@ -12,6 +12,8 @@ var TxCMDS = &cmds.Command{
 		"receipt"		: receiptCMD,
 		"pool"			: poolCMD,
 		"list"			: listCMD,
+		"count"			: countCMD,
+		"publish"		: publishCMD,
 	},
 
 }

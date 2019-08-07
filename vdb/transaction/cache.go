@@ -98,7 +98,8 @@ func (cache *aCache) Put(tx *Transaction, bidx uint64) {
 
 		fromTxTotal = binary.BigEndian.Uint64(cbs)
 
-		hkey := append(TxHistoryPrefix, AvdbComm.BigEndianBytes(fromTxTotal)... )
+		hkey := append(TxHistoryPrefix, tx.From.Bytes()... )
+		hkey = append(hkey, AvdbComm.BigEndianBytes(fromTxTotal)...)
 
 		fromTxTotal ++
 
@@ -127,7 +128,8 @@ func (cache *aCache) Put(tx *Transaction, bidx uint64) {
 
 		toTxTotal = binary.BigEndian.Uint64(cbs)
 
-		hkey := append(TxHistoryPrefix, AvdbComm.BigEndianBytes(toTxTotal)... )
+		hkey := append(TxHistoryPrefix, tx.To.Bytes()... )
+		hkey = append(hkey, AvdbComm.BigEndianBytes(toTxTotal)...)
 
 		toTxTotal ++
 

@@ -24,9 +24,9 @@ type Node struct {
 	
 	AVdbComm.RawDBCoder     `json:"-"`
 	
-	Type NodeType 			`json:"Type,omitempty"`
+	Type NodeType 			`json:"Type"`
 	
-	Votes uint64			`json:"Votes,omitempty"`
+	Votes uint64			`json:"Votes"`
 
 	PeerID string			`json:"PeerID,omitempty"`
 

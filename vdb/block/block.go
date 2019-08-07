@@ -33,7 +33,7 @@ type Block struct {
 	AVdbComm.AMessageEncode `json:"-"`
 
 	/// block index
-	Index uint64 			`json:"Index,omitempty"`
+	Index uint64 			`json:"Index"`
 
 	/// chain id
 	ChainID string 			`json:"ChainID,omitempty"`
@@ -45,13 +45,13 @@ type Block struct {
 	ExtraData string 		`json:"ExtraData,omitempty"`
 
 	/// broadcasting time super master node package this block times.
-	Timestamp uint64 		`json:"Timestamp,omitempty"`
+	Timestamp uint64 		`json:"Timestamp"`
 
 	/// append data
 	AppendData []byte 		`json:"Append,omitempty"`
 
 	/// block sub transactions, is a ipfs block cid
-	Txc uint16				`json:"Txc,omitempty"`
+	Txc uint16				`json:"Txc"`
 	Txs string				`json:"Txs,omitempty"`
 	
 	Packager string			`json:"Packager,omitempty"`

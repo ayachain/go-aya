@@ -9,7 +9,7 @@ type Receipt struct {
 
 	ArawdbComm.RawDBCoder 	`json:"-"`
 
-	Stat int				`json:"Stat,omitempty"`
+	Stat int				`json:"Stat"`
 	Message string			`json:"Msg,omitempty"`
 	Event 	[]string		`json:"Events,omitempty"`
 }

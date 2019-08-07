@@ -5,8 +5,10 @@ import (
 	AChain "github.com/ayachain/go-aya/chain"
 	AKeyStore "github.com/ayachain/go-aya/keystore"
 	ARsponse "github.com/ayachain/go-aya/response"
+	"github.com/ayachain/go-aya/vdb/assets"
 	EComm "github.com/ethereum/go-ethereum/common"
 	cmds "github.com/ipfs/go-ipfs-cmds"
+	"github.com/syndtr/goleveldb/leveldb"
 )
 
 
@@ -36,8 +38,15 @@ var balanceOfCMD = &cmds.Command{
 		}
 
 		ast, err := chain.CVFServices().Assetses().AssetsOf(addr)
+
 		if err != nil {
-			return ARsponse.EmitErrorResponse(re, err)
+
+			if err == leveldb.ErrNotFound {
+				return ARsponse.EmitSuccessResponse(re, &assets.Assets{ Avail:0, Vote:0, Locked:0, })
+			} else {
+				return ARsponse.EmitErrorResponse(re, err)
+			}
+
 		}
 
 		return ARsponse.EmitSuccessResponse(re, ast)
