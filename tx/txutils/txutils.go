@@ -11,7 +11,7 @@ func MakeTransferAvail( from EComm.Address, to EComm.Address, value uint64, tid 
 	tx.From = from
 	tx.To = to
 	tx.Value = value
-	tx.Data = nil
+	tx.Data = ""
 	tx.Tid = tid
 	tx.Type = ATransaction.NormalTransfer
 

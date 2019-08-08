@@ -44,10 +44,10 @@ type Transaction struct {
 	From 			EComm.Address	`json:"From,omitempty"`
 	To				EComm.Address	`json:"To,omitempty"`
 	Value			uint64			`json:"Value"`
-	Data			[]byte			`json:"Data,omitempty"`
+	Data			string			`json:"Data,omitempty"`
 	Type			TransactionType	`json:"Type"`
 	Tid				uint64			`json:"Tid"`
-	Sig				[]byte			`json:"Sig,omitempty"`
+	Sig				string			`json:"Sig,omitempty"`
 
 }
 
@@ -73,8 +73,9 @@ func ( trsn *Transaction ) GetHash256( ) EComm.Hash {
 	buff.Write( trsn.From.Bytes() )
 	buff.Write( trsn.To.Bytes() )
 	buff.Write( AVdbComm.BigEndianBytes(trsn.Value) )
-	buff.Write( trsn.Data )
+	buff.Write( []byte(trsn.Data) )
 	buff.Write( AVdbComm.BigEndianBytes(trsn.Tid) )
+	buff.Write( AVdbComm.BigEndianBytesUint16(uint16(trsn.Type)))
 	//buff.Write( trsn.Sig )
 
 	return crypto.Keccak256Hash(buff.Bytes())
@@ -84,7 +85,7 @@ func ( trsn *Transaction ) Verify() bool {
 
 	hs := trsn.GetHash256()
 
-	pubkey, err := crypto.SigToPub(hs.Bytes(), trsn.Sig)
+	pubkey, err := crypto.SigToPub(hs.Bytes(), EComm.Hex2Bytes(trsn.Sig))
 	if err != nil {
 		return false
 	}
@@ -122,4 +123,8 @@ func ( trsn *Transaction ) RawMessageDecode( bs []byte ) error {
 
 	return trsn.Decode(bs[1:])
 
+}
+
+func (trsn *Transaction) ToHexString() string {
+	return EComm.Bytes2Hex(trsn.Encode())
 }

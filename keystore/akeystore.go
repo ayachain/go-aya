@@ -106,7 +106,7 @@ func SignTransaction( tx *AMsgTransation.Transaction, acc EAccount.Account ) err
 		return err
 	}
 
-	tx.Sig = sig
+	tx.Sig = EComm.Bytes2Hex(sig)
 
 	return nil
 }
