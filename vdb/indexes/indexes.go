@@ -187,6 +187,8 @@ func ( i *aIndexes ) Close() error {
 	i.snLock.Lock()
 	defer i.snLock.Unlock()
 
+	_ = i.Flush()
+
 	if err := i.ldb.Close(); err != nil {
 		return err
 	}
