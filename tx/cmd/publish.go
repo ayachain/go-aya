@@ -37,7 +37,7 @@ var publishCMD = &cmds.Command{
 			return ARsponse.EmitErrorResponse(re, errors.New("can not resolve transaction object"))
 		}
 
-		if tx.Verify() {
+		if !tx.Verify() {
 			return ARsponse.EmitErrorResponse(re, errors.New("transaction verify failed"))
 		}
 

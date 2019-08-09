@@ -42,7 +42,10 @@ func CreateServices( mdir *mfs.Directory, hapi AIndexes.IndexesServices ) Servic
 		headAPI:hapi,
 	}
 
-	api.ldb, api.mfsstorage = AVdbComm.OpenExistedDB( mdir, DBPath )
+	api.ldb, api.mfsstorage, err = AVdbComm.OpenExistedDB( mdir, DBPath )
+	if err != nil {
+		panic(err)
+	}
 
 	api.dbSnapshot, err = api.ldb.GetSnapshot()
 	if err != nil {

@@ -20,6 +20,10 @@ var OpenDBOpt = &opt.Options{
 	//OpenFilesCacheCapacity:0,
 }
 
+var OpenDBReadOnlyOpt = &opt.Options{
+	ReadOnly:true,
+}
+
 var StorageDBPaths = []string{"/nodes", "/blocks", "/assets", "/receipts", "/transactions"}
 
 var WriteOpt = &opt.WriteOptions{
@@ -66,23 +70,23 @@ func BigEndianBytesUint16 ( n uint16 ) []byte {
 	return enc
 }
 
-func OpenDB( dir *mfs.Directory, dbKey string ) (*leveldb.DB, *ADB.MFSStorage, error) {
+func OpenReadOnlyDB( dir *mfs.Directory, dbKey string ) (*leveldb.DB, *ADB.MFSStorage, error) {
 
 	dbstroage := ADB.NewMFSStorage(dir, dbKey)
 	if dbstroage == nil {
 		panic("create adb storage expected")
 	}
 
-	db, err := leveldb.Open(dbstroage, OpenDBOpt)
+	db, err := leveldb.Open(dbstroage, OpenDBReadOnlyOpt)
 
 	if err != nil {
-		return nil,nil,err
+		return nil, nil, err
 	}
 
 	return db, dbstroage, nil
 }
 
-func OpenExistedDB( dir *mfs.Directory, dbkey string ) ( *leveldb.DB, *ADB.MFSStorage ) {
+func OpenExistedDB( dir *mfs.Directory, dbkey string ) ( *leveldb.DB, *ADB.MFSStorage, error ) {
 
 	dbstroage := ADB.NewMFSStorage(dir, dbkey)
 	if dbstroage == nil {
@@ -92,10 +96,10 @@ func OpenExistedDB( dir *mfs.Directory, dbkey string ) ( *leveldb.DB, *ADB.MFSSt
 	db, err := leveldb.Open(dbstroage, OpenDBOpt)
 
 	if err != nil {
-		panic(err)
+		return nil, nil, err
 	}
 
-	return db, dbstroage
+	return db, dbstroage, nil
 }
 
 func LookupDBPath( root *mfs.Root, path string ) (*mfs.Directory, error) {

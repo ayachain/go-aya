@@ -2,6 +2,7 @@ package indexes
 
 import (
 	"context"
+	"fmt"
 	ADB "github.com/ayachain/go-aya-alvm-adb"
 	"github.com/ayachain/go-aya/vdb/common"
 	AVdbComm "github.com/ayachain/go-aya/vdb/common"
@@ -23,8 +24,8 @@ var LatestIndexKey = []byte("LATEST")
 
 var log = logging.MustGetLogger("IndexesServices")
 
-/// Deve
-const AIndexesKeyPathPrefix = "/aya/chain/indexes/dev/0807/4/"
+/// Dev
+const AIndexesKeyPathPrefix = "/aya/chain/indexes/dev/0807/12/"
 /// Prod
 //const AIndexesKeyPathPrefix = "/aya/chain/indexes/"
 
@@ -81,6 +82,8 @@ func CreateServices( ind *core.IpfsNode, chainId string ) IndexesServices {
 		nd = unixfs.EmptyDirNode()
 	}
 
+	log.Infof("Read Indexes DB : %v", nd.Cid().String())
+
 	api := &aIndexes{
 		ind:ind,
 		chainId:chainId,
@@ -97,43 +100,13 @@ func CreateServices( ind *core.IpfsNode, chainId string ) IndexesServices {
 	)
 
 	if err != nil {
-		panic(err)
+		log.Error(err)
+		return nil
 	}
 
-	mfsdb, mfsstorage, err := AVdbComm.OpenDB( root.GetDirectory(), "Indexes" )
-
+	mfsdb, mfsstorage, err := AVdbComm.OpenExistedDB( root.GetDirectory(), "Indexes" )
 	if err != nil {
-
-		log.Error(err)
-
-		if err := root.Close(); err != nil {
-			panic(err)
-		}
-
-		root, err = mfs.NewRoot(
-			context.TODO(),
-			ind.DAG,
-			unixfs.EmptyDirNode(),
-			func(ctx context.Context, fcid cid.Cid) error {
-				ind.Pinning.PinWithMode(fcid, pin.Any)
-				return nil
-			},
-		)
-
-		if err != nil {
-
-			log.Error(err)
-			panic(err)
-		}
-
-		mfsdb, mfsstorage, err = AVdbComm.OpenDB( root.GetDirectory(), "Indexes" )
-
-		if err != nil {
-
-			log.Error(err)
-			panic(err)
-		}
-
+		panic(err)
 	}
 
 	api.ldb = mfsdb
@@ -261,7 +234,6 @@ func ( i *aIndexes ) PutIndexBy( num uint64, bhash EComm.Hash, ci cid.Cid ) erro
 	return nil
 }
 
-
 func (api *aIndexes) UpdateSnapshot() error {
 	return nil
 }
@@ -270,6 +242,13 @@ func (api *aIndexes) Flush() cid.Cid {
 
 	if err := api.ldb.CompactRange(util.Range{}); err != nil {
 		log.Error(err)
+	}
+
+	statelog, err := api.ldb.GetProperty("leveldb.stats")
+	if err != nil {
+		log.Info(err)
+	} else {
+		fmt.Print(statelog)
 	}
 
 	nd, err := mfs.FlushPath( context.TODO(), api.mfsroot, "/")
@@ -282,6 +261,7 @@ func (api *aIndexes) Flush() cid.Cid {
 	if err := api.ind.Repo.Datastore().Put(dsk, nd.Cid().Bytes()); err != nil {
 		return cid.Undef
 	} else {
+		log.Infof("Save Indexes DB : %v", nd.Cid().String())
 		return nd.Cid()
 	}
 }

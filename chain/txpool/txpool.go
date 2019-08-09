@@ -13,6 +13,7 @@ import (
 	ABlock "github.com/ayachain/go-aya/vdb/block"
 	AvdbComm "github.com/ayachain/go-aya/vdb/common"
 	AElectoral "github.com/ayachain/go-aya/vdb/electoral"
+	"github.com/ayachain/go-aya/vdb/indexes"
 	AMBlock "github.com/ayachain/go-aya/vdb/mblock"
 	"github.com/ayachain/go-aya/vdb/node"
 	ATx "github.com/ayachain/go-aya/vdb/transaction"
@@ -89,6 +90,8 @@ type ATxPool struct {
 
 	cvfs vdb.CVFS
 
+	idxServices indexes.IndexesServices
+
 	mining map[EComm.Address]*txlist.TxList
 	queue map[EComm.Address]*txlist.TxList
 
@@ -116,7 +119,7 @@ type ATxPool struct {
 	eleservices AElectoral.MemServices
 }
 
-func NewTxPool( ind *core.IpfsNode, gblk *ABlock.GenBlock, cvfs vdb.CVFS, miner ACore.Notary, acc EAccount.Account) *ATxPool {
+func NewTxPool( ind *core.IpfsNode, gblk *ABlock.GenBlock, cvfs vdb.CVFS, miner ACore.Notary, acc EAccount.Account ) *ATxPool {
 
 	// create channel topices string
 	topic := crypto.Keccak256Hash( []byte( AtxPoolVersion + gblk.ChainID ) )
@@ -159,7 +162,7 @@ func NewTxPool( ind *core.IpfsNode, gblk *ABlock.GenBlock, cvfs vdb.CVFS, miner 
 
 }
 
-func (pool *ATxPool) PowerOn( ctx context.Context ) error {
+func (pool *ATxPool) PowerOnAndLoop( ctx context.Context ) error {
 
 	pool.judgingMode()
 

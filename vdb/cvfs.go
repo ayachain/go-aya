@@ -35,10 +35,8 @@ type CVFS interface {
 
 	Close() error
 
-	// In Data storage
 	Indexes() AIndexes.IndexesServices
 
-	// In IPFS DAG
 	Nodes() ANodes.Services
 
 	Blocks() ABlock.Services
@@ -61,35 +59,72 @@ type CVFS interface {
 type aCVFS struct {
 
 	CVFS
-
 	*mfs.Root
 
-	bestCID cid.Cid
-	inode *core.IpfsNode
-	servies sync.Map
-	indexServices AIndexes.IndexesServices
 	chainId string
+	bestCID cid.Cid
 
+	servies sync.Map
 	smu sync.Mutex
+	inode *core.IpfsNode
+
+	indexServices AIndexes.IndexesServices
 }
 
-func CreateVFS( block *ABlock.GenBlock, ind *core.IpfsNode ) (cid.Cid, error) {
+func CreateVFS( block *ABlock.GenBlock, ind *core.IpfsNode, idxSer AIndexes.IndexesServices ) (cid.Cid, error) {
 
-	var err error
+	if idxSer == nil {
+		return cid.Undef, errors.New("indexes services can not be nil")
+	}
 
-	cvfs, err := LinkVFS(block.ChainID, cid.Undef, ind)
-
+	lidx, err := idxSer.GetLatest()
 	if err != nil {
-		log.Error(err)
+
+		if err != leveldb.ErrNotFound {
+			return cid.Undef, err
+		}
+
+	}
+
+	if lidx != nil {
+		return lidx.FullCID, errors.New("chain indexes is already in repo")
+	}
+
+	/// gen this chain cvfs
+	root, err := newMFSRoot( context.TODO(), cid.Undef, ind )
+	if err != nil {
 		return cid.Undef, err
 	}
-	defer cvfs.Close()
+
+	cvfs := &aCVFS{
+		Root:root,
+		inode:ind,
+		chainId:block.ChainID,
+		bestCID:cid.Undef,
+		indexServices:idxSer,
+	}
+	defer func () {
+		if  cvfs != nil {
+			if err := cvfs.Close(); err != nil {
+				log.Error(err)
+			}
+		}
+	}()
+
+	if err := cvfs.initServices(); err != nil {
+		return cid.Undef, err
+	}
 
 	writer, err := cvfs.NewCVFSCache()
+	defer func(){
+		if err := writer.Close(); err != nil {
+			log.Error(err)
+		}
+	}()
+
 	if err != nil {
 		return cid.Undef, err
 	}
-	defer writer.Close()
 
 	// Award
 	for addr, amount := range block.Award {
@@ -106,26 +141,31 @@ func CreateVFS( block *ABlock.GenBlock, ind *core.IpfsNode ) (cid.Cid, error) {
 	// Bootstrap Nodes
 	writer.Nodes().InsertBootstrapNodes( block.SuperNodes )
 
-	group := writer.MergeGroup()
-
 	// Group Write
-	baseCid, err := cvfs.WriteTaskGroup(group)
+	baseCid, err := cvfs.WriteTaskGroup(writer.MergeGroup())
 	if err != nil {
 		return cid.Undef, err
 	}
 
-	if err := cvfs.Indexes().PutIndexBy( 0, block.GetHash(), baseCid); err != nil {
+	if err := idxSer.PutIndexBy( 0, block.GetHash(), baseCid); err != nil {
 		return cid.Undef, err
 	}
-
-	log.Debugf("CID:%v", baseCid.String())
 
 	return baseCid, nil
 }
 
-func LinkVFS( chainId string, baseCid cid.Cid, ind *core.IpfsNode ) (CVFS, error) {
+func LinkVFS( chainId string, ind *core.IpfsNode, idxSer AIndexes.IndexesServices ) (CVFS, error) {
 
-	root, err := newMFSRoot( context.TODO(), baseCid, ind )
+	if idxSer == nil {
+		return nil, errors.New("indexes services can not be nil")
+	}
+
+	lidx, err := idxSer.GetLatest()
+	if err != nil || lidx == nil {
+		return nil, errors.New("current indexes services doesn't look like an existing chain")
+	}
+
+	root, err := newMFSRoot( context.TODO(), lidx.FullCID, ind )
 
 	if err != nil {
 		return nil, err
@@ -135,7 +175,8 @@ func LinkVFS( chainId string, baseCid cid.Cid, ind *core.IpfsNode ) (CVFS, error
 		Root:root,
 		inode:ind,
 		chainId:chainId,
-		bestCID:baseCid,
+		bestCID:lidx.FullCID,
+		indexServices:idxSer,
 	}
 
 	if err := vfs.initServices(); err != nil {
@@ -177,6 +218,10 @@ func ( vfs *aCVFS ) Restart( baseCid cid.Cid ) error {
 	vfs.bestCID = baseCid
 
 	return vfs.initServices()
+}
+
+func ( vfs *aCVFS ) Indexes() AIndexes.IndexesServices {
+	return vfs.indexServices
 }
 
 func ( vfs *aCVFS ) Nodes() ANodes.Services {
@@ -226,12 +271,6 @@ func ( vfs *aCVFS ) Receipts() AReceipts.Services {
 
 	v, _ := vfs.servies.Load(AReceipts.DBPath)
 	return v.(AReceipts.Services)
-}
-
-func ( vfs *aCVFS ) Indexes() AIndexes.IndexesServices {
-
-	return vfs.indexServices
-
 }
 
 func ( vfs *aCVFS ) NewCVFSCache() (CacheCVFS, error) {
@@ -325,10 +364,6 @@ func ( vfs *aCVFS ) Close() error {
 
 	})
 
-	if err := vfs.indexServices.Close(); err != nil {
-		return err
-	}
-
 	_, err := mfs.FlushPath(context.TODO(), vfs.Root, "/")
 	if err != nil {
 		return err
@@ -341,8 +376,6 @@ func ( vfs *aCVFS ) initServices() error {
 
 	vfs.smu.Lock()
 	defer vfs.smu.Unlock()
-
-	vfs.indexServices = AIndexes.CreateServices(vfs.inode, vfs.chainId)
 
 	/// ANodes VDBServices
 	if dir, err := AVdbComm.LookupDBPath(vfs.Root, ANodes.DBPath); err != nil {
