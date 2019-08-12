@@ -269,12 +269,8 @@ func ( i *aIndexes ) PutIndex( index *Index ) error {
 	}
 	defer fd.Close()
 
-	if _, err := fd.Seek( int64(offset) * StaticSize,io.SeekStart); err != nil {
-		return err
-	}
-
 	value := index.Encode()
-	if _, err := fd.Write(value); err != nil {
+	if _, err := fd.WriteAt(value, int64(offset) * StaticSize); err != nil {
 		return err
 	}
 

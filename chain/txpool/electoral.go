@@ -188,9 +188,9 @@ func doPingsAndElectoral( ctx context.Context ) {
 
 				if len( pool.ind.Peerstore.Addrs(pid) ) == 0 {
 
-					ctx, cancel := context.WithTimeout(context.TODO(), AElectoral.KPingTimeout)
+					fctx, cancel := context.WithTimeout(ctx, AElectoral.KPingTimeout)
 
-					p, err := pool.ind.Routing.FindPeer(ctx, pid)
+					p, err := pool.ind.Routing.FindPeer(fctx, pid)
 
 					cancel()
 
