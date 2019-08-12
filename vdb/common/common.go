@@ -12,13 +12,15 @@ import (
 
 var log = logging.MustGetLogger("AVdb")
 
-var OpenDBOpt = &opt.Options{
-	BlockCacher:opt.NoCacher,
-	BlockCacheCapacity:-1,
-	//BlockCacheEvictRemoved:true,
-	OpenFilesCacher:opt.NoCacher,
-	//OpenFilesCacheCapacity:0,
-}
+//var OpenDBOpt = &opt.Options{
+//	BlockCacher:opt.NoCacher,
+//	BlockCacheCapacity:-1,
+//	DisableBlockCache:true,
+//	OpenFilesCacher:opt.NoCacher,
+//	OpenFilesCacheCapacity:1,
+//	WriteBuffer:0,
+//}
+var OpenDBOpt = &opt.Options{}
 
 var OpenDBReadOnlyOpt = &opt.Options{
 	ReadOnly:true,

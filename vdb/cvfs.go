@@ -79,11 +79,9 @@ func CreateVFS( block *ABlock.GenBlock, ind *core.IpfsNode, idxSer AIndexes.Inde
 
 	lidx, err := idxSer.GetLatest()
 	if err != nil {
-
-		if err != leveldb.ErrNotFound {
-			return cid.Undef, err
-		}
-
+		//if err != leveldb.ErrNotFound {
+		return cid.Undef, err
+		//}
 	}
 
 	if lidx != nil {
@@ -184,6 +182,7 @@ func LinkVFS( chainId string, ind *core.IpfsNode, idxSer AIndexes.IndexesService
 	} else {
 		return vfs, nil
 	}
+
 }
 
 func ( vfs *aCVFS ) BestCID() cid.Cid {

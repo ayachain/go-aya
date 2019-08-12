@@ -82,7 +82,7 @@ func Conn( ctx context.Context, chainId string, ind *core.IpfsNode, acc EAccount
 		return ErrAlreadyExistConnected
 	}
 
-	idxs := indexes.CreateServices(ind, genBlock.ChainID)
+	idxs := indexes.CreateServices(ind, genBlock.ChainID, false)
 	if idxs == nil {
 		return errors.New(`can't find the corresponding chain, did you not execute "add"`)
 	}
@@ -181,7 +181,7 @@ func AddChain( genBlock *ABlock.GenBlock, ind *core.IpfsNode, r bool ) error {
 	}
 
 	// Create indexes
-	idxServer := indexes.CreateServices(ind, genBlock.ChainID)
+	idxServer := indexes.CreateServices(ind, genBlock.ChainID, r)
 	if idxServer == nil {
 		return errors.New("create chain indexes services failed")
 	}
