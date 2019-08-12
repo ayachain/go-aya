@@ -43,8 +43,6 @@ type aIndexes struct {
 
 	ind *core.IpfsNode
 	chainId string
-
-	latestcid cid.Cid
 }
 
 func CreateServices( ind *core.IpfsNode, chainId string, rcp bool ) IndexesServices {
@@ -110,11 +108,11 @@ func CreateServices( ind *core.IpfsNode, chainId string, rcp bool ) IndexesServi
 			ind.Pinning.PinWithMode(fcid, pin.Any)
 
 			dsk := datastore.NewKey(AIndexesKeyPathPrefix + api.chainId)
+
 			if err := api.ind.Repo.Datastore().Put( dsk, fcid.Bytes() ); err != nil {
 				return err
 			} else {
 				log.Infof("Save Indexes DB : %v", fcid.String())
-				api.latestcid = fcid
 				return nil
 			}
 
@@ -150,7 +148,7 @@ func ( i *aIndexes ) GetLatest() (*Index, error) {
 		return nil, fmt.Errorf("target /%v is not a file", idbLatestIndex)
 	}
 
-	fd, err := fi.Open(mfs.Flags{Read:true})
+	fd, err := fi.Open(mfs.Flags{Read:true,Sync:false})
 	if err != nil {
 		return nil, err
 	}
@@ -187,7 +185,7 @@ func ( i *aIndexes ) GetIndex( blockNumber uint64 ) (*Index, error) {
 		return nil, fmt.Errorf("target /%v is not a file", idbLatestIndex)
 	}
 
-	fd, err := fi.Open(mfs.Flags{Read:true})
+	fd, err := fi.Open(mfs.Flags{Read:true,Sync:false})
 	if err != nil {
 		return nil, err
 	}
@@ -263,7 +261,7 @@ func ( i *aIndexes ) PutIndex( index *Index ) error {
 		return fmt.Errorf("target /%v is not a file", idbLatestIndex)
 	}
 
-	fd, err := fi.Open(mfs.Flags{Write:true,Sync:true})
+	fd, err := fi.Open(mfs.Flags{Write:true,Sync:false})
 	if err != nil {
 		return err
 	}
@@ -279,7 +277,11 @@ func ( i *aIndexes ) PutIndex( index *Index ) error {
 		return err
 	}
 
-	log.Infof("PutIdx : I:%d, H:%v, C:%v", index.BlockIndex, index.Hash.String(), index.FullCID.String())
+	if err := i.mfsroot.Flush(); err != nil {
+		log.Error(err)
+	}
+
+	log.Infof("PutIdx {I:%d, H:%v, C:%v}", index.BlockIndex, index.Hash.String(), index.FullCID.String())
 
 	return nil
 }
@@ -314,7 +316,7 @@ func ( i *aIndexes ) putLatestIndex( num uint64 ) error {
 		return fmt.Errorf("target /%v is not a file", idbLatestIndex)
 	}
 
-	fd, err := fi.Open(mfs.Flags{Write:true})
+	fd, err := fi.Open(mfs.Flags{Write:true,Sync:false})
 	if err != nil {
 		return err
 	}
