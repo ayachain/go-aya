@@ -248,14 +248,18 @@ func ( i *aIndexes ) PutIndex( index *Index ) (cid.Cid, error) {
 		return cid.Undef, fmt.Errorf("target /%v is not a file", idbLatestIndex)
 	}
 
-	fd, err := fi.Open(mfs.Flags{Write:true,Sync:false})
+	fd, err := fi.Open(mfs.Flags{Write:true, Sync:true})
 	if err != nil {
 		return cid.Undef, err
 	}
-	defer fd.Close()
 
 	value := index.Encode()
 	if _, err := fd.WriteAt(value, int64(offset) * StaticSize); err != nil {
+		return cid.Undef, err
+	}
+
+	if err := fd.Close(); err != nil {
+		log.Errorf("close idx error: %v", err)
 		return cid.Undef, err
 	}
 
@@ -304,7 +308,7 @@ func ( i *aIndexes ) putLatestIndex( num uint64 ) error {
 		return fmt.Errorf("target /%v is not a file", idbLatestIndex)
 	}
 
-	fd, err := fi.Open(mfs.Flags{Write:true,Sync:false})
+	fd, err := fi.Open(mfs.Flags{Write:true,Sync:true})
 	if err != nil {
 		return err
 	}
