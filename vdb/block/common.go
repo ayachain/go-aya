@@ -11,6 +11,9 @@ import (
 const (
 	Genesis = 0
 	Latest  = ^uint64(0)
+
+	BlockNameLatest = "latest"
+	BlockNameGen 	= "genesis"
 )
 
 func BlockEqual( a *Block, b *Block ) bool {
