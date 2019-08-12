@@ -137,7 +137,7 @@ func blockExecutorThread(ctx context.Context) {
 					Indexes:indexCid,
 				}
 
-				if err := pool.doBroadcast(info, pool.channelTopics[ATxPoolThreadChainInfo]); err != nil {
+				if err := pool.doBroadcast(info, pool.channelTopics[ATxPoolThreadSyncer]); err != nil {
 					log.Error(err)
 					return
 				}

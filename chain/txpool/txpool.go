@@ -61,28 +61,28 @@ const (
 
 	AtxPoolWorkModeSuper 			AtxPoolWorkMode 	= 1
 
-	ATxPoolThreadTxListen			ATxPoolThreadsName 	= "thread.tx.listen"
+	ATxPoolThreadTxListen			ATxPoolThreadsName 	= "ATxPoolThreadTxListen"
 	AtxPoolThreadTxListenBuff 					   		= 128
 
-	ATxPoolThreadTxPackage 			ATxPoolThreadsName 	= "thread.tx.package"
+	ATxPoolThreadTxPackage 			ATxPoolThreadsName 	= "ATxPoolThreadTxPackage"
 	ATxPoolThreadTxPackageBuff					  		= 1
 
-	ATxPoolThreadExecutor			ATxPoolThreadsName 	= "thread.block.executor"
+	ATxPoolThreadExecutor			ATxPoolThreadsName 	= "ATxPoolThreadExecutor"
 	ATxPoolThreadExecutorBuff					  		= 8
 
-	ATxPoolThreadReceiptListen 		ATxPoolThreadsName 	= "thread.receipt.listen"
+	ATxPoolThreadReceiptListen 		ATxPoolThreadsName 	= "ATxPoolThreadReceiptListen"
 	ATxPoolThreadReceiptListenBuff						= 256
 
-	ATxPoolThreadMining				ATxPoolThreadsName 	= "thread.block.mining"
+	ATxPoolThreadMining				ATxPoolThreadsName 	= "ATxPoolThreadMining"
 	ATxPoolThreadMiningBuff								= 32
 
-	ATxPoolThreadChainInfo			ATxPoolThreadsName 	= "thread.chaininfo.listen"
-	ATxPoolThreadChainInfoBuff							= 16
+	ATxPoolThreadSyncer				ATxPoolThreadsName 	= "ATxPoolThreadSyncer"
+	ATxPoolThreadSyncerBuff								= 16
 
-	ATxPoolThreadElectoral			ATxPoolThreadsName	= "thread.packer.electoral"
+	ATxPoolThreadElectoral			ATxPoolThreadsName	= "ATxPoolThreadElectoral"
 	ATxPoolThreadElectoralBuff							= 21
 
-	ATxPoolThreadElectoralTimeout	ATxPoolThreadsName 	= "thread.packer.timeout"
+	ATxPoolThreadElectoralTimeout	ATxPoolThreadsName 	= "ATxPoolThreadElectoralTimeout"
 )
 
 type ATxPool struct {
@@ -128,7 +128,7 @@ func NewTxPool( ind *core.IpfsNode, gblk *ABlock.GenBlock, cvfs vdb.CVFS, miner 
 		ATxPoolThreadExecutor 		: crypto.Keccak256Hash([]byte(fmt.Sprintf("%v%v", topic, ATxPoolThreadExecutor))).String(),
 		ATxPoolThreadReceiptListen 	: crypto.Keccak256Hash([]byte(fmt.Sprintf("%v%v", topic, ATxPoolThreadReceiptListen))).String(),
 		ATxPoolThreadMining 		: crypto.Keccak256Hash([]byte(fmt.Sprintf("%v%v", topic, ATxPoolThreadMining))).String(),
-		ATxPoolThreadChainInfo		: crypto.Keccak256Hash([]byte(fmt.Sprintf("%v%v", topic, ATxPoolThreadChainInfo))).String(),
+		ATxPoolThreadSyncer			: crypto.Keccak256Hash([]byte(fmt.Sprintf("%v%v", topic, ATxPoolThreadSyncer))).String(),
 		ATxPoolThreadElectoral 		: crypto.Keccak256Hash([]byte(fmt.Sprintf("%v%v", topic, ATxPoolThreadElectoral))).String(),
 	}
 
@@ -169,7 +169,7 @@ func (pool *ATxPool) PowerOnAndLoop( ctx context.Context ) error {
 			ATxPoolThreadMining,
 			ATxPoolThreadReceiptListen,
 			ATxPoolThreadExecutor,
-			ATxPoolThreadChainInfo,
+			ATxPoolThreadSyncer,
 		)
 
 	case AtxPoolWorkModeNormal:
@@ -182,7 +182,7 @@ func (pool *ATxPool) PowerOnAndLoop( ctx context.Context ) error {
 			//ATxPoolThreadMining,
 			//ATxPoolThreadReceiptListen,
 			ATxPoolThreadExecutor,
-			ATxPoolThreadChainInfo,
+			ATxPoolThreadSyncer,
 		)
 
 	}
@@ -529,7 +529,7 @@ func (pool *ATxPool) runThreads( ctx context.Context, names ... ATxPoolThreadsNa
 			go blockExecutorThread(sctx)
 
 
-		case ATxPoolThreadChainInfo:
+		case ATxPoolThreadSyncer:
 			go syncListener(sctx)
 
 

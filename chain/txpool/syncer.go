@@ -11,13 +11,13 @@ import (
 
 func syncListener(ctx context.Context ) {
 
-	fmt.Println("ATxPool Thread On: " + ATxPoolThreadChainInfo)
+	fmt.Println("ATxPool Thread On: " + ATxPoolThreadSyncer)
 
 	pool := ctx.Value("Pool").(*ATxPool)
 
 	pool.workingThreadWG.Add(1)
 
-	pool.threadChans.Store(ATxPoolThreadChainInfo, make(chan []byte, ATxPoolThreadChainInfoBuff))
+	pool.threadChans.Store(ATxPoolThreadSyncer, make(chan []byte, ATxPoolThreadSyncerBuff))
 
 	subCtx, subCancel := context.WithCancel(ctx)
 
@@ -27,22 +27,22 @@ func syncListener(ctx context.Context ) {
 
 		<- subCtx.Done()
 
-		cc, exist := pool.threadChans.Load( ATxPoolThreadChainInfo )
+		cc, exist := pool.threadChans.Load( ATxPoolThreadSyncer )
 		if exist {
 
 			close( cc.(chan []byte) )
 
-			pool.threadChans.Delete( ATxPoolThreadChainInfo )
+			pool.threadChans.Delete( ATxPoolThreadSyncer )
 		}
 
 		pool.workingThreadWG.Done()
 
-		fmt.Println( "ATxPool Thread Off: " + ATxPoolThreadChainInfo )
+		fmt.Println( "ATxPool Thread Off: " + ATxPoolThreadSyncer )
 
 	}()
 
 
-	sub, err := pool.ind.PubSub.Subscribe( pool.channelTopics[ATxPoolThreadChainInfo] )
+	sub, err := pool.ind.PubSub.Subscribe( pool.channelTopics[ATxPoolThreadSyncer] )
 	if err != nil {
 		return
 	}
