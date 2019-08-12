@@ -43,6 +43,8 @@ type aIndexes struct {
 
 	ind *core.IpfsNode
 	chainId string
+
+	latestCID cid.Cid
 }
 
 func CreateServices( ind *core.IpfsNode, chainId string, rcp bool ) IndexesServices {
@@ -103,20 +105,7 @@ func CreateServices( ind *core.IpfsNode, chainId string, rcp bool ) IndexesServi
 		context.TODO(),
 		ind.DAG,
 		nd,
-		func(ctx context.Context, fcid cid.Cid) error {
-
-			ind.Pinning.PinWithMode(fcid, pin.Any)
-
-			dsk := datastore.NewKey(AIndexesKeyPathPrefix + api.chainId)
-
-			if err := api.ind.Repo.Datastore().Put( dsk, fcid.Bytes() ); err != nil {
-				return err
-			} else {
-				log.Infof("Save Indexes DB : %v", fcid.String())
-				return nil
-			}
-
-		},
+		nil,
 	)
 
 	if err != nil {
@@ -220,7 +209,7 @@ func ( i *aIndexes ) Close() error {
 	return nil
 }
 
-func ( i *aIndexes ) PutIndex( index *Index ) error {
+func ( i *aIndexes ) PutIndex( index *Index ) (cid.Cid, error) {
 
 	i.snLock.Lock()
 	defer i.snLock.Unlock()
@@ -241,40 +230,40 @@ func ( i *aIndexes ) PutIndex( index *Index ) error {
 			nnd.SetCidBuilder(dir.GetCidBuilder())
 
 			if err := dir.AddChild( fname, nnd ); err != nil {
-				return err
+				return cid.Undef, err
 			}
 
 			nd, err = dir.Child(fname)
 			if err != nil {
-				return err
+				return cid.Undef, err
 			}
 
 		} else {
 
-			return err
+			return cid.Undef, err
 
 		}
 	}
 
 	fi, ok := nd.(*mfs.File)
 	if !ok {
-		return fmt.Errorf("target /%v is not a file", idbLatestIndex)
+		return cid.Undef, fmt.Errorf("target /%v is not a file", idbLatestIndex)
 	}
 
 	fd, err := fi.Open(mfs.Flags{Write:true,Sync:false})
 	if err != nil {
-		return err
+		return cid.Undef, err
 	}
 	defer fd.Close()
 
 	value := index.Encode()
 	if _, err := fd.WriteAt(value, int64(offset) * StaticSize); err != nil {
-		return err
+		return cid.Undef, err
 	}
 
 	/// write latest index number
 	if err := i.putLatestIndex(index.BlockIndex); err != nil {
-		return err
+		return cid.Undef, err
 	}
 
 	if err := i.mfsroot.Flush(); err != nil {
@@ -283,7 +272,14 @@ func ( i *aIndexes ) PutIndex( index *Index ) error {
 
 	log.Infof("PutIdx {I:%d, H:%v, C:%v}", index.BlockIndex, index.Hash.String(), index.FullCID.String())
 
-	return nil
+	cnd, err := mfs.FlushPath(context.TODO(), i.mfsroot, "/")
+	if err != nil {
+		return cid.Undef, err
+	}
+
+	i.latestCID = cnd.Cid()
+
+	return i.latestCID, nil
 }
 
 func ( i *aIndexes ) putLatestIndex( num uint64 ) error {
@@ -333,7 +329,7 @@ func ( i *aIndexes ) putLatestIndex( num uint64 ) error {
 	return nil
 }
 
-func ( i *aIndexes ) PutIndexBy( num uint64, bhash EComm.Hash, ci cid.Cid ) error {
+func ( i *aIndexes ) PutIndexBy( num uint64, bhash EComm.Hash, ci cid.Cid ) (cid.Cid, error) {
 
 	return i.PutIndex( &Index{
 		BlockIndex:num,
@@ -347,15 +343,17 @@ func ( i *aIndexes ) UpdateSnapshot() error {
 	return nil
 }
 
-func ( i *aIndexes ) Flush() cid.Cid {
+func ( i *aIndexes ) Flush() error {
 
-	i.snLock.Lock()
-	defer i.snLock.Unlock()
+	i.ind.Pinning.PinWithMode(i.latestCID, pin.Any)
 
-	nd, err := mfs.FlushPath( context.TODO(), i.mfsroot, "/" )
-	if err != nil {
-		return cid.Undef
+	dsk := datastore.NewKey(AIndexesKeyPathPrefix + i.chainId)
+
+	if err := i.ind.Repo.Datastore().Put( dsk, i.latestCID.Bytes() ); err != nil {
+		return err
+	} else {
+		log.Infof("Save Indexes DB : %v", i.latestCID.String())
+		return nil
 	}
 
-	return nd.Cid()
 }

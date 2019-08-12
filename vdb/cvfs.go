@@ -145,7 +145,7 @@ func CreateVFS( block *ABlock.GenBlock, ind *core.IpfsNode, idxSer AIndexes.Inde
 		return cid.Undef, err
 	}
 
-	if err := idxSer.PutIndexBy( 0, block.GetHash(), baseCid); err != nil {
+	if _, err := idxSer.PutIndexBy( 0, block.GetHash(), baseCid); err != nil {
 		return cid.Undef, err
 	}
 

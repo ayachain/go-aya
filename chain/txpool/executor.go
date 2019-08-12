@@ -122,12 +122,11 @@ func blockExecutorThread(ctx context.Context) {
 				return
 			}
 
-			if err := pool.cvfs.Indexes().PutIndexBy( cblock.Index, cblock.GetHash(), latestCid ); err != nil {
+			indexCid, err := pool.cvfs.Indexes().PutIndexBy( cblock.Index, cblock.GetHash(), latestCid )
+			if err != nil {
 				log.Error(err)
 				return
 			}
-
-			indexCid := pool.cvfs.Indexes().Flush()
 
 			if !indexCid.Equals(cid.Undef) {
 
@@ -145,7 +144,9 @@ func blockExecutorThread(ctx context.Context) {
 				}
 
 			} else {
+
 				return
+
 			}
 
 			// clear txpool
