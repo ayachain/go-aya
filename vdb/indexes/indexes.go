@@ -154,6 +154,7 @@ func ( i *aIndexes ) GetLatest() (*Index, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer fd.Close()
 
 	bs, err := ioutil.ReadAll(fd)
 	if err != nil {

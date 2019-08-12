@@ -242,8 +242,6 @@ func (pool *ATxPool) ReadOnlyCVFS() vdb.CVFS {
 
 func (pool *ATxPool) PublishTx( tx *ATx.Transaction ) error {
 
-	log.Infof("HexTx:%v", tx.ToHexString())
-
 	if !tx.Verify() {
 		return ErrMessageVerifyExpected
 	}

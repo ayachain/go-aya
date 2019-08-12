@@ -7,7 +7,6 @@ import (
 	AVdbComm "github.com/ayachain/go-aya/vdb/common"
 	EComm "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/prometheus/common/log"
 	"strings"
 )
 
@@ -86,7 +85,6 @@ func ( trsn *Transaction ) Verify() bool {
 
 	hs := trsn.GetHash256()
 
-	log.Infof("%v", hs.String() )
 	pubkey, err := crypto.SigToPub(hs.Bytes(), EComm.Hex2Bytes(trsn.Sig))
 	if err != nil {
 		return false
