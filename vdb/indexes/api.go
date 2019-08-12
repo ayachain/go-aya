@@ -18,4 +18,6 @@ type IndexesServices interface {
 	Close() error
 
 	Flush() error
+
+	SyncToCID( fullCID cid.Cid ) error
 }

@@ -7,7 +7,6 @@ import (
 	ATaskGroup "github.com/ayachain/go-aya/consensus/core/worker"
 	AMsgBlock "github.com/ayachain/go-aya/vdb/block"
 	AChainInfo "github.com/ayachain/go-aya/vdb/chaininfo"
-	AElectoral "github.com/ayachain/go-aya/vdb/electoral"
 	"github.com/ipfs/go-cid"
 )
 
@@ -146,29 +145,7 @@ func blockExecutorThread(ctx context.Context) {
 			} else {
 
 				return
-
 			}
-
-			// clear txpool
-			dagReadCtx, dagReadCancel := context.WithCancel(ctx)
-
-			txlist := cblock.ReadTxsFromDAG(dagReadCtx, pool.ind)
-
-			dagReadCancel()
-
-			if err := pool.ConfirmTxs( txlist ); err != nil {
-				log.Error(err)
-			}
-
-			pool.notary.NewBlockHasConfirm()
-
-			_ = pool.UpdateBestBlock(cblock)
-
-			pool.miningBlock = nil
-
-			pool.changePackerState(AElectoral.ATxPackStateLookup)
-
-			log.Infof("Confirm New Block %08d: %v", cblock.Index, latestCid.String())
 		}
 	}
 }

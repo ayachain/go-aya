@@ -4,10 +4,9 @@ import (
 	"context"
 	"fmt"
 	"github.com/ayachain/go-aya/consensus/core"
+	"github.com/ayachain/go-aya/vdb/block"
 	AChainInfo "github.com/ayachain/go-aya/vdb/chaininfo"
-	AIndexes "github.com/ayachain/go-aya/vdb/indexes"
-	"github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-ipfs/pin"
+	"strings"
 )
 
 func syncListener(ctx context.Context ) {
@@ -70,34 +69,48 @@ func syncListener(ctx context.Context ) {
 				continue
 			}
 
+			if info.GenHash != pool.genBlock.GetHash() {
+				continue
+			}
+
 			latest, err := pool.cvfs.Indexes().GetLatest()
 			if err != nil {
 				continue
 			}
 
-			if info.LatestBlock.Index <= latest.BlockIndex {
+			if info.LatestBlock.Index == latest.BlockIndex && strings.EqualFold(info.VDBRoot.String(), latest.FullCID.String()) {
+
+				// confirm
+				if err := pool.cvfs.Indexes().Flush(); err != nil {
+					log.Error(err)
+					continue
+				}
+
+				if err := pool.ConfirmBestBlock(info.LatestBlock); err != nil {
+					log.Error(err)
+				}
+
+			} else if info.LatestBlock.Index <= latest.BlockIndex {
+
 				continue
+
+			} else {
+
+				// need sync
+				pool.syncMutx.Lock()
+
+				if err := pool.cvfs.Indexes().SyncToCID(info.Indexes); err != nil {
+					log.Error(err)
+					goto loopBreakByErr
+				}
+
 			}
 
-			// need sync
-			pool.syncMutx.Lock()
-			pool.ind.Pinning.PinWithMode(info.Indexes, pin.Any)
-
-			adbipath := AIndexes.AIndexesKeyPathPrefix + pool.genBlock.ChainID
-			dsk := datastore.NewKey(adbipath)
-
-			if err := pool.ind.Repo.Datastore().Put(dsk, info.Indexes.Bytes()); err != nil {
+			// seek block to cvfs
+			if err := pool.cvfs.SeekToBlock(block.Latest); err != nil {
 				log.Warning(err)
 				goto loopBreakByErr
 			}
-
-			// restart cvfs
-			if err := pool.cvfs.Restart(info.VDBRoot); err != nil {
-				log.Warning(err)
-				goto loopBreakByErr
-			}
-
-			log.Infof("SyncBlockIndex %08d:%v, ", info.LatestBlock.Index, info.VDBRoot.String())
 
 		loopBreakByErr:
 
@@ -106,7 +119,6 @@ func syncListener(ctx context.Context ) {
 			continue
 		}
 		}
-
 	}
 
 }

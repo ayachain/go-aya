@@ -9,7 +9,6 @@ import (
 	ACore "github.com/ayachain/go-aya/consensus/core"
 	"github.com/ayachain/go-aya/logs"
 	"github.com/ayachain/go-aya/vdb"
-	AAssets "github.com/ayachain/go-aya/vdb/assets"
 	ABlock "github.com/ayachain/go-aya/vdb/block"
 	AvdbComm "github.com/ayachain/go-aya/vdb/common"
 	AElectoral "github.com/ayachain/go-aya/vdb/electoral"
@@ -99,7 +98,6 @@ type ATxPool struct {
 	qemu sync.Mutex
 
 	ownerAccount EAccount.Account
-	ownerAsset *AAssets.Assets
 	genBlock *ABlock.GenBlock
 	miningBlock *AMBlock.MBlock
 
@@ -134,16 +132,6 @@ func NewTxPool( ind *core.IpfsNode, gblk *ABlock.GenBlock, cvfs vdb.CVFS, miner 
 		ATxPoolThreadElectoral 		: crypto.Keccak256Hash([]byte(fmt.Sprintf("%v%v", topic, ATxPoolThreadElectoral))).String(),
 	}
 
-	oast, err := cvfs.Assetses().AssetsOf(acc.Address)
-	if err != nil {
-		oast = &AAssets.Assets{
-			Version:AAssets.DRVer,
-			Avail:0,
-			Locked:0,
-			Vote:0,
-		}
-	}
-
 	return &ATxPool{
 		mining:make(map[EComm.Address]*txlist.TxList),
 		queue:make(map[EComm.Address]*txlist.TxList),
@@ -152,7 +140,6 @@ func NewTxPool( ind *core.IpfsNode, gblk *ABlock.GenBlock, cvfs vdb.CVFS, miner 
 		ind:ind,
 		channelTopics:topicmap,
 		ownerAccount:acc,
-		ownerAsset:oast,
 		notary:miner,
 		genBlock:gblk,
 		packerState:AElectoral.ATxPackStateLookup,
@@ -210,15 +197,25 @@ func (pool *ATxPool) PowerOnAndLoop( ctx context.Context ) error {
 	}
 }
 
-func (pool *ATxPool) UpdateBestBlock( cblock *ABlock.Block  ) error {
+func (pool *ATxPool) ConfirmBestBlock( cblock *ABlock.Block  ) error {
 
-	ast, err := pool.cvfs.Assetses().AssetsOf( pool.ownerAccount.Address )
+	// clear txpool
+	dagReadCtx, dagReadCancel := context.WithCancel(context.TODO())
 
-	if err != nil {
+	confirmTxlist := cblock.ReadTxsFromDAG(dagReadCtx, pool.ind)
+
+	dagReadCancel()
+
+	if err := pool.confirmTxs( confirmTxlist ); err != nil {
+		log.Error(err)
 		return err
 	}
 
-	pool.ownerAsset = ast
+	pool.notary.NewBlockHasConfirm()
+
+	pool.changePackerState(AElectoral.ATxPackStateLookup)
+
+	pool.miningBlock = nil
 
 	return nil
 }
@@ -389,40 +386,6 @@ func (pool *ATxPool) MoveTxsToMining( txs []*ATx.Transaction ) error {
 			} else {
 
 				pool.mining[stx.From] = txlist.NewTxList(stx)
-
-			}
-
-		}
-
-	}
-
-	return nil
-
-}
-
-func (pool *ATxPool) ConfirmTxs( txs []*ATx.Transaction ) error {
-
-	pool.qemu.Lock()
-	defer pool.qemu.Unlock()
-
-	pool.mnmu.Lock()
-	defer pool.mnmu.Unlock()
-
-	for _, stx := range txs {
-
-		removed := false
-
-		if tlist, exist := pool.mining[stx.From]; exist {
-
-			removed = tlist.RemoveFromTid( stx.Tid )
-
-		}
-
-		if !removed {
-
-			if tlist, exist := pool.queue[stx.From]; exist {
-
-				_ = tlist.RemoveFromTid( stx.Tid )
 
 			}
 
@@ -626,5 +589,39 @@ func (pool *ATxPool) pushTransaction( tx *ATx.Transaction ) error {
 
 		return list.AddTx(tx)
 	}
+
+}
+
+func (pool *ATxPool) confirmTxs( txs []*ATx.Transaction ) error {
+
+	pool.qemu.Lock()
+	defer pool.qemu.Unlock()
+
+	pool.mnmu.Lock()
+	defer pool.mnmu.Unlock()
+
+	for _, stx := range txs {
+
+		removed := false
+
+		if tlist, exist := pool.mining[stx.From]; exist {
+
+			removed = tlist.RemoveFromTid( stx.Tid )
+
+		}
+
+		if !removed {
+
+			if tlist, exist := pool.queue[stx.From]; exist {
+
+				_ = tlist.RemoveFromTid( stx.Tid )
+
+			}
+
+		}
+
+	}
+
+	return nil
 
 }

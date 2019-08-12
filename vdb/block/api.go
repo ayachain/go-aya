@@ -4,9 +4,6 @@ import AVdbComm "github.com/ayachain/go-aya/vdb/common"
 
 const DBPath = "/blocks"
 
-const BlockNameLatest = "latest"
-const BlockNameGen    = "gen"
-
 type reader interface {
 
 	GetBlocks( hashOrIndex...interface{} ) ([]*Block, error)

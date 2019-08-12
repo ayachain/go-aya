@@ -10,7 +10,7 @@ import (
 	"github.com/whyrusleeping/go-logging"
 )
 
-var log = logging.MustGetLogger("AVdb")
+var log = logging.MustGetLogger("AVDB")
 
 //var OpenDBOpt = &opt.Options{
 //	BlockCacher:opt.NoCacher,
@@ -20,6 +20,7 @@ var log = logging.MustGetLogger("AVdb")
 //	OpenFilesCacheCapacity:1,
 //	WriteBuffer:0,
 //}
+
 var OpenDBOpt = &opt.Options{}
 
 var OpenDBReadOnlyOpt = &opt.Options{

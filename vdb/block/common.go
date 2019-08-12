@@ -8,6 +8,11 @@ import (
 	"github.com/ipfs/go-ipfs/core"
 )
 
+const (
+	Genesis = 0
+	Latest  = ^uint64(0)
+)
+
 func BlockEqual( a *Block, b *Block ) bool {
 
 	abs, _ := json.Marshal(a)

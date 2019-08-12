@@ -105,7 +105,9 @@ func CreateServices( ind *core.IpfsNode, chainId string, rcp bool ) IndexesServi
 		context.TODO(),
 		ind.DAG,
 		nd,
-		nil,
+		func(ctx context.Context, cid cid.Cid) error {
+			return nil
+		},
 	)
 
 	if err != nil {
@@ -202,11 +204,7 @@ func ( i *aIndexes ) Close() error {
 	i.snLock.Lock()
 	defer i.snLock.Unlock()
 
-	if err := i.mfsroot.Flush(); err != nil {
-		return err
-	}
-
-	return nil
+	return i.mfsroot.Close()
 }
 
 func ( i *aIndexes ) PutIndex( index *Index ) (cid.Cid, error) {
@@ -265,12 +263,6 @@ func ( i *aIndexes ) PutIndex( index *Index ) (cid.Cid, error) {
 	if err := i.putLatestIndex(index.BlockIndex); err != nil {
 		return cid.Undef, err
 	}
-
-	if err := i.mfsroot.Flush(); err != nil {
-		log.Error(err)
-	}
-
-	log.Infof("PutIdx {I:%d, H:%v, C:%v}", index.BlockIndex, index.Hash.String(), index.FullCID.String())
 
 	cnd, err := mfs.FlushPath(context.TODO(), i.mfsroot, "/")
 	if err != nil {
@@ -353,6 +345,26 @@ func ( i *aIndexes ) Flush() error {
 		return err
 	} else {
 		log.Infof("Save Indexes DB : %v", i.latestCID.String())
+		return nil
+	}
+
+}
+
+func ( i *aIndexes) SyncToCID( fullCID cid.Cid ) error {
+
+	i.snLock.Lock()
+	defer i.snLock.Unlock()
+
+	i.latestCID = fullCID
+
+	i.ind.Pinning.PinWithMode(i.latestCID, pin.Any)
+
+	dsk := datastore.NewKey(AIndexesKeyPathPrefix + i.chainId)
+
+	if err := i.ind.Repo.Datastore().Put( dsk, i.latestCID.Bytes() ); err != nil {
+		return err
+	} else {
+		log.Infof("Sync Indexes DB : %v", i.latestCID.String())
 		return nil
 	}
 

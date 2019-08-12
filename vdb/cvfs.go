@@ -31,6 +31,8 @@ var (
 
 var log = logging.MustGetLogger(logs.AModules_CVFS)
 
+
+
 type CVFS interface {
 
 	Close() error
@@ -47,7 +49,7 @@ type CVFS interface {
 
 	Transactions() ATx.Services
 
-	Restart( baseCid cid.Cid ) error
+	SeekToBlock( bIndex uint64 ) error
 
 	WriteTaskGroup( group *AWrok.TaskBatchGroup ) ( cid.Cid, error )
 
@@ -149,6 +151,10 @@ func CreateVFS( block *ABlock.GenBlock, ind *core.IpfsNode, idxSer AIndexes.Inde
 		return cid.Undef, err
 	}
 
+	if err := idxSer.Flush(); err != nil {
+		return cid.Undef, err
+	}
+
 	return baseCid, nil
 }
 
@@ -191,15 +197,20 @@ func ( vfs *aCVFS ) BestCID() cid.Cid {
 	defer vfs.smu.Unlock()
 
 	return vfs.bestCID
-
 }
 
-func ( vfs *aCVFS ) Restart( baseCid cid.Cid ) error {
+func ( vfs *aCVFS ) SeekToBlock( bIndex uint64 ) error {
 
 	vfs.smu.Lock()
 	defer vfs.smu.Unlock()
 
-	if strings.EqualFold(baseCid.String(), vfs.bestCID.String()) {
+	lidx, err := vfs.indexServices.GetIndex(bIndex)
+	if err != nil {
+		return err
+	}
+
+	log.Infof("CVFS: %v NewBest: %v", lidx.FullCID.String(), vfs.bestCID.String())
+	if strings.EqualFold(lidx.FullCID.String(), vfs.bestCID.String()) {
 		return nil
 	}
 
@@ -207,14 +218,14 @@ func ( vfs *aCVFS ) Restart( baseCid cid.Cid ) error {
 		return err
 	}
 
-	root, err := newMFSRoot( context.TODO(), baseCid, vfs.inode )
+	root, err := newMFSRoot( context.TODO(), lidx.FullCID, vfs.inode )
 
 	if err != nil {
 		return err
 	}
 
 	vfs.Root = root
-	vfs.bestCID = baseCid
+	vfs.bestCID = lidx.FullCID
 
 	return vfs.initServices()
 }
@@ -331,6 +342,8 @@ func ( vfs *aCVFS ) WriteTaskGroup( group *AWrok.TaskBatchGroup) (cid.Cid, error
 		return cid.Undef, err
 	}
 
+	vfs.bestCID = nd.Cid()
+
 	//Update Snapshot
 	for dbkey := range bmap {
 
@@ -341,7 +354,7 @@ func ( vfs *aCVFS ) WriteTaskGroup( group *AWrok.TaskBatchGroup) (cid.Cid, error
 		}
 	}
 
-	return nd.Cid(), nil
+	return vfs.bestCID, nil
 }
 
 func ( vfs *aCVFS ) Close() error {
