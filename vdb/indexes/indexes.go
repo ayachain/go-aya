@@ -279,6 +279,8 @@ func ( i *aIndexes ) PutIndex( index *Index ) error {
 		return err
 	}
 
+	log.Infof("PutIdx : I:%d, H:%v, C:%v", index.BlockIndex, index.Hash.String(), index.FullCID.String())
+
 	return nil
 }
 
@@ -291,7 +293,7 @@ func ( i *aIndexes ) putLatestIndex( num uint64 ) error {
 		if err == os.ErrNotExist {
 
 			//file not exist
-			nnd := merkledag.NodeWithData(unixfs.FilePBData(nil, 1024 * StaticSize))
+			nnd := merkledag.NodeWithData(unixfs.FilePBData(nil, 8))
 			nnd.SetCidBuilder(dir.GetCidBuilder())
 
 			if err := dir.AddChild( idbLatestIndex, nnd ); err != nil {
