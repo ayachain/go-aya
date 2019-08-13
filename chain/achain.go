@@ -92,12 +92,7 @@ func Conn( ctx context.Context, chainId string, ind *core.IpfsNode, acc EAccount
 		}
 	}()
 
-	idx, err := idxs.GetLatest()
-	if err != nil {
-		return errors.New(`can't read latest block in this chain`)
-	}
-
-	log.Infof("LatestIndex:%08d CID:%v\n", idx.BlockIndex, idx.FullCID)
+	log.Infof("StartWith")
 
 	vdbfs, err := vdb.LinkVFS(genBlock.ChainID, ind, idxs)
 	if err != nil {
@@ -123,6 +118,7 @@ func Conn( ctx context.Context, chainId string, ind *core.IpfsNode, acc EAccount
 		TxPool:txpool.NewTxPool( ind, genBlock, vdbfs, notary, acc),
 		ctxCancel:cancel,
 	}
+
 	chains[genBlock.ChainID] = ac
 
 	go func() {

@@ -58,10 +58,13 @@ func syncListener(ctx context.Context ) {
 
 		select {
 		case <- ctx.Done():
-
 			return
 
-		case <- pool.notary.TrustOrNot(msg, core.NotaryMessageChainInfo, pool.cvfs) : {
+		case trust := <- pool.notary.TrustOrNot(msg, core.NotaryMessageChainInfo, pool.cvfs) :
+
+			if !trust {
+				continue
+			}
 
 			info := &AChainInfo.ChainInfo{}
 
@@ -98,6 +101,8 @@ func syncListener(ctx context.Context ) {
 					log.Error(err)
 				}
 
+				log.Infof("Confirm Block: %08d CID: %v", latest.BlockIndex, latest.FullCID.String())
+
 			} else if info.LatestBlock.Index <= latest.BlockIndex {
 				pool.syncMutx.Unlock()
 				continue
@@ -115,7 +120,6 @@ func syncListener(ctx context.Context ) {
 			}
 
 			pool.syncMutx.Unlock()
-		}
 		}
 	}
 

@@ -94,8 +94,6 @@ func CreateServices( ind *core.IpfsNode, chainId string, rcp bool ) IndexesServi
 
 	}
 
-	log.Infof("Read Indexes DB : %v", nd.Cid().String())
-
 	api := &aIndexes{
 		ind:ind,
 		chainId:chainId,
@@ -279,8 +277,6 @@ func ( i *aIndexes ) PutIndex( index *Index ) (cid.Cid, error) {
 
 	i.latestCID = cnd.Cid()
 
-	log.Infof("Put Idx: %v", cnd.Cid().String())
-
 	return i.latestCID, nil
 }
 
@@ -352,12 +348,12 @@ func ( i *aIndexes ) Flush() error {
 	dsk := datastore.NewKey(AIndexesKeyPathPrefix + i.chainId)
 
 	if err := i.ind.Repo.Datastore().Put( dsk, i.latestCID.Bytes() ); err != nil {
+
 		return err
+
 	} else {
 
 		i.ind.Pinning.PinWithMode( i.latestCID, pin.Any )
-
-		log.Infof("Save Indexes DB : %v", i.latestCID.String())
 		return nil
 	}
 

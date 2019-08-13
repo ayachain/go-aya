@@ -157,8 +157,6 @@ func (n *APOSConsensusNotary) TrustOrNot( msg *pubsub.Message, mtype ACore.Notar
 
 			if msg.Data[0] == ACInfo.MessagePrefix {
 
-				//log.Infof("ListenMessage : %v -> %v (ChainInfo)", sender.PeerID, msgHash.String())
-
 				replayChan <- n.hst.CanConsensus(msgHash.String(), sender, threshold)
 
 			}

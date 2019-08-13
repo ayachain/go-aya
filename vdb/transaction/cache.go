@@ -89,14 +89,18 @@ func (cache *aCache) Put(tx *Transaction, bidx uint64) {
 
 		panic(err)
 
-	} else if fttke {
+	} else {
 
-		cbs, err := AvdbComm.CacheGet(cache.source, cache.cdb, fromTxTotalKey)
-		if err != nil {
-			panic(err)
+		if fttke {
+
+			cbs, err := AvdbComm.CacheGet(cache.source, cache.cdb, fromTxTotalKey)
+			if err != nil {
+				panic(err)
+			}
+
+			fromTxTotal = binary.BigEndian.Uint64(cbs)
+
 		}
-
-		fromTxTotal = binary.BigEndian.Uint64(cbs)
 
 		hkey := append(TxHistoryPrefix, tx.From.Bytes()... )
 		hkey = append(hkey, AvdbComm.BigEndianBytes(fromTxTotal)...)
@@ -109,7 +113,7 @@ func (cache *aCache) Put(tx *Transaction, bidx uint64) {
 		}
 
 		// insert history indexes
-		if err := cache.cdb.Put( hkey, tx.GetHash256().Bytes(), AvdbComm.WriteOpt ); err != nil {
+		if err := cache.cdb.Put( hkey, key, AvdbComm.WriteOpt ); err != nil {
 			panic(err)
 		}
 
@@ -118,15 +122,20 @@ func (cache *aCache) Put(tx *Transaction, bidx uint64) {
 	// to tx total key exist
 	tttke, err :=  AvdbComm.CacheHas(cache.source, cache.cdb, toTxTotalKey)
 	if err != nil {
+
 		panic(err)
-	} else if tttke {
 
-		cbs, err := AvdbComm.CacheGet(cache.source, cache.cdb, toTxTotalKey)
-		if err != nil {
-			panic(err)
+	} else {
+
+		if tttke {
+
+			cbs, err := AvdbComm.CacheGet(cache.source, cache.cdb, toTxTotalKey)
+			if err != nil {
+				panic(err)
+			}
+
+			toTxTotal = binary.BigEndian.Uint64(cbs)
 		}
-
-		toTxTotal = binary.BigEndian.Uint64(cbs)
 
 		hkey := append(TxHistoryPrefix, tx.To.Bytes()... )
 		hkey = append(hkey, AvdbComm.BigEndianBytes(toTxTotal)...)
@@ -139,9 +148,10 @@ func (cache *aCache) Put(tx *Transaction, bidx uint64) {
 		}
 
 		// insert history indexes
-		if err := cache.cdb.Put( hkey, tx.GetHash256().Bytes(), AvdbComm.WriteOpt ); err != nil {
+		if err := cache.cdb.Put( hkey, key, AvdbComm.WriteOpt ); err != nil {
 			panic(err)
 		}
+
 	}
 
 }
