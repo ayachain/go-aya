@@ -348,6 +348,9 @@ func ( i *aIndexes ) Flush() error {
 	if err := i.ind.Repo.Datastore().Put( dsk, i.latestCID.Bytes() ); err != nil {
 		return err
 	} else {
+
+		i.ind.Pinning.PinWithMode( i.latestCID, pin.Any )
+
 		log.Infof("Save Indexes DB : %v", i.latestCID.String())
 		return nil
 	}
@@ -368,6 +371,9 @@ func ( i *aIndexes) SyncToCID( fullCID cid.Cid ) error {
 	if err := i.ind.Repo.Datastore().Put( dsk, i.latestCID.Bytes() ); err != nil {
 		return err
 	} else {
+
+		i.ind.Pinning.PinWithMode( i.latestCID, pin.Any )
+
 		log.Infof("Sync Indexes DB : %v", i.latestCID.String())
 		return nil
 	}

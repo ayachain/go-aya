@@ -21,6 +21,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-ipfs/core"
+	"github.com/ipfs/go-ipfs/pin"
 	"github.com/whyrusleeping/go-logging"
 	"sync"
 	"time"
@@ -58,7 +59,6 @@ const (
 	PackageTxsLimit 									= 2048
 
 	AtxPoolWorkModeNormal 			AtxPoolWorkMode 	= 0
-
 	AtxPoolWorkModeSuper 			AtxPoolWorkMode 	= 1
 
 	ATxPoolThreadTxListen			ATxPoolThreadsName 	= "ATxPoolThreadTxListen"
@@ -68,16 +68,16 @@ const (
 	ATxPoolThreadTxPackageBuff					  		= 1
 
 	ATxPoolThreadExecutor			ATxPoolThreadsName 	= "ATxPoolThreadExecutor"
-	ATxPoolThreadExecutorBuff					  		= 8
+	ATxPoolThreadExecutorBuff					  		= 1
 
 	ATxPoolThreadReceiptListen 		ATxPoolThreadsName 	= "ATxPoolThreadReceiptListen"
-	ATxPoolThreadReceiptListenBuff						= 256
+	ATxPoolThreadReceiptListenBuff						= 16
 
 	ATxPoolThreadMining				ATxPoolThreadsName 	= "ATxPoolThreadMining"
-	ATxPoolThreadMiningBuff								= 32
+	ATxPoolThreadMiningBuff								= 1
 
 	ATxPoolThreadSyncer				ATxPoolThreadsName 	= "ATxPoolThreadSyncer"
-	ATxPoolThreadSyncerBuff								= 16
+	ATxPoolThreadSyncerBuff								= 1
 
 	ATxPoolThreadElectoral			ATxPoolThreadsName	= "ATxPoolThreadElectoral"
 	ATxPoolThreadElectoralBuff							= 21
@@ -115,6 +115,9 @@ type ATxPool struct {
 	packerState AElectoral.ATxPackerState
 	latestPackerStateChangeTime int64
 	eleservices AElectoral.MemServices
+
+	inmining bool
+	miningmu sync.Mutex
 }
 
 func NewTxPool( ind *core.IpfsNode, gblk *ABlock.GenBlock, cvfs vdb.CVFS, miner ACore.Notary, acc EAccount.Account ) *ATxPool {
@@ -454,6 +457,7 @@ func (pool *ATxPool) CreateMiningBlock() *AMBlock.MBlock {
 		log.Error(err)
 		return nil
 	}
+	pool.ind.Pinning.PinWithMode(iblk.Cid(), pin.Any)
 
 	// Create block
 	bindex, err := pool.cvfs.Indexes().GetLatest()
@@ -624,4 +628,31 @@ func (pool *ATxPool) confirmTxs( txs []*ATx.Transaction ) error {
 
 	return nil
 
+}
+
+func (pool *ATxPool) BeginMining( ) {
+
+	pool.miningmu.Lock()
+	defer pool.miningmu.Unlock()
+
+	pool.inmining = true
+
+}
+
+func (pool *ATxPool) EndMining() {
+
+	pool.miningmu.Lock()
+	defer pool.miningmu.Unlock()
+
+	pool.inmining = false
+	pool.miningBlock = nil
+
+}
+
+func (pool *ATxPool) InMining() bool {
+
+	pool.miningmu.Lock()
+	defer pool.miningmu.Unlock()
+
+	return pool.inmining
 }

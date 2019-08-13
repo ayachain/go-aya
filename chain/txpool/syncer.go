@@ -4,9 +4,10 @@ import (
 	"context"
 	"fmt"
 	"github.com/ayachain/go-aya/consensus/core"
-	"github.com/ayachain/go-aya/vdb/block"
+	ABlock "github.com/ayachain/go-aya/vdb/block"
 	AChainInfo "github.com/ayachain/go-aya/vdb/chaininfo"
 	"strings"
+	"time"
 )
 
 func syncListener(ctx context.Context ) {
@@ -73,6 +74,10 @@ func syncListener(ctx context.Context ) {
 				continue
 			}
 
+			for pool.InMining() {
+				time.Sleep(time.Millisecond * 100)
+			}
+
 			latest, err := pool.cvfs.Indexes().GetLatest()
 			if err != nil {
 				continue
@@ -80,13 +85,13 @@ func syncListener(ctx context.Context ) {
 
 			if info.LatestBlock.Index == latest.BlockIndex && strings.EqualFold(info.VDBRoot.String(), latest.FullCID.String()) {
 
-				// confirm
-				if err := pool.cvfs.Indexes().Flush(); err != nil {
+				if err := pool.ConfirmBestBlock(info.LatestBlock); err != nil {
 					log.Error(err)
 					continue
 				}
 
-				if err := pool.ConfirmBestBlock(info.LatestBlock); err != nil {
+				// confirm
+				if err := pool.cvfs.Indexes().Flush(); err != nil {
 					log.Error(err)
 				}
 
@@ -107,7 +112,7 @@ func syncListener(ctx context.Context ) {
 			}
 
 			// seek block to cvfs
-			if err := pool.cvfs.SeekToBlock(block.Latest); err != nil {
+			if err := pool.cvfs.SeekToBlock(ABlock.Latest); err != nil {
 				log.Warning(err)
 				goto loopBreakByErr
 			}

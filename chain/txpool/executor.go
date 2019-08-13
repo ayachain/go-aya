@@ -38,6 +38,8 @@ func blockExecutorThread(ctx context.Context) {
 
 		pool.workingThreadWG.Done()
 
+		pool.EndMining()
+
 		fmt.Println("ATxPool Thread Off: " + ATxPoolThreadExecutor)
 
 	}()
@@ -146,6 +148,8 @@ func blockExecutorThread(ctx context.Context) {
 
 				return
 			}
+
+			pool.EndMining()
 		}
 	}
 }

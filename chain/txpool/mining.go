@@ -20,7 +20,7 @@ func miningThread(ctx context.Context ) {
 
 	pool.workingThreadWG.Add(1)
 
-	pool.threadChans.Store(ATxPoolThreadMining, make(chan []byte, ATxPoolThreadTxPackageBuff) )
+	pool.threadChans.Store(ATxPoolThreadMining, make(chan []byte, ATxPoolThreadMiningBuff) )
 
 	subCtx, subCancel := context.WithCancel(ctx)
 
@@ -137,7 +137,7 @@ func miningThread(ctx context.Context ) {
 		case rawmsg, isOpen := <- cc.(chan []byte):
 
 			if !isOpen {
-				continue
+				return
 			}
 
 			mblock := &AMsgMBlock.MBlock{}
@@ -200,6 +200,8 @@ func miningThread(ctx context.Context ) {
 				log.Error(err)
 				return
 			}
+
+			pool.BeginMining()
 		}
 	}
 }
