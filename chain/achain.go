@@ -92,7 +92,12 @@ func Conn( ctx context.Context, chainId string, ind *core.IpfsNode, acc EAccount
 		}
 	}()
 
-	log.Infof("StartWith")
+	lidx, err := idxs.GetLatest()
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+	log.Infof("Read Block: %08d CID: %v", lidx.BlockIndex, lidx.FullCID.String())
 
 	vdbfs, err := vdb.LinkVFS(genBlock.ChainID, ind, idxs)
 	if err != nil {
