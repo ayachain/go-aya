@@ -8,7 +8,6 @@ import (
 	ATxUtils "github.com/ayachain/go-aya/tx/txutils"
 	EComm "github.com/ethereum/go-ethereum/common"
 	cmds "github.com/ipfs/go-ipfs-cmds"
-	"github.com/prometheus/common/log"
 	"strconv"
 )
 
@@ -50,8 +49,6 @@ var transferCMD = &cmds.Command{
 		if !tx.Verify() {
 			return ARsponse.EmitErrorResponse(re, errors.New("Verify failed"))
 		}
-
-		log.Info(string(tx.Encode()))
 
 		if err := chain.PublishTx(tx); err != nil {
 			return ARsponse.EmitErrorResponse(re, err)

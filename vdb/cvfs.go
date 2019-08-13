@@ -209,10 +209,10 @@ func ( vfs *aCVFS ) SeekToBlock( bIndex uint64 ) error {
 		return err
 	}
 
-	log.Infof("CVFS: %v NewBest: %v", lidx.FullCID.String(), vfs.bestCID.String())
 	if strings.EqualFold(lidx.FullCID.String(), vfs.bestCID.String()) {
 		return nil
 	}
+	log.Infof("BlockIndex: %v CVFS: %v NewBest: %v", lidx.BlockIndex, lidx.FullCID.String(), vfs.bestCID.String())
 
 	if err := vfs.Close(); err != nil {
 		return err
