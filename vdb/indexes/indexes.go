@@ -158,6 +158,10 @@ func ( i *aIndexes ) GetLatest() (*Index, error) {
 
 func ( i *aIndexes ) GetIndex( blockNumber uint64 ) (*Index, error) {
 
+	if blockNumber == ^uint64(0) {
+		return i.GetLatest()
+	}
+
 	i.snLock.RLock()
 	defer i.snLock.RUnlock()
 

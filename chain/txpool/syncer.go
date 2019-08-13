@@ -83,10 +83,13 @@ func syncListener(ctx context.Context ) {
 				continue
 			}
 
+			pool.syncMutx.Lock()
+
 			if info.LatestBlock.Index == latest.BlockIndex && strings.EqualFold(info.VDBRoot.String(), latest.FullCID.String()) {
 
 				if err := pool.ConfirmBestBlock(info.LatestBlock); err != nil {
 					log.Error(err)
+					pool.syncMutx.Unlock()
 					continue
 				}
 
@@ -96,32 +99,22 @@ func syncListener(ctx context.Context ) {
 				}
 
 			} else if info.LatestBlock.Index <= latest.BlockIndex {
-
+				pool.syncMutx.Unlock()
 				continue
 
 			} else {
 
-				// need sync
-				pool.syncMutx.Lock()
-
 				if err := pool.cvfs.Indexes().SyncToCID(info.Indexes); err != nil {
 					log.Error(err)
-					goto loopBreakByErr
 				}
 
 			}
 
-			// seek block to cvfs
 			if err := pool.cvfs.SeekToBlock(ABlock.Latest); err != nil {
 				log.Warning(err)
-				goto loopBreakByErr
 			}
 
-		loopBreakByErr:
-
 			pool.syncMutx.Unlock()
-
-			continue
 		}
 		}
 	}
