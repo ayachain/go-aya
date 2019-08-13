@@ -151,7 +151,7 @@ func ( i *aIndexes ) GetLatest() (*Index, error) {
 	}
 
 	// latest block index number by int64
-	lin := binary.LittleEndian.Uint64(bs)
+	lin := binary.BigEndian.Uint64(bs)
 
 	return i.GetIndex(lin)
 }
@@ -274,6 +274,8 @@ func ( i *aIndexes ) PutIndex( index *Index ) (cid.Cid, error) {
 	}
 
 	i.latestCID = cnd.Cid()
+
+	log.Infof("Put Idx: %v", cnd.Cid().String())
 
 	return i.latestCID, nil
 }
