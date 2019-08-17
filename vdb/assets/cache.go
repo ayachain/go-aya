@@ -2,85 +2,104 @@ package assets
 
 import (
 	AvdbComm "github.com/ayachain/go-aya/vdb/common"
+	"github.com/ayachain/go-aya/vdb/indexes"
 	EComm "github.com/ethereum/go-ethereum/common"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/storage"
+	"sync"
 )
 
 type aCache struct {
 
-	Caches
+	MergeWriter
 
-	source *leveldb.Snapshot
+	sourceReader *aAssetes
+
 	cdb *leveldb.DB
+
+	snLock sync.RWMutex
 }
 
-
-func newCache( sourceDB *leveldb.Snapshot ) (Caches, error) {
+func newWriter( sread *aAssetes ) (MergeWriter, error) {
 
 	memsto := storage.NewMemStorage()
 
-	mdb, err := leveldb.Open(memsto, AvdbComm.OpenDBOpt)
+	mdb, err := leveldb.Open(memsto, nil)
+
 	if err != nil {
 		return nil, err
 	}
 
 	c := &aCache{
-		source:sourceDB,
+		sourceReader:sread,
 		cdb:mdb,
 	}
 
 	return c, nil
 }
 
+func (c *aCache) Close() {
 
-func (cache *aCache) AssetsOf( addr EComm.Address ) ( *Assets, error ) {
+	c.snLock.Lock()
+	defer c.snLock.Unlock()
 
-	bnc, err := AvdbComm.CacheGet( cache.source, cache.cdb, addr.Bytes() )
-	if err != nil {
-		return nil, err
-	}
-
-	rcd := &Assets{}
-	if err := rcd.Decode(bnc); err != nil {
-		return nil, err
-	}
-
-	return rcd, nil
+	_ = c.cdb.Close()
 }
 
+func (c *aCache) MergerBatch() *leveldb.Batch {
 
-func (cache *aCache) Close() {
-	_ = cache.cdb.Close()
-}
-
-func (cache *aCache) MergerBatch() *leveldb.Batch {
+	c.snLock.Lock()
+	defer c.snLock.Unlock()
 
 	batch := &leveldb.Batch{}
 
-	it := cache.cdb.NewIterator(nil, nil)
+	it := c.cdb.NewIterator(nil, nil)
+	defer it.Release()
 
 	for it.Next() {
-
 		batch.Put( it.Key(), it.Value() )
-
 	}
 
 	return batch
 }
 
+func (c *aCache) Put( addr EComm.Address, ast *Assets ) {
 
-func (cache *aCache) PutNewAssets( addr EComm.Address, ast *Assets ) {
+	c.snLock.Lock()
+	defer c.snLock.Unlock()
 
-	if err := cache.cdb.Put( addr.Bytes(), ast.Encode(), AvdbComm.WriteOpt ); err != nil {
+	if err := c.cdb.Put( addr.Bytes(), ast.Encode(), AvdbComm.WriteOpt ); err != nil {
 		panic(err)
 	}
 
 }
 
-func (cache *aCache) Put( addr EComm.Address, ast *Assets ) {
+func (c *aCache) AssetsOf( addr EComm.Address, idx ... *indexes.Index ) ( *Assets, error ) {
 
-	if err := cache.cdb.Put( addr.Bytes(), ast.Encode(), AvdbComm.WriteOpt ); err != nil {
-		panic(err)
+	c.snLock.RLock()
+	defer c.snLock.RUnlock()
+
+	inCache, err := c.cdb.Has(addr.Bytes(), nil)
+	if err != nil && err != leveldb.ErrNotFound{
+		return nil, err
+	}
+
+	if !inCache {
+
+		return c.sourceReader.AssetsOf(addr)
+
+	} else {
+
+		bnc, err := c.cdb.Get(addr.Bytes(), nil)
+		if err != nil {
+			panic(err)
+		}
+
+		rcd := &Assets{}
+		if err := rcd.Decode(bnc); err != nil {
+			return nil, err
+		}
+
+		return rcd, nil
 	}
 }

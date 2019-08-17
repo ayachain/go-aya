@@ -6,8 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/ayachain/go-aya/chain/txpool/txlist"
-	ACore "github.com/ayachain/go-aya/consensus/core"
-	"github.com/ayachain/go-aya/logs"
 	"github.com/ayachain/go-aya/vdb"
 	ABlock "github.com/ayachain/go-aya/vdb/block"
 	AvdbComm "github.com/ayachain/go-aya/vdb/common"
@@ -22,7 +20,7 @@ import (
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-ipfs/core"
 	"github.com/ipfs/go-ipfs/pin"
-	"github.com/whyrusleeping/go-logging"
+	"github.com/prometheus/common/log"
 	"sync"
 	"time"
 )
@@ -34,20 +32,12 @@ var (
 	ErrMessageVerifyExpected 		= errors.New("message verify failed")
 	ErrTxVerifyExpected				= errors.New("tx tid verify expected")
 	ErrTxVerifyInsufficientFunds	= errors.New("insufficient funds ( value + cost )")
+
+	ErrCannotCreateMiningBlock		= errors.New("can not create new mining block")
 )
 
-var log = logging.MustGetLogger(logs.AModules_TxPool)
-
-/// Because nodes play different roles in the network, we divide the nodes into three categories:
-/// super nodes, master nodes and ordinary nodes, and describe the operation of the transaction
-/// pool which they are responsible for respectively.
-///
-/// According to the latest piece of information on the current chain, the trading pool will decide
-/// its own mode of work and set up the switch to complete the mode of work.
 type AtxPoolWorkMode uint8
-
 type ATxPoolThreadsName string
-
 type ATxPoolQueueName string
 
 const (
@@ -62,76 +52,45 @@ const (
 	AtxPoolWorkModeSuper 			AtxPoolWorkMode 	= 1
 
 	ATxPoolThreadTxListen			ATxPoolThreadsName 	= "ATxPoolThreadTxListen"
-	AtxPoolThreadTxListenBuff 					   		= 128
-
 	ATxPoolThreadTxPackage 			ATxPoolThreadsName 	= "ATxPoolThreadTxPackage"
-	ATxPoolThreadTxPackageBuff					  		= 1
-
-	ATxPoolThreadExecutor			ATxPoolThreadsName 	= "ATxPoolThreadExecutor"
-	ATxPoolThreadExecutorBuff					  		= 1
-
-	ATxPoolThreadReceiptListen 		ATxPoolThreadsName 	= "ATxPoolThreadReceiptListen"
-	ATxPoolThreadReceiptListenBuff						= 16
-
-	ATxPoolThreadMining				ATxPoolThreadsName 	= "ATxPoolThreadMining"
-	ATxPoolThreadMiningBuff								= 1
-
-	ATxPoolThreadSyncer				ATxPoolThreadsName 	= "ATxPoolThreadSyncer"
-	ATxPoolThreadSyncerBuff								= 1
-
 	ATxPoolThreadElectoral			ATxPoolThreadsName	= "ATxPoolThreadElectoral"
-	ATxPoolThreadElectoralBuff							= 21
 
 	ATxPoolThreadElectoralTimeout	ATxPoolThreadsName 	= "ATxPoolThreadElectoralTimeout"
 )
 
 type ATxPool struct {
 
-	cvfs vdb.CVFS
-
+	chainID string
+	ind *core.IpfsNode
 	idxServices indexes.IndexesServices
-
-	mining map[EComm.Address]*txlist.TxList
-	queue map[EComm.Address]*txlist.TxList
+	cvfs vdb.CVFS
 
 	mnmu sync.Mutex
 	qemu sync.Mutex
 
-	ownerAccount EAccount.Account
-	genBlock *ABlock.GenBlock
-	miningBlock *AMBlock.MBlock
-
-	workmode AtxPoolWorkMode
-	ind *core.IpfsNode
+	mining map[EComm.Address]*txlist.TxList
+	queue map[EComm.Address]*txlist.TxList
 
 	channelTopics map[ATxPoolThreadsName] string
 
-	threadChans sync.Map
-	notary ACore.Notary
-	workingThreadWG sync.WaitGroup
-
-	syncMutx sync.Mutex
+	workmode AtxPoolWorkMode
+	ownerAccount EAccount.Account
+	miningBlock *AMBlock.MBlock
 
 	packerState AElectoral.ATxPackerState
 	latestPackerStateChangeTime int64
 	eleservices AElectoral.MemServices
 
-	inmining bool
-	miningmu sync.Mutex
+	miningBlockBroadcastFun func(mblock *AMBlock.MBlock) error
 }
 
-func NewTxPool( ind *core.IpfsNode, gblk *ABlock.GenBlock, cvfs vdb.CVFS, miner ACore.Notary, acc EAccount.Account ) *ATxPool {
+func NewTxPool( ind *core.IpfsNode, chainID string, cvfs vdb.CVFS, acc EAccount.Account, mbfun func(mblock *AMBlock.MBlock) error ) *ATxPool {
 
 	// create channel topices string
-	topic := crypto.Keccak256Hash( []byte( AtxPoolVersion + gblk.ChainID ) )
-
+	topic := crypto.Keccak256Hash( []byte( AtxPoolVersion + chainID ) )
 	topicmap := map[ATxPoolThreadsName]string{
 		ATxPoolThreadTxListen 		: crypto.Keccak256Hash([]byte(fmt.Sprintf("%v%v", topic, ATxPoolThreadTxListen))).String(),
 		ATxPoolThreadTxPackage 		: crypto.Keccak256Hash([]byte(fmt.Sprintf("%v%v", topic, ATxPoolThreadTxPackage))).String(),
-		ATxPoolThreadExecutor 		: crypto.Keccak256Hash([]byte(fmt.Sprintf("%v%v", topic, ATxPoolThreadExecutor))).String(),
-		ATxPoolThreadReceiptListen 	: crypto.Keccak256Hash([]byte(fmt.Sprintf("%v%v", topic, ATxPoolThreadReceiptListen))).String(),
-		ATxPoolThreadMining 		: crypto.Keccak256Hash([]byte(fmt.Sprintf("%v%v", topic, ATxPoolThreadMining))).String(),
-		ATxPoolThreadSyncer			: crypto.Keccak256Hash([]byte(fmt.Sprintf("%v%v", topic, ATxPoolThreadSyncer))).String(),
 		ATxPoolThreadElectoral 		: crypto.Keccak256Hash([]byte(fmt.Sprintf("%v%v", topic, ATxPoolThreadElectoral))).String(),
 	}
 
@@ -143,60 +102,55 @@ func NewTxPool( ind *core.IpfsNode, gblk *ABlock.GenBlock, cvfs vdb.CVFS, miner 
 		ind:ind,
 		channelTopics:topicmap,
 		ownerAccount:acc,
-		notary:miner,
-		genBlock:gblk,
+		chainID:chainID,
 		packerState:AElectoral.ATxPackStateLookup,
 		latestPackerStateChangeTime:time.Now().Unix(),
 		eleservices:AElectoral.CreateServices(cvfs, 10),
+		miningBlockBroadcastFun:mbfun,
 	}
-
 }
 
-func (pool *ATxPool) PowerOnAndLoop( ctx context.Context ) error {
+func (pool *ATxPool) PowerOn( ctx context.Context ) {
 
-	pool.judgingMode()
+	log.Info("ATxPool PowerOn")
+	defer log.Info("ATxPool PowerOff")
 
-	fmt.Println("ATxPool Working Started.")
-
-	defer fmt.Println("ATxPool Working Stoped.")
-
-	switch pool.workmode {
-
+	switch pool.judgingMode() {
 	case AtxPoolWorkModeSuper:
 
-		pool.runThreads(
-			ctx,
-			ATxPoolThreadElectoral,
-			ATxPoolThreadTxListen,
-			ATxPoolThreadTxPackage,
-			ATxPoolThreadMining,
-			ATxPoolThreadReceiptListen,
-			ATxPoolThreadExecutor,
-			ATxPoolThreadSyncer,
-		)
+		ctx1, cancel1 := context.WithCancel(ctx)
+		ctx2, cancel2 := context.WithCancel(ctx)
+		defer cancel1()
+		defer cancel2()
 
-	case AtxPoolWorkModeNormal:
+		go pool.threadTransactionListener(ctx1)
+		go pool.threadElectoralAndPacker(ctx2)
 
-		pool.runThreads(
-			ctx,
-			//ATxPoolThreadElectoral,
-			//ATxPoolThreadTxListen,
-			//ATxPoolThreadTxPackage,
-			//ATxPoolThreadMining,
-			//ATxPoolThreadReceiptListen,
-			ATxPoolThreadExecutor,
-			ATxPoolThreadSyncer,
-		)
+		select {
+		case <- ctx.Done():
+			return
 
-	}
+		case <- ctx1.Done():
+			return
 
-	select {
+		case <- ctx2.Done():
+			return
+		}
 
-	case <- ctx.Done():
+	default :
 
-		pool.workingThreadWG.Wait()
+		ctx1, cancel1 := context.WithCancel(ctx)
+		defer cancel1()
 
-		return ctx.Err()
+		go pool.threadTransactionListener(ctx1)
+
+		select {
+		case <- ctx.Done():
+			return
+
+		case <- ctx1.Done():
+			return
+		}
 	}
 }
 
@@ -214,30 +168,11 @@ func (pool *ATxPool) ConfirmBestBlock( cblock *ABlock.Block  ) error {
 		return err
 	}
 
-	pool.notary.NewBlockHasConfirm()
-
 	pool.changePackerState(AElectoral.ATxPackStateLookup)
 
 	pool.miningBlock = nil
 
 	return nil
-}
-
-func (pool *ATxPool) DoPackMBlock() {
-
-	cc, exist := pool.threadChans.Load(ATxPoolThreadTxPackage)
-
-	if !exist {
-		return
-	}
-
-	cc.(chan []byte) <- nil
-
-	return
-}
-
-func (pool *ATxPool) ReadOnlyCVFS() vdb.CVFS {
-	return pool.cvfs
 }
 
 func (pool *ATxPool) PublishTx( tx *ATx.Transaction ) error {
@@ -247,6 +182,17 @@ func (pool *ATxPool) PublishTx( tx *ATx.Transaction ) error {
 	}
 
 	return pool.doBroadcast(tx, pool.channelTopics[ATxPoolThreadTxListen])
+}
+
+func (pool *ATxPool) DoPackMBlock() error {
+
+	mblock := pool.createMiningBlock()
+	if mblock == nil {
+		return ErrCannotCreateMiningBlock
+	}
+
+	return pool.miningBlockBroadcastFun(mblock)
+
 }
 
 func (pool *ATxPool) ElectoralServices() AElectoral.MemServices {
@@ -287,10 +233,6 @@ func (pool *ATxPool) GetState() *State {
 	}
 
 	return s
-}
-
-func (pool *ATxPool) GetMiningBlock() *AMBlock.MBlock {
-	return pool.miningBlock
 }
 
 func (pool *ATxPool) TxExist( hash EComm.Hash ) (exist bool, mname ATxPoolQueueName) {
@@ -400,7 +342,9 @@ func (pool *ATxPool) MoveTxsToMining( txs []*ATx.Transaction ) error {
 
 }
 
-func (pool *ATxPool) CreateMiningBlock() *AMBlock.MBlock {
+
+/// Private methods
+func (pool *ATxPool) createMiningBlock() *AMBlock.MBlock {
 
 	pool.qemu.Lock()
 	defer pool.qemu.Unlock()
@@ -469,81 +413,34 @@ func (pool *ATxPool) CreateMiningBlock() *AMBlock.MBlock {
 	mblk := &AMBlock.MBlock{}
 	mblk.ExtraData = ""
 	mblk.Index = bindex.BlockIndex + 1
-	mblk.ChainID = pool.genBlock.ChainID
+	mblk.ChainID = pool.chainID
 	mblk.Parent = bindex.Hash.String()
 	mblk.Timestamp = uint64(time.Now().Unix())
 	mblk.Packager = pool.ownerAccount.Address.String()
 	mblk.Txc = uint16(len(packtxs))
-	mblk.Txs = iblk.Cid().String()
+	mblk.Txs = iblk.Cid()
 
 	return mblk
 }
 
-/// Private method
-/// Judging working mode
-func (pool *ATxPool) judgingMode() {
+func (pool *ATxPool) judgingMode() AtxPoolWorkMode {
 
 	nd, err := pool.cvfs.Nodes().GetNodeByPeerId( pool.ind.Identity.Pretty() )
 
 	if err != nil {
 
 		pool.workmode = AtxPoolWorkModeNormal
-		log.Error("TxPool WorkMode [Normal]")
 
 	} else if nd.Type == node.NodeTypeSuper {
 
 		pool.workmode = AtxPoolWorkModeSuper
-		log.Info("TxPool WorkMode [Super]")
 
 	} else {
 
 		pool.workmode = AtxPoolWorkModeNormal
-		log.Error("TxPool WorkMode [Normal]")
-
 	}
 
-	return
-}
-
-func (pool *ATxPool) runThreads( ctx context.Context, names ... ATxPoolThreadsName ) {
-
-	for _, n := range names {
-
-		sctx := context.WithValue( ctx, "Pool", pool )
-
-		switch n {
-
-		case ATxPoolThreadTxListen:
-			go txListenThread(sctx)
-
-
-		case ATxPoolThreadTxPackage:
-			go txPackageThread(sctx)
-
-
-		case ATxPoolThreadMining:
-			go miningThread(sctx)
-
-
-		case ATxPoolThreadReceiptListen:
-			go receiptListen(sctx)
-
-
-		case ATxPoolThreadExecutor:
-			go blockExecutorThread(sctx)
-
-
-		case ATxPoolThreadSyncer:
-			go syncListener(sctx)
-
-
-		case ATxPoolThreadElectoral:
-			go electoralThread(sctx)
-
-		}
-
-	}
-
+	return pool.workmode
 }
 
 func (pool *ATxPool) doBroadcast( coder AvdbComm.AMessageEncode, topic string) error {
@@ -565,7 +462,7 @@ func (pool *ATxPool) changePackerState( s AElectoral.ATxPackerState ) {
 
 }
 
-func (pool *ATxPool) pushTransaction( tx *ATx.Transaction ) error {
+func (pool *ATxPool) storeTransaction( tx *ATx.Transaction ) error {
 
 	pool.qemu.Lock()
 	defer pool.qemu.Unlock()
@@ -628,31 +525,4 @@ func (pool *ATxPool) confirmTxs( txs []*ATx.Transaction ) error {
 
 	return nil
 
-}
-
-func (pool *ATxPool) BeginMining( ) {
-
-	pool.miningmu.Lock()
-	defer pool.miningmu.Unlock()
-
-	pool.inmining = true
-
-}
-
-func (pool *ATxPool) EndMining() {
-
-	pool.miningmu.Lock()
-	defer pool.miningmu.Unlock()
-
-	pool.inmining = false
-	pool.miningBlock = nil
-
-}
-
-func (pool *ATxPool) InMining() bool {
-
-	pool.miningmu.Lock()
-	defer pool.miningmu.Unlock()
-
-	return pool.inmining
 }

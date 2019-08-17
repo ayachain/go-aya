@@ -7,17 +7,15 @@ import (
 
 type IndexesServices interface {
 
-	GetIndex( blockNumber uint64 ) (*Index, error)
+	GetLatest() ( *Index, error )
 
-	GetLatest() (*Index, error)
+	SyncToCID( fullCID cid.Cid ) error
 
 	PutIndex( index *Index ) (cid.Cid, error)
+
+	GetIndex( blockNumber uint64 ) (*Index, error)
 
 	PutIndexBy( num uint64, bhash EComm.Hash, cid cid.Cid ) (cid.Cid, error)
 
 	Close() error
-
-	Flush() error
-
-	SyncToCID( fullCID cid.Cid ) error
 }

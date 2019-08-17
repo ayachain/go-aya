@@ -1,152 +1,122 @@
 package receipt
 
 import (
+	"context"
 	ADB "github.com/ayachain/go-aya-alvm-adb"
 	AVdbComm "github.com/ayachain/go-aya/vdb/common"
+	"github.com/ayachain/go-aya/vdb/indexes"
 	EComm "github.com/ethereum/go-ethereum/common"
-	"github.com/ipfs/go-mfs"
+	"github.com/ipfs/go-ipfs/core"
 	"github.com/prometheus/common/log"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/util"
-	"sync"
 )
 
 type aReceipt struct {
 
 	Services
-	*mfs.Directory
 
-	mfsstorage *ADB.MFSStorage
-	ldb *leveldb.DB
-	dbSnapshot *leveldb.Snapshot
-	snLock sync.RWMutex
+	ind *core.IpfsNode
+
+	idxs indexes.IndexesServices
 }
 
-func CreateServices( mdir *mfs.Directory ) Services {
+func CreateServices( ind *core.IpfsNode, idxServices indexes.IndexesServices ) Services {
 
-	var err error
-
-	api := &aReceipt{
-		Directory:mdir,
+	return &aReceipt{
+		ind:ind,
+		idxs:idxServices,
 	}
 
-	api.ldb, api.mfsstorage, err = AVdbComm.OpenExistedDB(mdir, DBPath)
+}
+
+func (r *aReceipt) HasTransactionReceipt( txhs EComm.Hash, idx ... *indexes.Index ) bool {
+
+	var lidx *indexes.Index
+	var err error
+	if len(idx) > 0 {
+
+		lidx = idx[0]
+
+	} else {
+
+		lidx, err = r.idxs.GetLatest()
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	dbroot, err, cls := AVdbComm.GetDBRoot(context.TODO(), r.ind, lidx.FullCID, DBPath)
 	if err != nil {
 		panic(err)
 	}
+	defer cls()
 
-	api.dbSnapshot, err = api.ldb.GetSnapshot()
-	if err != nil {
-		log.Error(err)
+	exist := false
+	if err := ADB.ReadClose( dbroot, func(db *leveldb.DB) error {
+
+		it := db.NewIterator( util.BytesPrefix(txhs.Bytes()), nil )
+		defer it.Release()
+
+		if it.Next() {
+			exist = true
+		}
 		return nil
+
+	}, DBPath); err != nil {
+		log.Error(err)
 	}
 
-	return api
+	return exist
 }
 
-func (r *aReceipt) HasTransactionReceipt( txhs EComm.Hash ) bool {
+func (r *aReceipt) GetTransactionReceipt( txhs EComm.Hash, idx ... *indexes.Index ) (*Receipt, error) {
 
-	it := r.ldb.NewIterator( util.BytesPrefix(txhs.Bytes()), nil )
+	var lidx *indexes.Index
+	var err error
+	if len(idx) > 0 {
 
-	defer it.Release()
+		lidx = idx[0]
 
-	if it.Next() {
-		return true
+	} else {
+
+		lidx, err = r.idxs.GetLatest()
+		if err != nil {
+			panic(err)
+		}
 	}
 
-	return false
-}
 
-func (r *aReceipt) GetTransactionReceipt( txhs EComm.Hash ) (*Receipt, error) {
-
-	r.snLock.RLock()
-	defer r.snLock.RUnlock()
-
-	if !r.HasTransactionReceipt(txhs) {
-		return nil, leveldb.ErrNotFound
+	dbroot, err, cls := AVdbComm.GetDBRoot(context.TODO(), r.ind, lidx.FullCID, DBPath)
+	if err != nil {
+		panic(err)
 	}
-
-	it := r.ldb.NewIterator( util.BytesPrefix(txhs.Bytes()), nil )
-
-	if !it.Next() {
-		return nil, leveldb.ErrNotFound
-	}
+	defer cls()
 
 	rp := &Receipt{}
+	if err := ADB.ReadClose( dbroot, func(db *leveldb.DB) error {
 
-	err := rp.Decode( it.Value() )
-	if err != nil {
-		return nil, err
+		it := db.NewIterator( util.BytesPrefix(txhs.Bytes()), nil )
+		defer it.Release()
+
+		if it.Next() {
+
+			if err := rp.Decode( it.Value() ); err != nil {
+				return err
+			}
+
+		}
+
+		return nil
+
+	}, DBPath); err != nil {
+		log.Error(err)
 	}
 
 	return rp, nil
 }
 
-func (r *aReceipt) Close() {
-	_ = r.Shutdown()
-}
 
-func (r *aReceipt) NewCache() (AVdbComm.VDBCacheServices, error) {
-	return newCache( r.dbSnapshot )
-}
-
-func (r *aReceipt) OpenTransaction() (*leveldb.Transaction, error) {
-
-	tx, err := r.ldb.OpenTransaction()
-
-	if err != nil {
-		return nil, err
-	}
-
-	return tx, nil
-}
-
-func (r *aReceipt) Shutdown() error {
-
-	r.snLock.Lock()
-	defer r.snLock.Unlock()
-
-	if r.dbSnapshot != nil {
-		r.dbSnapshot.Release()
-	}
-
-	//if err := r.mfsstorage.Close(); err != nil {
-	//	return err
-	//}
-
-	if err := r.ldb.Close(); err != nil {
-		log.Error(err)
-		return err
-	}
-
-	return nil
-}
-
-
-func (api *aReceipt) UpdateSnapshot() error {
-
-	api.snLock.Lock()
-	defer api.snLock.Unlock()
-
-	if api.dbSnapshot != nil {
-		api.dbSnapshot.Release()
-	}
-
-	var err error
-	api.dbSnapshot, err = api.ldb.GetSnapshot()
-	if err != nil {
-		log.Error(err)
-		return err
-	}
-
-	return nil
-}
-
-func (api *aReceipt) SyncCache() error {
-
-	if err := api.ldb.CompactRange(util.Range{nil,nil}); err != nil {
-		log.Error(err)
-	}
-
-	return api.mfsstorage.Flush()
+func (r *aReceipt) NewWriter() (AVdbComm.VDBCacheServices, error) {
+	return newWriter(r)
 }

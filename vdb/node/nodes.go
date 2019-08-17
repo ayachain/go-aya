@@ -1,237 +1,293 @@
 package node
 
 import (
+	"context"
 	ADB "github.com/ayachain/go-aya-alvm-adb"
 	AVdbComm "github.com/ayachain/go-aya/vdb/common"
-	"github.com/ipfs/go-mfs"
+	"github.com/ayachain/go-aya/vdb/indexes"
+	"github.com/ipfs/go-ipfs/core"
 	"github.com/prometheus/common/log"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/util"
-	"sync"
 )
-
 
 type aNodes struct {
 
-	reader
-	*mfs.Directory
+	Services
 
-	mfsstorage *ADB.MFSStorage
-	ldb *leveldb.DB
-	dbSnapshot *leveldb.Snapshot
-	snLock sync.RWMutex
+	ind *core.IpfsNode
+
+	idxs indexes.IndexesServices
 }
 
+func CreateServices( ind *core.IpfsNode, idxServices indexes.IndexesServices ) Services {
 
-func CreateServices( mdir *mfs.Directory ) Services {
-
-	var err error
-
-	api := &aNodes{
-		Directory:mdir,
+	return &aNodes{
+		ind:ind,
+		idxs:idxServices,
 	}
 
-	api.ldb, api.mfsstorage, err = AVdbComm.OpenExistedDB(mdir, DBPath)
+}
+
+func (api *aNodes) NewWriter() (AVdbComm.VDBCacheServices, error) {
+	return newWriter( api )
+}
+
+func (api *aNodes) GetNodeByPeerId( peerId string, idx ... *indexes.Index ) (*Node, error) {
+
+	var lidx *indexes.Index
+	var err error
+	if len(idx) > 0 {
+
+		lidx = idx[0]
+
+	} else {
+
+		lidx, err = api.idxs.GetLatest()
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	dbroot, err, cls := AVdbComm.GetDBRoot(context.TODO(), api.ind, lidx.FullCID, DBPath)
 	if err != nil {
 		panic(err)
 	}
-
-	api.dbSnapshot, err = api.ldb.GetSnapshot()
-	if err != nil {
-		_ = api.ldb.Close()
-		log.Error(err)
-		return nil
-	}
-
-	return api
-}
-
-func (api *aNodes) NewCache() (AVdbComm.VDBCacheServices, error) {
-	return newCache( api.dbSnapshot )
-}
-
-func (api *aNodes) OpenTransaction() (*leveldb.Transaction, error) {
-
-	tx, err := api.ldb.OpenTransaction()
-
-	if err != nil {
-		return nil, err
-	}
-
-	return tx, nil
-}
-
-
-func (api *aNodes) Shutdown() error {
-
-	api.snLock.Lock()
-	defer api.snLock.Unlock()
-
-	if api.dbSnapshot != nil {
-		api.dbSnapshot.Release()
-	}
-
-	if err := api.ldb.Close(); err != nil {
-		log.Error(err)
-		return err
-	}
-
-	return nil
-}
-
-func (api *aNodes) Close() {
-	_ = api.Shutdown()
-}
-
-
-func (api *aNodes) GetNodeByPeerId( peerId string ) (*Node, error) {
-
-	api.snLock.RLock()
-	defer api.snLock.RUnlock()
-
-	bs, err := api.dbSnapshot.Get( []byte(peerId), nil )
-
-	if err != nil {
-		return nil, err
-	}
+	defer cls()
 
 	nd := &Node{}
+	if err := ADB.ReadClose(dbroot, func(db *leveldb.DB) error {
 
-	if err := nd.Decode(bs); err != nil {
+		bs, err := db.Get( []byte(peerId), nil )
+		if err != nil {
+			return err
+		}
+
+		if err := nd.Decode(bs); err != nil {
+			return err
+		}
+		return nil
+
+	}, DBPath); err != nil {
+
 		return nil, err
 	}
 
 	return nd, nil
 }
 
-func (api *aNodes) UpdateSnapshot() error {
+func (api *aNodes) GetSuperNodeList( idx ... *indexes.Index ) []*Node {
 
-	api.snLock.Lock()
-	defer api.snLock.Unlock()
-
-	if api.dbSnapshot != nil {
-		api.dbSnapshot.Release()
-	}
-
+	var lidx *indexes.Index
 	var err error
-	api.dbSnapshot, err = api.ldb.GetSnapshot()
-	if err != nil {
-		log.Error(err)
-		return err
-	}
+	if len(idx) > 0 {
 
-	return nil
-}
+		lidx = idx[0]
 
-func (api *aNodes) SyncCache() error {
+	} else {
 
-	if err := api.ldb.CompactRange(util.Range{nil,nil}); err != nil {
-		log.Error(err)
-	}
-
-	return api.mfsstorage.Flush()
-}
-
-
-func (api *aNodes) GetSuperNodeList() []*Node {
-
-	api.snLock.RLock()
-	defer api.snLock.RUnlock()
-
-	var rets[] *Node
-
-	it := api.dbSnapshot.NewIterator( util.BytesPrefix( []byte(NodeTypeSuper) ), nil )
-
-	defer it.Release()
-
-	for it.Next() {
-
-		perrId := it.Value()
-
-		bs, err := api.dbSnapshot.Get(perrId, nil)
-
+		lidx, err = api.idxs.GetLatest()
 		if err != nil {
 			panic(err)
 		}
+	}
 
-		nd := &Node{}
+	dbroot, err, cls := AVdbComm.GetDBRoot(context.TODO(), api.ind, lidx.FullCID, DBPath)
+	if err != nil {
+		panic(err)
+	}
+	defer cls()
 
-		if err := nd.Decode(bs); err == nil {
-			rets = append(rets, nd)
+	var rets[] *Node
+	if err := ADB.ReadClose( dbroot, func(db *leveldb.DB) error {
+
+		it := db.NewIterator( util.BytesPrefix( []byte(NodeTypeSuper) ), nil )
+
+		defer it.Release()
+
+		for it.Next() {
+
+			perrId := it.Value()
+			
+			bs, err := db.Get(perrId, nil)
+			if err != nil {
+				return err
+			}
+
+			nd := &Node{}
+			if err := nd.Decode(bs); err == nil {
+				rets = append(rets, nd)
+			}
 		}
+
+		return nil
+
+	}, DBPath); err != nil {
+		return nil
 	}
 
 	return rets
 }
 
-func (api *aNodes) GetSnapshot() *leveldb.Snapshot {
-	return api.dbSnapshot
-}
+func (api *aNodes) GetSuperMaterTotalVotes( idx ... *indexes.Index ) uint64 {
 
-func (api *aNodes) GetSuperMaterTotalVotes() uint64 {
+	var lidx *indexes.Index
+	var err error
+	if len(idx) > 0 {
 
-	api.snLock.RLock()
-	defer api.snLock.RUnlock()
+		lidx = idx[0]
 
-	var total uint64
+	} else {
 
-	it := api.dbSnapshot.NewIterator( util.BytesPrefix( []byte(NodeTypeSuper) ), nil )
-
-	defer it.Release()
-
-	for it.Next() {
-
-		perrId := it.Value()
-
-		bs, err := api.dbSnapshot.Get(perrId, nil)
-
+		lidx, err = api.idxs.GetLatest()
 		if err != nil {
 			panic(err)
 		}
+	}
 
-		nd := &Node{}
+	dbroot, err, cls := AVdbComm.GetDBRoot(context.TODO(), api.ind, lidx.FullCID, DBPath)
+	if err != nil {
+		panic(err)
+	}
+	defer cls()
 
-		if err := nd.Decode(bs); err == nil {
-			total += nd.Votes
+	var total uint64
+	if err := ADB.ReadClose( dbroot, func(db *leveldb.DB) error {
+
+		it := db.NewIterator( util.BytesPrefix( []byte(NodeTypeSuper) ), nil )
+		defer it.Release()
+
+		for it.Next() {
+
+			perrId := it.Value()
+
+			bs, err := db.Get(perrId, nil)
+			if err != nil {
+				panic(err)
+			}
+
+			nd := &Node{}
+			if err := nd.Decode(bs); err == nil {
+				total += nd.Votes
+			}
 		}
+
+		return nil
+
+	}, DBPath); err != nil {
+		log.Error(err)
 	}
 
 	return total
 }
 
-func (api *aNodes) GetFirst() *Node {
+func (api *aNodes) GetFirst( idx ... *indexes.Index ) *Node {
 
-	api.snLock.RLock()
-	defer api.snLock.RUnlock()
+	var lidx *indexes.Index
+	var err error
+	if len(idx) > 0 {
 
-	if bs, err := api.dbSnapshot.Get( []byte("Super00000001"), nil ); err != nil {
-
-		return nil
+		lidx = idx[0]
 
 	} else {
 
-		nd := &Node{}
+		lidx, err = api.idxs.GetLatest()
+		if err != nil {
+			panic(err)
+		}
+	}
 
-		if err := nd.Decode(bs); err != nil {
+	dbroot, err, cls := AVdbComm.GetDBRoot(context.TODO(), api.ind, lidx.FullCID, DBPath)
+	if err != nil {
+		panic(err)
+	}
+	defer cls()
+
+	nd := &Node{}
+	if err := ADB.ReadClose( dbroot, func(db *leveldb.DB) error {
+
+		if bs, err := db.Get( []byte("Super00000001"), nil ); err != nil {
+
+			return err
+
+		} else {
+
+			if err := nd.Decode(bs); err != nil {
+				return err
+			}
+
 			return nil
 		}
 
-		return nd
-
+	}, DBPath); err != nil {
+		return nil
 	}
+
+	return nd
 }
 
-func (api *aNodes) GetSuperNodeCount() int64 {
+func (api *aNodes) GetSuperNodeCount( idx ... *indexes.Index ) int64 {
 
-	sit := api.ldb.NewIterator( util.BytesPrefix([]byte(NodeTypeSuper)), nil)
+	var lidx *indexes.Index
+	var err error
+	if len(idx) > 0 {
 
-	defer sit.Release()
+		lidx = idx[0]
+
+	} else {
+
+		lidx, err = api.idxs.GetLatest()
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	dbroot, err, cls := AVdbComm.GetDBRoot(context.TODO(), api.ind, lidx.FullCID, DBPath)
+	if err != nil {
+		panic(err)
+	}
+	defer cls()
 
 	var s = int64(0)
+	if err := ADB.ReadClose( dbroot, func(db *leveldb.DB) error {
 
-	for sit.Next() {
-		s ++
+		it := db.NewIterator( util.BytesPrefix([]byte(NodeTypeSuper)), nil)
+		defer it.Release()
+
+		for it.Next() {
+			s ++
+		}
+
+		return nil
+
+	},DBPath); err != nil {
+		log.Error(err)
 	}
 
 	return s
+}
+
+func (api *aNodes) DoRead( readingFunc ADB.ReadingFunc, idx ... *indexes.Index ) error {
+
+	var lidx *indexes.Index
+	var err error
+	if len(idx) > 0 {
+
+		lidx = idx[0]
+
+	} else {
+
+		lidx, err = api.idxs.GetLatest()
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	dbroot, err, cls := AVdbComm.GetDBRoot(context.TODO(), api.ind, lidx.FullCID, DBPath)
+	if err != nil {
+		panic(err)
+	}
+	defer cls()
+
+	return ADB.ReadClose( dbroot, readingFunc, DBPath )
 }

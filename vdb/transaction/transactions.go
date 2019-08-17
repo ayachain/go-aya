@@ -1,17 +1,18 @@
 package transaction
 
 import (
+	"context"
 	"encoding/binary"
 	"fmt"
 	ADB "github.com/ayachain/go-aya-alvm-adb"
 	AVdbComm "github.com/ayachain/go-aya/vdb/common"
+	"github.com/ayachain/go-aya/vdb/indexes"
 	EComm "github.com/ethereum/go-ethereum/common"
-	"github.com/ipfs/go-mfs"
+	"github.com/ipfs/go-ipfs/core"
 	"github.com/pkg/errors"
 	"github.com/prometheus/common/log"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/util"
-	"sync"
 )
 
 var (
@@ -27,130 +28,115 @@ var (
 type aTransactions struct {
 
 	Services
-	*mfs.Directory
 
-	mfsstorage *ADB.MFSStorage
-	ldb *leveldb.DB
-	dbSnapshot *leveldb.Snapshot
-	snLock sync.RWMutex
+	ind *core.IpfsNode
+
+	idxs indexes.IndexesServices
 }
 
-func CreateServices( mdir *mfs.Directory ) Services {
+func CreateServices( ind *core.IpfsNode, idxServices indexes.IndexesServices ) Services {
 
-	var err error
-
-	api := &aTransactions{
-		Directory:mdir,
+	return &aTransactions{
+		ind:ind,
+		idxs:idxServices,
 	}
 
-	api.ldb, api.mfsstorage, err = AVdbComm.OpenExistedDB(mdir, DBPath)
+}
+func (txs *aTransactions) NewWriter() (AVdbComm.VDBCacheServices, error) {
+	return newWriter(txs)
+}
+
+func (txs *aTransactions) GetTxCount( address EComm.Address, idx ... *indexes.Index ) (uint64, error) {
+
+	var lidx *indexes.Index
+	var err error
+	if len(idx) > 0 {
+
+		lidx = idx[0]
+
+	} else {
+
+		lidx, err = txs.idxs.GetLatest()
+		if err != nil {
+			panic(err)
+		}
+	}
+
+
+	dbroot, err, cls := AVdbComm.GetDBRoot(context.TODO(), txs.ind, lidx.FullCID, DBPath)
 	if err != nil {
 		panic(err)
 	}
+	defer cls()
 
-	api.dbSnapshot, err = api.ldb.GetSnapshot()
-	if err != nil {
-		_ = api.ldb.Close()
-		log.Error(err)
+	total := uint64(0)
+	if err := ADB.ReadClose( dbroot, func(db *leveldb.DB) error {
+
+		key := append(TxOutCountPrefix, address.Bytes()... )
+
+		v, err := db.Get(key, nil)
+		if err != nil {
+
+			if err == leveldb.ErrNotFound {
+				return nil
+			} else {
+				return err
+			}
+
+		}
+
+		total = binary.BigEndian.Uint64(v)
 		return nil
-	}
 
-	return api
-}
+	}, DBPath); err != nil {
 
-
-func (txs *aTransactions) NewCache() (AVdbComm.VDBCacheServices, error) {
-	return newCache( txs.dbSnapshot )
-}
-
-
-func (txs *aTransactions) Close() {
-	_ = txs.Shutdown()
-}
-
-
-func (txs *aTransactions) Shutdown() error {
-
-	txs.snLock.Lock()
-	defer txs.snLock.Unlock()
-
-	if txs.dbSnapshot != nil {
-		txs.dbSnapshot.Release()
-	}
-
-	//if err := txs.mfsstorage.Close(); err != nil {
-	//	return err
-	//}
-
-	if err := txs.ldb.Close(); err != nil {
 		log.Error(err)
-		return err
+		return total, err
 	}
 
-	return nil
+	return total, nil
 }
 
 
-func (txs *aTransactions) GetTxCount( address EComm.Address ) (uint64, error) {
+func (txs *aTransactions) GetTxByHash( hash EComm.Hash, idx ... *indexes.Index ) (*Transaction, error) {
 
-	txs.snLock.RLock()
-	defer txs.snLock.RUnlock()
+	var lidx *indexes.Index
+	var err error
+	if len(idx) > 0 {
 
-	key := append(TxOutCountPrefix, address.Bytes()... )
-
-	v, err := txs.dbSnapshot.Get(key, nil)
-
-	if err != nil {
-
-		if err == leveldb.ErrNotFound {
-			return 0, nil
-		} else {
-			return 0, err
-		}
-
-	}
-
-	return binary.BigEndian.Uint64(v), nil
-}
-
-
-func (txs *aTransactions) GetTxByHash( hash EComm.Hash ) (*Transaction, error) {
-
-	txs.snLock.RLock()
-	defer txs.snLock.RUnlock()
-
-	tx := &Transaction{}
-
-	it := txs.dbSnapshot.NewIterator( util.BytesPrefix(hash.Bytes()) , nil)
-	defer it.Release()
-
-	if it.Next() {
-
-		if err := tx.Decode(it.Value()); err != nil {
-			return nil, fmt.Errorf("%v can't found transaction", hash.String())
-		}
+		lidx = idx[0]
 
 	} else {
-		return nil, fmt.Errorf("%v can't found transaction", hash.String())
+
+		lidx, err = txs.idxs.GetLatest()
+		if err != nil {
+			panic(err)
+		}
 	}
 
-	return tx, nil
-}
-
-
-func (txs *aTransactions) GetTxByHashBs( hsbs []byte ) (*Transaction, error) {
-
-	hash := EComm.BytesToHash(hsbs)
-
-	return txs.GetTxByHash(hash)
-}
-
-
-func (txs *aTransactions) OpenTransaction() (*leveldb.Transaction, error) {
-
-	tx, err := txs.ldb.OpenTransaction()
-
+	dbroot, err, cls := AVdbComm.GetDBRoot(context.TODO(), txs.ind, lidx.FullCID, DBPath)
 	if err != nil {
+		panic(err)
+	}
+	defer cls()
+
+	tx := &Transaction{}
+	if err := ADB.ReadClose( dbroot, func(db *leveldb.DB) error {
+
+		it := db.NewIterator( util.BytesPrefix(hash.Bytes()) , nil)
+		defer it.Release()
+
+		if it.Next() {
+			if err := tx.Decode(it.Value()); err != nil {
+				return fmt.Errorf("%v can't found transaction", hash.String())
+			}
+		} else {
+			return fmt.Errorf("%v can't found transaction", hash.String())
+		}
+
+		return nil
+
+	}, DBPath); err != nil {
 		return nil, err
 	}
 
@@ -158,92 +144,137 @@ func (txs *aTransactions) OpenTransaction() (*leveldb.Transaction, error) {
 }
 
 
-func (api *aTransactions) UpdateSnapshot() error {
+func (txs *aTransactions) GetTxByHashBs( hsbs []byte, idx ... *indexes.Index ) (*Transaction, error) {
 
-	api.snLock.Lock()
-	defer api.snLock.Unlock()
+	hash := EComm.BytesToHash(hsbs)
 
-	if api.dbSnapshot != nil {
-		api.dbSnapshot.Release()
-	}
+	return txs.GetTxByHash(hash, idx...)
+}
 
+func (txs *aTransactions) GetHistoryHash( address EComm.Address, offset uint64, size uint64, idx ... *indexes.Index) []EComm.Hash {
+
+	var lidx *indexes.Index
 	var err error
-	api.dbSnapshot, err = api.ldb.GetSnapshot()
+	if len(idx) > 0 {
+
+		lidx = idx[0]
+
+	} else {
+
+		lidx, err = txs.idxs.GetLatest()
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	dbroot, err, cls := AVdbComm.GetDBRoot(context.TODO(), txs.ind, lidx.FullCID, DBPath)
 	if err != nil {
-		log.Error(err)
-		return err
+		panic(err)
 	}
-
-	return nil
-}
-
-func (api *aTransactions) SyncCache() error {
-
-	if err := api.ldb.CompactRange(util.Range{nil,nil}); err != nil {
-		log.Error(err)
-	}
-
-	return api.mfsstorage.Flush()
-}
-
-
-func (api *aTransactions) GetHistoryHash( address EComm.Address, offset uint64, size uint64) []EComm.Hash {
+	defer cls()
 
 	itkey := append(TxHistoryPrefix, address.Bytes()...)
 
-	it := api.ldb.NewIterator( util.BytesPrefix(itkey), nil )
-
 	var hashs []EComm.Hash
+	if err := ADB.ReadClose( dbroot, func(db *leveldb.DB) error {
 
-	for it.Next() {
-		hashs = append(hashs, EComm.BytesToHash(it.Value()))
+		it := db.NewIterator( util.BytesPrefix(itkey), nil )
+		defer it.Release()
+
+		if offset > 0 {
+
+			seekKey := append(itkey, AVdbComm.BigEndianBytes(offset - 1)...)
+			if !it.Seek(seekKey) {
+				return errors.New("seek history key expected ")
+			}
+		}
+
+		s := uint64(0)
+		for it.Next() {
+
+			if s > size - 1 {
+				break
+			}
+
+			hashs = append(hashs, EComm.BytesToHash(it.Value()[:32]))
+
+			s ++
+		}
+
+		return nil
+
+	}, DBPath); err != nil {
+		return nil
 	}
 
 	return hashs
-
 }
 
-func (api *aTransactions) GetHistoryContent( address EComm.Address, offset uint64, size uint64) ([]*Transaction, error) {
+func (txs *aTransactions) GetHistoryContent( address EComm.Address, offset uint64, size uint64, idx ... *indexes.Index) ([]*Transaction, error) {
 
-	itkey := append(TxHistoryPrefix, address.Bytes()...)
+	var lidx *indexes.Index
+	var err error
+	if len(idx) > 0 {
 
-	it := api.ldb.NewIterator( util.BytesPrefix(itkey), nil )
-	defer it.Release()
+		lidx = idx[0]
 
-	var txs []*Transaction
+	} else {
 
-	if offset > 0 {
-
-		seekKey := append(itkey, AVdbComm.BigEndianBytes(offset)...)
-
-		if !it.Seek(seekKey) {
-			return nil, errors.New("seek history key expected ")
-		}
-	}
-
-	s := uint64(0)
-
-	for it.Next() {
-
-		if s >= size - 1 {
-			break
-		}
-
-		bs, err := api.ldb.Get(it.Value(), nil)
+		lidx, err = txs.idxs.GetLatest()
 		if err != nil {
-			return nil, err
+			panic(err)
 		}
-
-		tx := &Transaction{}
-
-		if err := tx.Decode(bs); err != nil {
-			return nil, err
-		}
-
-		txs = append(txs, tx)
-
-		s ++
 	}
 
-	return txs, nil
+	dbroot, err, cls := AVdbComm.GetDBRoot(context.TODO(), txs.ind, lidx.FullCID, DBPath)
+	if err != nil {
+		panic(err)
+	}
+	defer cls()
+
+	var tlist []*Transaction
+	if err := ADB.ReadClose( dbroot, func(db *leveldb.DB) error {
+
+		itkey := append(TxHistoryPrefix, address.Bytes()...)
+
+		it := db.NewIterator( util.BytesPrefix(itkey), nil )
+		defer it.Release()
+
+		if offset > 0 {
+
+			seekKey := append(itkey, AVdbComm.BigEndianBytes(offset - 1)...)
+
+			if !it.Seek(seekKey) {
+				return errors.New("seek history key expected ")
+			}
+		}
+
+		s := uint64(0)
+		for it.Next() {
+
+			if s > size - 1 {
+				break
+			}
+
+			bs, err := db.Get(it.Value(), nil)
+			if err != nil {
+				return err
+			}
+
+			tx := &Transaction{}
+			if err := tx.Decode(bs); err != nil {
+				return err
+			}
+
+			tlist = append(tlist, tx)
+			s ++
+		}
+
+		return nil
+
+	}, DBPath); err != nil {
+		return nil, err
+	}
+
+	return tlist, nil
 }

@@ -1,23 +1,24 @@
 package node
 
 import (
+	ADB "github.com/ayachain/go-aya-alvm-adb"
 	AVdbComm "github.com/ayachain/go-aya/vdb/common"
-	"github.com/syndtr/goleveldb/leveldb"
+	"github.com/ayachain/go-aya/vdb/indexes"
 )
 
 const DBPath = "/nodes"
 
 type reader interface {
 
-	GetNodeByPeerId( peerId string ) (*Node, error)
+	GetNodeByPeerId( peerId string, idx... *indexes.Index ) (*Node, error)
 
-	GetSuperMaterTotalVotes() uint64
+	GetSuperMaterTotalVotes( idx... *indexes.Index ) uint64
 
-	GetSuperNodeList() []*Node
+	GetSuperNodeList( idx... *indexes.Index ) []*Node
 
-	GetSuperNodeCount() int64
+	GetSuperNodeCount( idx... *indexes.Index ) int64
 
-	GetSnapshot() *leveldb.Snapshot
+	DoRead( readingFunc ADB.ReadingFunc, idx... *indexes.Index ) error
 }
 
 type writer interface {
@@ -31,16 +32,13 @@ type writer interface {
 
 
 type Services interface {
-
 	AVdbComm.VDBSerices
 	reader
 }
 
 
-type Caches interface {
-
+type MergeWriter interface {
 	AVdbComm.VDBCacheServices
-
 	reader
 	writer
 }

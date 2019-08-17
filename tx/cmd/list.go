@@ -4,6 +4,7 @@ import (
 	"errors"
 	AChain "github.com/ayachain/go-aya/chain"
 	ARsponse "github.com/ayachain/go-aya/response"
+	"github.com/ayachain/go-aya/vdb/transaction"
 	EComm "github.com/ethereum/go-ethereum/common"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 )
@@ -30,8 +31,8 @@ var listCMD = &cmds.Command{
 		}
 
 		detail, _ := req.Options["detail"].(bool)
-		offset, _ := req.Options["offset"].(uint64)
-		size, _ := req.Options["size"].(uint64)
+		offset, _ := req.Options["offset"].(uint)
+		size, _ := req.Options["size"].(uint)
 
 		if size == 0 {
 			size = 20
@@ -39,17 +40,38 @@ var listCMD = &cmds.Command{
 
 		if !detail {
 
-			txhashs := chain.CVFServices().Transactions().GetHistoryHash( EComm.HexToAddress(req.Arguments[1]),  offset, size )
+			txhashs := chain.CVFServices().Transactions().GetHistoryHash( EComm.HexToAddress(req.Arguments[1]), uint64(offset), uint64(size) )
 
 			return ARsponse.EmitSuccessResponse(re, txhashs)
 
 		} else {
 
-			txs, err := chain.CVFServices().Transactions().GetHistoryContent( EComm.HexToAddress(req.Arguments[1]),  offset, size )
+			txs, err := chain.CVFServices().Transactions().GetHistoryContent( EComm.HexToAddress(req.Arguments[1]), uint64(offset), uint64(size) )
+
 			if err != nil {
+
 				return ARsponse.EmitErrorResponse(re, errors.New("not exist transaction hash") )
+
 			} else {
+
+				var ctxs []*transaction.ConfirmTx
+
+				for _, tx := range txs {
+
+					txblock, err := chain.CVFServices().Blocks().GetBlocks(tx.BlockIndex)
+					if err != nil {
+						continue
+					}
+
+					ctxs = append(ctxs, &transaction.ConfirmTx{
+						Transaction:*tx,
+						Time:txblock[0].Timestamp,
+					})
+
+				}
+
 				return ARsponse.EmitSuccessResponse(re, txs)
+
 			}
 
 		}

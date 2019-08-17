@@ -2,15 +2,14 @@ package node
 
 import (
 	"fmt"
+	ADB "github.com/ayachain/go-aya-alvm-adb"
 	AvdbComm "github.com/ayachain/go-aya/vdb/common"
-	AIndexes "github.com/ayachain/go-aya/vdb/indexes"
+	"github.com/ayachain/go-aya/vdb/indexes"
 	"github.com/pkg/errors"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/storage"
-	"github.com/syndtr/goleveldb/leveldb/util"
 	"go4.org/sort"
 )
-
 
 var (
 	ErrNodeAlreadyExist = errors.New("insert target node already exist.")
@@ -20,15 +19,14 @@ type aCache struct {
 
 	writer
 
-	headAPI AIndexes.IndexesServices
-	source *leveldb.Snapshot
+	sourceReader reader
+
 	cdb *leveldb.DB
 
 	delKeys [][]byte
 }
 
-
-func newCache( sourceDB *leveldb.Snapshot ) (Caches, error) {
+func newWriter( sread reader ) (MergeWriter, error) {
 
 	memsto := storage.NewMemStorage()
 
@@ -39,149 +37,29 @@ func newCache( sourceDB *leveldb.Snapshot ) (Caches, error) {
 	}
 
 	c := &aCache{
-		source:sourceDB,
+		sourceReader:sread,
 		cdb:mdb,
 	}
 
 	return c, nil
 }
 
-func (cache *aCache) GetSnapshot() *leveldb.Snapshot {
-	return cache.source
-}
-
-func (cache *aCache) Close() {
-	_ = cache.cdb.Close()
-}
-
-
 func (cache *aCache) MergerBatch() *leveldb.Batch {
 
 	batch := &leveldb.Batch{}
 
 	it := cache.cdb.NewIterator(nil, nil)
+	defer it.Release()
 
 	for _, delk := range cache.delKeys {
 		batch.Delete(delk)
 	}
 
 	for it.Next() {
-
 		batch.Put( it.Key(), it.Value() )
-
 	}
-
 
 	return batch
-}
-
-
-func (cache *aCache) GetSuperNodeCount() int64 {
-
-	it := cache.source.NewIterator( util.BytesPrefix([]byte(NodeTypeSuper)), nil)
-
-	var ret int64 = 0
-
-	for it.Next() {
-
-		ret ++
-	}
-
-	return ret
-}
-
-
-//func (cache *aCache) Update( peerId string, node *Node ) error {
-//
-//	exist, err := AvdbComm.CacheHas( cache.source, cache.cdb, []byte(peerId) )
-//
-//	if err != nil {
-//		return err
-//	}
-//
-//	if !exist {
-//		return leveldb.ErrNotFound
-//	}
-//
-//	return cache.cdb.Put([]byte(peerId), node.Encode(), AvdbComm.WriteOpt)
-//
-//}
-
-func (cache *aCache) GetSuperMaterTotalVotes() uint64 {
-
-	var total uint64
-
-	it := cache.source.NewIterator( util.BytesPrefix( []byte(NodeTypeSuper) ), nil )
-
-	defer it.Release()
-
-	for it.Next() {
-
-		perrId := it.Value()
-
-		bs, err := cache.source.Get(perrId, nil)
-
-		if err != nil {
-			panic(err)
-		}
-
-		nd := &Node{}
-
-		if err := nd.Decode(bs); err == nil {
-			total += nd.Votes
-		}
-	}
-
-	return total
-}
-
-
-func (cache *aCache) GetNodeByPeerId( peerId string ) (*Node, error) {
-
-	bs, err := AvdbComm.CacheGet( cache.source, cache.cdb, []byte(peerId) )
-	if err != nil {
-		return nil, err
-	}
-
-	nd := &Node{}
-
-	if err := nd.Decode(bs); err != nil {
-		return nil, err
-	}
-
-	return nd, nil
-}
-
-func (cache *aCache) GetSuperNodeList() []*Node {
-
-	var rets[] *Node
-
-	it := cache.source.NewIterator( util.BytesPrefix( []byte(NodeTypeSuper) ), nil )
-
-	defer it.Release()
-
-	for it.Next() {
-
-		perrId := it.Value()
-
-		bs, err := cache.source.Get(perrId, nil)
-
-		if err != nil {
-			panic(err)
-		}
-
-		nd := &Node{}
-
-		if err := nd.Decode(bs); err == nil {
-			rets = append(rets, nd)
-		}
-	}
-
-	sort.SliceSorter(rets, func(i, j int) bool {
-		return rets[i].Votes < rets[j].Votes
-	})
-
-	return rets
 }
 
 func (cache *aCache) InsertBootstrapNodes( nds []Node ) {
@@ -205,15 +83,13 @@ func (cache *aCache) InsertBootstrapNodes( nds []Node ) {
 
 func (cache *aCache) Insert( peerId string, node *Node ) error {
 
-	if exist, err := AvdbComm.CacheHas( cache.source, cache.cdb, []byte(peerId) ); err == nil && exist {
-
+	if exist, err := cache.cdb.Has([]byte(peerId), nil); err == nil && exist {
 		return ErrNodeAlreadyExist
-
 	}
 
 	if node.Type == NodeTypeSuper {
 
-		superNodes := cache.GetSuperNodeList()
+		superNodes := cache.sourceReader.GetSuperNodeList()
 
 		superNodes = append(superNodes, node)
 
@@ -238,19 +114,14 @@ func (cache *aCache) Insert( peerId string, node *Node ) error {
 		return nil
 
 	} else {
-
 		return cache.cdb.Put([]byte(peerId), node.Encode(), AvdbComm.WriteOpt)
-
 	}
-
-
 
 }
 
-
 func (cache *aCache) Del( peerId string ) {
 
-	nd, err := cache.GetNodeByPeerId(peerId)
+	nd, err := cache.sourceReader.GetNodeByPeerId(peerId)
 	if err != nil {
 		return
 	}
@@ -259,7 +130,7 @@ func (cache *aCache) Del( peerId string ) {
 
 		n := 0
 
-		superNodes := cache.GetSuperNodeList()
+		superNodes := cache.sourceReader.GetSuperNodeList()
 
 		for _, v := range superNodes {
 
@@ -280,4 +151,29 @@ func (cache *aCache) Del( peerId string ) {
 	_ = cache.cdb.Delete([]byte(peerId), nil)
 
 	cache.delKeys = append(cache.delKeys, []byte(peerId))
+}
+
+func (cache *aCache) Close() {
+	_ = cache.cdb.Close()
+}
+
+/// Reader mock impl
+func (cache *aCache) DoRead( readingFunc ADB.ReadingFunc, idx ... *indexes.Index ) error {
+	return cache.sourceReader.DoRead( readingFunc )
+}
+
+func (cache *aCache) GetNodeByPeerId( peerId string, idx ... *indexes.Index ) (*Node, error) {
+	return cache.sourceReader.GetNodeByPeerId(peerId)
+}
+
+func (cache *aCache) GetSuperMaterTotalVotes( idx ... *indexes.Index ) uint64 {
+	return cache.sourceReader.GetSuperMaterTotalVotes()
+}
+
+func (cache *aCache) GetSuperNodeList( idx ... *indexes.Index ) []*Node {
+	return cache.sourceReader.GetSuperNodeList()
+}
+
+func (cache *aCache) GetSuperNodeCount( idx ... *indexes.Index ) int64 {
+	return cache.sourceReader.GetSuperNodeCount()
 }

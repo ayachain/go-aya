@@ -4,9 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	ABlock "github.com/ayachain/go-aya/vdb/block"
-	AvdbComm"github.com/ayachain/go-aya/vdb/common"
-	EComm "github.com/ethereum/go-ethereum/common"
+	AvdbComm "github.com/ayachain/go-aya/vdb/common"
 	"github.com/ipfs/go-cid"
 )
 
@@ -21,10 +19,10 @@ type ChainInfo struct {
 	AvdbComm.RawDBCoder				`json:"-"`
 	AvdbComm.AMessageEncode			`json:"-"`
 
-	GenHash 		EComm.Hash	 	`json:"GenHash,omitempty"`
-	VDBRoot			cid.Cid			`json:"VDBRoot,omitempty"`
+	ChainID 		string			`json:"ChainID"`
 	Indexes			cid.Cid 		`json:"Indexes,omitempty"`
-	LatestBlock		*ABlock.Block	`json:"LatestBlock,omitempty"`
+	BlockIndex		uint64			`json:"BlockIndex"`
+	FinalCVFS		cid.Cid			`json:"Final"`
 }
 
 func (info *ChainInfo) Encode() []byte {

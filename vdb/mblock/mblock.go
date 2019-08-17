@@ -33,7 +33,6 @@ func (mb *MBlock) Confirm( groupCid string ) *ABlock.Block {
 	blk.ExtraData = groupCid
 
 	return blk
-
 }
 
 

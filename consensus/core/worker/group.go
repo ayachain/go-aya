@@ -7,6 +7,9 @@ import (
 	"encoding/json"
 	"fmt"
 	AVdbComm "github.com/ayachain/go-aya/vdb/common"
+	blocks "github.com/ipfs/go-block-format"
+	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-ipfs/core"
 	"github.com/syndtr/goleveldb/leveldb"
 	"strconv"
 	"strings"
@@ -30,9 +33,9 @@ func (tbg *TaskBatchGroup) GetBatchMap() map[string]*leveldb.Batch{
 	return tbg.batchs
 }
 
-// Byte 0 - 7 : Header json bytes content len
+// Byte 0 - 7 		: Header json bytes content len
 // Byte 8 - HeadLen : json bytes content
-// Bate .... : Batch dump bytes
+// Bate .... 		: Batch dump bytes
 func (tbg *TaskBatchGroup) Encode() []byte {
 
 	batchBuff := bytes.NewBuffer([]byte{})
@@ -138,4 +141,15 @@ func (tgb *TaskBatchGroup) Del( dbkey string, k []byte ) {
 	}
 
 	batch.Delete(k)
+}
+
+func (tgb *TaskBatchGroup) Upload( ind *core.IpfsNode ) cid.Cid {
+
+	dumpbs := tgb.Encode()
+
+	dblk := blocks.NewBlock(dumpbs)
+
+	_ = ind.Blocks.AddBlock(dblk)
+
+	return dblk.Cid()
 }

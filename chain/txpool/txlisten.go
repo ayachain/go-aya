@@ -2,103 +2,38 @@ package txpool
 
 import (
 	"context"
-	"fmt"
-	"github.com/ayachain/go-aya/consensus/core"
 	ATx "github.com/ayachain/go-aya/vdb/transaction"
+	"github.com/prometheus/common/log"
 )
 
-func txListenThread(ctx context.Context ) {
+func (pool *ATxPool) threadTransactionListener( ctx context.Context ) {
 
-	fmt.Println("ATxPool Thread On: " + ATxPoolThreadTxListen)
+	log.Info("ATxPool Thread On: " + ATxPoolThreadTxListen)
+	defer log.Info("ATxPool Thread Off: " + ATxPoolThreadTxListen)
 
-	pool := ctx.Value("Pool").(*ATxPool)
+	// subscribe
+	sub, err := pool.ind.PubSub.Subscribe( pool.channelTopics[ATxPoolThreadTxListen] )
+	if err != nil {
+		return
+	}
+	defer sub.Cancel()
 
-	pool.workingThreadWG.Add(1)
+	for {
 
-	pool.threadChans.Store(ATxPoolThreadTxListen, make(chan []byte, AtxPoolThreadTxListenBuff))
-
-	subCtx, subCancel := context.WithCancel(ctx)
-
-	defer func() {
-
-		subCancel()
-
-		<- subCtx.Done()
-
-		cc, exist := pool.threadChans.Load(ATxPoolThreadTxListen)
-		if exist {
-
-			close( cc.(chan []byte) )
-
-			pool.threadChans.Delete(ATxPoolThreadTxListen)
-
-		}
-
-		pool.workingThreadWG.Done()
-
-		fmt.Println("ATxPool Thread Off: " + ATxPoolThreadTxListen)
-
-	}()
-
-
-	go func() {
-
-		sub, err := pool.ind.PubSub.Subscribe( pool.channelTopics[ATxPoolThreadTxListen] )
-
+		msg, err := sub.Next(ctx)
 		if err != nil {
 			return
 		}
 
-		for {
-
-			msg, err := sub.Next(subCtx)
-
-			if err != nil {
-				return
-			}
-
-			if <- pool.notary.TrustOrNot(msg, core.NotaryMessageTransaction, pool.cvfs) {
-
-				cc, _ := pool.threadChans.Load(ATxPoolThreadTxListen)
-
-				cc.(chan []byte) <- msg.Data
-
-			}
-
+		tx := &ATx.Transaction{}
+		if err := tx.RawMessageDecode(msg.Data); err != nil {
+			log.Warn(err)
+			continue
 		}
 
-	}()
-
-
-	for {
-
-		cc, _ := pool.threadChans.Load(ATxPoolThreadTxListen)
-
-		select {
-
-		case <- ctx.Done():
-
-			return
-
-		case rawmsg, isOpen := <- cc.(chan []byte):
-
-			if !isOpen {
-				continue
-			}
-
-			tx := &ATx.Transaction{}
-			if err := tx.RawMessageDecode(rawmsg); err != nil {
-				log.Error(err)
-				continue
-			}
-
-			if err := pool.pushTransaction(tx); err != nil {
-				log.Error(err)
-				continue
-			}
-
+		if err := pool.storeTransaction(tx); err != nil {
+			log.Warn(err)
+			continue
 		}
-
 	}
-
 }

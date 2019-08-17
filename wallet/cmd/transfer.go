@@ -47,10 +47,10 @@ var transferCMD = &cmds.Command{
 		}
 
 		if !tx.Verify() {
-			return ARsponse.EmitErrorResponse(re, errors.New("Verify failed"))
+			return ARsponse.EmitErrorResponse(re, errors.New("transaction verify failed"))
 		}
 
-		if err := chain.PublishTx(tx); err != nil {
+		if err := chain.GetTxPool().PublishTx(tx); err != nil {
 			return ARsponse.EmitErrorResponse(re, err)
 		}
 

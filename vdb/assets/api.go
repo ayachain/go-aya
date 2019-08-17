@@ -2,6 +2,7 @@ package assets
 
 import (
 	AVdbComm "github.com/ayachain/go-aya/vdb/common"
+	"github.com/ayachain/go-aya/vdb/indexes"
 	EComm "github.com/ethereum/go-ethereum/common"
 )
 
@@ -12,16 +13,12 @@ const (
 )
 
 type reader interface {
-	AssetsOf( addr EComm.Address ) ( *Assets, error )
+	AssetsOf( addr EComm.Address, idx... *indexes.Index ) ( *Assets, error )
 }
 
 type writer interface {
-
-	PutNewAssets( addr EComm.Address, ast *Assets )
-
 	Put( addr EComm.Address, ast *Assets )
 }
-
 
 type Services interface {
 	AVdbComm.VDBSerices
@@ -29,7 +26,7 @@ type Services interface {
 }
 
 
-type Caches interface {
+type MergeWriter interface {
 	AVdbComm.VDBCacheServices
 	reader
 	writer

@@ -2,9 +2,10 @@ package minined
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	AvdbComm "github.com/ayachain/go-aya/vdb/common"
-	EComm "github.com/ethereum/go-ethereum/common"
+	"github.com/ayachain/go-aya/vdb/mblock"
 	"github.com/ipfs/go-cid"
 )
 
@@ -19,33 +20,24 @@ const MessagePrefix = byte('r')
 type Minined struct {
 	AvdbComm.RawDBCoder			`json:"-"`
 	AvdbComm.AMessageEncode		`json:"-"`
-	
-	MBlockHash EComm.Hash		`json:"MiningBlockHash,omitempty"`
-	RetCID cid.Cid				`json:"BatchGroupCID,omitempty"`
+
+	MBlock *mblock.MBlock		`json:"MBlock"`
+	Batcher cid.Cid				`json:"BatchCID"`
 }
 
 
 func (md *Minined) Encode() []byte {
 
-	buff := bytes.NewBuffer([]byte{})
-	buff.Write( md.MBlockHash.Bytes() )
-	buff.Write( md.RetCID.Bytes() )
+	bs, err := json.Marshal(md)
+	if err != nil {
+		return nil
+	}
+	return bs
 
-	return buff.Bytes()
 }
 
 func (md *Minined) Decode(bs []byte) error {
-
-	var err error
-
-	md.MBlockHash = EComm.BytesToHash(bs[0 : 32])
-	md.RetCID, err = cid.Cast(bs[32:])
-
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return json.Unmarshal(bs, md)
 }
 
 

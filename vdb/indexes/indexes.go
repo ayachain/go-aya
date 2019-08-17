@@ -13,24 +13,26 @@ import (
 	"github.com/ipfs/go-merkledag"
 	"github.com/ipfs/go-mfs"
 	"github.com/ipfs/go-unixfs"
-	"github.com/whyrusleeping/go-logging"
+	"github.com/pkg/errors"
+	"github.com/prometheus/common/log"
 	"io"
 	"io/ioutil"
 	"os"
 	"sync"
 )
 
-var log = logging.MustGetLogger("IndexesServices")
-
-/// Dev
-//const AIndexesKeyPathPrefix = "/aya/chain/indexes/dev/0810/15/"
-/// Prod
 const AIndexesKeyPathPrefix = "/aya/chain/indexes/"
 
 const (
 	idbFileNamePrefix    	= "page_"
 	idbFileNameSuffix	  	= "idx"
 	idbLatestIndex		  	= "latest.idx"
+	idxPageIndexSize		= 5120
+)
+
+var (
+	ErrCreateFailed	= errors.New("create index services failed")
+	ErrSyncRollback = errors.New("sync to target cid has rollback")
 )
 
 type aIndexes struct {
@@ -163,8 +165,8 @@ func ( i *aIndexes ) GetIndex( blockNumber uint64 ) (*Index, error) {
 	i.snLock.RLock()
 	defer i.snLock.RUnlock()
 
-	page := blockNumber / 1024
-	offset := blockNumber % 1024
+	page := blockNumber / idxPageIndexSize
+	offset := blockNumber % idxPageIndexSize
 
 	fname := fmt.Sprintf("%v%d.%v", idbFileNamePrefix, page, idbFileNameSuffix)
 
@@ -214,8 +216,8 @@ func ( i *aIndexes ) PutIndex( index *Index ) (cid.Cid, error) {
 	i.snLock.Lock()
 	defer i.snLock.Unlock()
 
-	page := index.BlockIndex / 1024
-	offset := index.BlockIndex % 1024
+	page := index.BlockIndex / idxPageIndexSize
+	offset := index.BlockIndex % idxPageIndexSize
 
 	fname := fmt.Sprintf("%v%d.%v", idbFileNamePrefix, page, idbFileNameSuffix)
 
@@ -226,7 +228,7 @@ func ( i *aIndexes ) PutIndex( index *Index ) (cid.Cid, error) {
 		if err == os.ErrNotExist {
 
 			//file not exist
-			nnd := merkledag.NodeWithData(unixfs.FilePBData(nil, 1024 * StaticSize))
+			nnd := merkledag.NodeWithData(unixfs.FilePBData(nil, idxPageIndexSize * StaticSize))
 			nnd.SetCidBuilder(dir.GetCidBuilder())
 
 			if err := dir.AddChild( fname, nnd ); err != nil {
@@ -337,47 +339,147 @@ func ( i *aIndexes ) PutIndexBy( num uint64, bhash EComm.Hash, ci cid.Cid ) (cid
 
 }
 
-func ( i *aIndexes ) UpdateSnapshot() error {
-	return nil
-}
-
-func ( i *aIndexes ) Flush() error {
-
-	i.ind.Pinning.PinWithMode(i.latestCID, pin.Any)
-
-	dsk := datastore.NewKey(AIndexesKeyPathPrefix + i.chainId)
-
-	if err := i.ind.Repo.Datastore().Put( dsk, i.latestCID.Bytes() ); err != nil {
-
-		return err
-
-	} else {
-
-		i.ind.Pinning.PinWithMode( i.latestCID, pin.Any )
-		return nil
-	}
-
-}
-
-func ( i *aIndexes) SyncToCID( fullCID cid.Cid ) error {
+func ( i *aIndexes ) SyncToCID( fullCID cid.Cid ) error {
 
 	i.snLock.Lock()
 	defer i.snLock.Unlock()
 
+	// rollback cid and mfs root
+	rbcid := i.latestCID
+	rbroot := i.mfsroot
+
+	dsk := datastore.NewKey(AIndexesKeyPathPrefix + i.chainId)
+	rnd, err := i.ind.DAG.Get(context.TODO(), fullCID)
+	if err != nil {
+		return err
+	}
+
+	pbnd, ok := rnd.(*merkledag.ProtoNode)
+	if !ok {
+		return errors.New("target cid is not a proto node")
+	}
+
+	newRoot, err := mfs.NewRoot(
+		context.TODO(),
+		i.ind.DAG,
+		pbnd,
+		func(ctx context.Context, cid cid.Cid) error {
+			return nil
+		},
+	)
+	if err != nil {
+		return err
+	}
+
+	// try change date if has error, must jump to 'NeedRollBack' tag
+	i.mfsroot = newRoot
 	i.latestCID = fullCID
+
+	// test read latest index
+	if !i.simpleVerifyNoLock() {
+		goto NeedRollBack
+	}
 
 	i.ind.Pinning.PinWithMode(i.latestCID, pin.Any)
 
-	dsk := datastore.NewKey(AIndexesKeyPathPrefix + i.chainId)
-
 	if err := i.ind.Repo.Datastore().Put( dsk, i.latestCID.Bytes() ); err != nil {
-		return err
-	} else {
-
-		i.ind.Pinning.PinWithMode( i.latestCID, pin.Any )
-
-		log.Infof("Sync Indexes DB : %v", i.latestCID.String())
-		return nil
+		goto NeedRollBack
 	}
 
+	log.Infof("Sync Indexes DB : %v", i.latestCID.String())
+
+	_ = rbroot.Close()
+
+	return nil
+
+NeedRollBack:
+
+	_ = i.mfsroot.Close()
+
+	i.mfsroot = rbroot
+	i.latestCID = rbcid
+
+	return ErrSyncRollback
+}
+
+func ( i *aIndexes ) simpleVerifyNoLock() bool {
+
+	nd, err := i.mfsroot.GetDirectory().Child(idbLatestIndex)
+	if err != nil {
+		if err == os.ErrNotExist {
+			return false
+		} else {
+			return false
+		}
+	}
+
+	fi, ok := nd.(*mfs.File)
+	if !ok {
+		return false
+	}
+
+	fd, err := fi.Open(mfs.Flags{Read:true,Sync:false})
+	if err != nil {
+		return false
+	}
+	defer fd.Close()
+
+	bs, err := ioutil.ReadAll(fd)
+	if err != nil {
+		return false
+	}
+
+	// latest block index number by int64
+	lin := binary.BigEndian.Uint64(bs)
+
+	// read index
+	page := lin / idxPageIndexSize
+	offset := lin % idxPageIndexSize
+
+	fname := fmt.Sprintf("%v%d.%v", idbFileNamePrefix, page, idbFileNameSuffix)
+
+	nd, err = i.mfsroot.GetDirectory().Child(fname)
+	if err != nil {
+		return false
+	}
+
+	fi, ok = nd.(*mfs.File)
+	if !ok {
+		return false
+	}
+
+	fd, err = fi.Open(mfs.Flags{Read:true,Sync:false})
+	if err != nil {
+		return false
+	}
+	defer fd.Close()
+
+	if _, err := fd.Seek( int64(offset) * StaticSize,io.SeekStart); err != nil {
+		return false
+	}
+
+	idxbs := make([]byte, StaticSize)
+	if _, err := fd.Read(idxbs); err != nil {
+		return false
+	}
+
+	idx := &Index{}
+	if err := idx.Decode(idxbs); err != nil {
+		return false
+	}
+
+	return true
+}
+
+func ForkMerge( ind *core.IpfsNode, chainId string, index *Index ) (cid.Cid, error) {
+
+	forkIdx := CreateServices(ind, chainId, false)
+	if forkIdx == nil {
+		return cid.Undef, ErrCreateFailed
+	}
+	defer func() {
+		_ = forkIdx.Close()
+	}()
+
+	return forkIdx.PutIndex(index)
 }

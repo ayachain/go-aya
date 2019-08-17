@@ -45,7 +45,7 @@ type Block struct {
 
 	/// block sub transactions, is a ipfs block cid
 	Txc uint16				`json:"Txc"`
-	Txs string				`json:"Txs,omitempty"`
+	Txs cid.Cid				`json:"Txs,omitempty"`
 	
 	Packager string			`json:"Packager,omitempty"`
 }
@@ -91,10 +91,6 @@ func ( b *Block ) Encode() []byte {
 }
 
 func ( b *Block ) Decode(bs []byte) error {
-
-	//if bs[0] != 'b' {
-	//	return errors.New("this raw bytes not a block.")
-	//}
 	return json.Unmarshal(bs, b)
 }
 
@@ -120,12 +116,7 @@ func ( b *Block ) RawMessageDecode( bs []byte ) error {
 
 func ( b *Block ) ReadTxsFromDAG(ctx context.Context, ind *core.IpfsNode) []*transaction.Transaction {
 
-	txscid, err := cid.Decode(b.Txs)
-	if err != nil {
-		return nil
-	}
-
-	iblk, err := ind.Blocks.GetBlock(ctx, txscid)
+	iblk, err := ind.Blocks.GetBlock(ctx, b.Txs)
 	if err != nil {
 		return nil
 	}

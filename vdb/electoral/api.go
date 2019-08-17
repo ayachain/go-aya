@@ -1,6 +1,7 @@
 package electoral
 
 import (
+	"context"
 	"github.com/ayachain/go-aya/vdb/node"
 	"github.com/ethereum/go-ethereum/common"
 	"time"
@@ -32,7 +33,7 @@ type MemServices interface {
 
 	GetNearestOnlineNode( bindex uint64 ) *node.Node
 
-	FightPacker() <- chan *EleRet
+	FightPacker(ctx context.Context) (*EleRet, error)
 
 	LatestPacker() *EleRet
 }

@@ -165,8 +165,6 @@ func (n *APOSConsensusNotary) TrustOrNot( msg *pubsub.Message, mtype ACore.Notar
 
 			if msg.Data[0] == ATx.MessagePrefix {
 
-				//log.Infof("ListenMessage : %v -> %v (Transaction)", sender.PeerID, msgHash.String())
-
 				tx := &ATx.Transaction{}
 
 				if err := tx.RawMessageDecode(msg.Data); err != nil {
@@ -180,30 +178,21 @@ func (n *APOSConsensusNotary) TrustOrNot( msg *pubsub.Message, mtype ACore.Notar
 
 			if msg.Data[0] == AMBlock.MessagePrefix {
 
-				//log.Infof("ListenMessage : %v -> %v (MiningBlock)", sender.PeerID, msgHash.String())
-
 				replayChan <- n.hst.CanConsensus(msgHash.String(), sender, threshold)
-
 			}
 
 		case ACore.NotaryMessageConfirmBlock:
 
 			if msg.Data[0] == ABlock.MessagePrefix {
 
-				//log.Infof("ListenMessage : %v -> %v (ConfirmBlock)", sender.PeerID, msgHash.String())
-
 				replayChan <- n.hst.CanConsensus(msgHash.String(), sender, threshold)
-
 			}
 
 		case ACore.NotaryMessageMinedRet:
 
 			if msg.Data[0] == AMined.MessagePrefix {
 
-				//log.Infof("ListenMessage : %v -> %v (MinedReceipt)", sender.PeerID, msgHash.String())
-
 				replayChan <- n.hst.CanConsensus(msgHash.String(), sender, threshold)
-
 			}
 
 		default:

@@ -1,98 +1,122 @@
 package block
 
 import (
+	"context"
 	"encoding/binary"
 	"errors"
 	ADB "github.com/ayachain/go-aya-alvm-adb"
 	AVdbComm "github.com/ayachain/go-aya/vdb/common"
-	AIndexes "github.com/ayachain/go-aya/vdb/indexes"
+	"github.com/ayachain/go-aya/vdb/indexes"
 	EComm "github.com/ethereum/go-ethereum/common"
-	"github.com/ipfs/go-mfs"
+	"github.com/ipfs/go-ipfs/core"
 	"github.com/prometheus/common/log"
 	"github.com/syndtr/goleveldb/leveldb"
-	"github.com/syndtr/goleveldb/leveldb/util"
 	"strings"
-	"sync"
 )
 
 var(
 	LatestPosBlockIdxKey 	= []byte("LatestPosBlockIndex")
+	ErrBlockNotFound		= errors.New("can not found block")
 )
+
 
 type aBlocks struct {
 
 	reader
-	*mfs.Directory
 
-	headAPI AIndexes.IndexesServices
+	ind *core.IpfsNode
 
-	ldb *leveldb.DB
-	mfsstorage *ADB.MFSStorage
-	dbSnapshot *leveldb.Snapshot
-	snLock sync.RWMutex
+	idxs indexes.IndexesServices
+}
+
+func CreateServices( ind *core.IpfsNode, idxServices indexes.IndexesServices ) Services {
+
+	return &aBlocks{
+		ind:ind,
+		idxs:idxServices,
+	}
 
 }
 
-func CreateServices( mdir *mfs.Directory, hapi AIndexes.IndexesServices ) Services {
+func (blks *aBlocks) GetLatestPosBlockIndex( idx ... *indexes.Index ) uint64 {
 
+
+	var lidx *indexes.Index
 	var err error
+	if len(idx) > 0 {
 
-	api := &aBlocks{
-		Directory:mdir,
-		headAPI:hapi,
-	}
-
-	api.ldb, api.mfsstorage, err = AVdbComm.OpenExistedDB( mdir, DBPath )
-	if err != nil {
-		panic(err)
-	}
-
-	api.dbSnapshot, err = api.ldb.GetSnapshot()
-	if err != nil {
-		_ = api.ldb.Close()
-		log.Error(err)
-		return nil
-	}
-
-	return api
-}
-
-func (blks *aBlocks) GetLatestPosBlockIndex() uint64 {
-
-	blks.snLock.RLock()
-	defer blks.snLock.RUnlock()
-
-	if exist, err := blks.dbSnapshot.Has(LatestPosBlockIdxKey, nil); err != nil {
-
-		panic(err)
-
-	} else if !exist {
-
-		return 0
+		lidx = idx[0]
 
 	} else {
 
-		if bs, err := blks.dbSnapshot.Get(LatestPosBlockIdxKey, nil); err != nil {
+		lidx, err = blks.idxs.GetLatest()
+		if err != nil {
+			panic(err)
+		}
+	}
 
-			return 0
+	dbroot, err, cls := AVdbComm.GetDBRoot(context.TODO(), blks.ind, lidx.FullCID, DBPath)
+	if err != nil {
+		panic(err)
+	}
+	defer cls()
+
+	r := uint64(0)
+	if err := ADB.ReadClose(dbroot, func(db *leveldb.DB) error {
+
+		if exist, err := db.Has(LatestPosBlockIdxKey, nil); err != nil {
+			return err
+
+		} else if !exist {
+
+			return leveldb.ErrNotFound
 
 		} else {
 
-			return binary.BigEndian.Uint64(bs)
+			if bs, err := db.Get(LatestPosBlockIdxKey, nil); err != nil {
+				return err
 
+			} else {
+				r = binary.BigEndian.Uint64(bs)
+				return nil
+			}
 		}
 
+	}, DBPath); err != nil {
+		log.Error(err)
 	}
 
+	return r
+}
+
+func (blks *aBlocks) GetLatestBlock() (*Block, error) {
+
+	blocks, err := blks.GetBlocks(BlockNameLatest)
+	if err != nil {
+		return nil, err
+	}
+
+	if blocks == nil || len(blocks) == 0 {
+		return nil, ErrBlockNotFound
+	}
+
+	return blocks[0], nil
 }
 
 func (blks *aBlocks) GetBlocks( hashOrIndex...interface{} ) ([]*Block, error) {
 
-	blks.snLock.RLock()
-	defer blks.snLock.RUnlock()
+	lidx, err := blks.idxs.GetLatest()
+	if err != nil {
+		panic(err)
+	}
 
-	var blist []*Block
+	dbroot, err, cls := AVdbComm.GetDBRoot(context.TODO(), blks.ind, lidx.FullCID, DBPath)
+	if err != nil {
+		panic(err)
+	}
+	defer cls()
 
+	var hashList []EComm.Hash
 	for _, v := range hashOrIndex {
 
 		var bhash EComm.Hash
@@ -104,7 +128,7 @@ func (blks *aBlocks) GetBlocks( hashOrIndex...interface{} ) ([]*Block, error) {
 			switch strings.ToLower(v.(string)) {
 			case BlockNameLatest:
 
-				hd, err := blks.headAPI.GetLatest()
+				hd, err := blks.idxs.GetLatest()
 				if err != nil {
 					return nil, err
 				}
@@ -113,7 +137,7 @@ func (blks *aBlocks) GetBlocks( hashOrIndex...interface{} ) ([]*Block, error) {
 
 			case BlockNameGen:
 
-				hd, err := blks.headAPI.GetIndex(0)
+				hd, err := blks.idxs.GetIndex(0)
 				if err != nil {
 					return nil, err
 				}
@@ -122,11 +146,25 @@ func (blks *aBlocks) GetBlocks( hashOrIndex...interface{} ) ([]*Block, error) {
 
 		case uint64:
 
-			hd, err := blks.headAPI.GetIndex(v.(uint64))
-			if err != nil {
-				return nil, err
+			switch v.(uint64) {
+
+			case ^uint64(0): /// Latest
+
+				hd, err := blks.idxs.GetLatest()
+				if err != nil {
+					return nil, ErrBlockNotFound
+				}
+				bhash = hd.Hash
+
+			default:
+
+				hd, err := blks.idxs.GetIndex(v.(uint64))
+				if err != nil {
+					return nil, ErrBlockNotFound
+				}
+
+				bhash = hd.Hash
 			}
-			bhash = hd.Hash
 
 		case EComm.Hash:
 			bhash = v.(EComm.Hash)
@@ -135,85 +173,36 @@ func (blks *aBlocks) GetBlocks( hashOrIndex...interface{} ) ([]*Block, error) {
 			return nil, errors.New("input params must be a index(uint64) or cid object")
 		}
 
-		dbval, err := blks.dbSnapshot.Get( bhash.Bytes(), nil )
-		if err != nil {
-			return nil, err
+		hashList = append(hashList, bhash)
+	}
+
+	var blist []*Block
+	if err := ADB.ReadClose(dbroot, func(db *leveldb.DB) error {
+
+		for _, bhash := range hashList {
+
+			dbval, err := db.Get( bhash.Bytes(), nil )
+			if err != nil {
+				return ErrBlockNotFound
+			}
+
+			subBlock := &Block{}
+			if err := subBlock.Decode(dbval); err != nil {
+				return ErrBlockNotFound
+			}
+
+			blist = append(blist, subBlock)
 		}
 
-		subBlock := &Block{}
-		if err := subBlock.Decode(dbval); err != nil {
-			return nil, err
-		}
+		return nil
 
-		blist = append(blist, subBlock)
+	}, DBPath); err != nil {
+		return nil, err
 	}
 
 	return blist, nil
 }
 
-func (blks *aBlocks) NewCache() (AVdbComm.VDBCacheServices, error) {
-	return newCache( blks.dbSnapshot, blks.headAPI )
-}
-
-func (blks *aBlocks) OpenTransaction() (*leveldb.Transaction, error) {
-
-	tx, err := blks.ldb.OpenTransaction()
-
-	if err != nil {
-		return nil, err
-	}
-
-	return tx, nil
-}
-
-func (blks *aBlocks) Shutdown() error {
-
-	blks.snLock.Lock()
-	defer blks.snLock.Unlock()
-
-	if blks.dbSnapshot != nil {
-		blks.dbSnapshot.Release()
-	}
-
-	//if err := blks.mfsstorage.Close(); err != nil {
-	//	return err
-	//}
-
-	if err := blks.ldb.Close(); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (blks *aBlocks) Close() {
-	_ = blks.Shutdown()
-}
-
-func (api *aBlocks) UpdateSnapshot() error {
-
-	api.snLock.Lock()
-	defer api.snLock.Unlock()
-
-	if api.dbSnapshot != nil {
-		api.dbSnapshot.Release()
-	}
-
-	var err error
-	api.dbSnapshot, err = api.ldb.GetSnapshot()
-	if err != nil {
-		log.Error(err)
-		return err
-	}
-
-	return nil
-}
-
-func (api *aBlocks) SyncCache() error {
-
-	if err := api.ldb.CompactRange(util.Range{nil,nil}); err != nil {
-		log.Error(err)
-	}
-
-	return api.mfsstorage.Flush()
+func (blks *aBlocks) NewWriter() (AVdbComm.VDBCacheServices, error) {
+	return newWriter(blks)
 }

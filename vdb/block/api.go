@@ -1,15 +1,19 @@
 package block
 
-import AVdbComm "github.com/ayachain/go-aya/vdb/common"
+import (
+	AVdbComm "github.com/ayachain/go-aya/vdb/common"
+	"github.com/ayachain/go-aya/vdb/indexes"
+)
 
 const DBPath = "/blocks"
 
 type reader interface {
 
+	GetLatestBlock( ) (*Block, error)
+
 	GetBlocks( hashOrIndex...interface{} ) ([]*Block, error)
 
-	GetLatestPosBlockIndex() uint64
-
+	GetLatestPosBlockIndex(idx... *indexes.Index) uint64
 }
 
 type writer interface {
@@ -28,7 +32,7 @@ type Services interface {
 }
 
 
-type Caches interface {
+type MergeWriter interface {
 	AVdbComm.VDBCacheServices
 	reader
 	writer

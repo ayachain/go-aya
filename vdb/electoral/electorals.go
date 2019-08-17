@@ -1,6 +1,7 @@
 package electoral
 
 import (
+	"context"
 	"github.com/ayachain/go-aya/vdb"
 	"github.com/ayachain/go-aya/vdb/node"
 	"sync"
@@ -232,8 +233,16 @@ func (aele *aElectorals) GetNodesPingStates() []*ConnState {
 
 }
 
-func (aele *aElectorals) FightPacker() <- chan *EleRet {
-	return aele.packerChan
+func (aele *aElectorals) FightPacker(ctx context.Context) (*EleRet, error) {
+
+	select {
+	case <- ctx.Done() :
+		return nil, ctx.Err()
+
+	case r := <- aele.packerChan :
+		return r, nil
+	}
+
 }
 
 

@@ -15,6 +15,7 @@
         <method importPath="math/rand" receiver="*Rand" name="Read" />
         <method importPath="github.com/ayachain/go-aya/vdb" receiver="CVFS" name="Close" />
         <method importPath="github.com/ayachain/go-aya/vdb" receiver="CacheCVFS" name="Close" />
+        <method importPath="github.com/ayachain/go-aya/chain/txpool" receiver="*ATxPool" name="PowerOn" />
       </methods>
     </inspection_tool>
   </profile>

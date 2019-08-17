@@ -18,17 +18,17 @@ type CacheCVFS interface {
 
 	BestCID() cid.Cid
 
-	Blocks() ABlock.Caches
+	Blocks() ABlock.MergeWriter
 
-	Nodes() ANodes.Caches
+	Nodes() ANodes.MergeWriter
 
-	Assetses() AAssetses.Caches
+	Assetses() AAssetses.MergeWriter
 
-	Receipts() AReceipts.Caches
+	Receipts() AReceipts.MergeWriter
+
+	Transactions() ATx.MergeWriter
 
 	MergeGroup() *AWroker.TaskBatchGroup
-
-	Transactions() ATx.Caches
 }
 
 
@@ -39,7 +39,6 @@ type aCacheCVFS struct {
 	rdonlyCVFS	CVFS
 
 	cacheSers map[string]interface{}
-
 }
 
 func NewCacheCVFS( rdonlyCVFS CVFS ) (*aCacheCVFS, error) {
@@ -52,12 +51,6 @@ func NewCacheCVFS( rdonlyCVFS CVFS ) (*aCacheCVFS, error) {
 
 	return cache, nil
 }
-
-func (cache *aCacheCVFS) BestCID() cid.Cid {
-
-	return cache.rdonlyCVFS.BestCID()
-}
-
 
 func (cache *aCacheCVFS) Close() error {
 
@@ -74,13 +67,13 @@ func (cache *aCacheCVFS) Close() error {
 
 }
 
-func (cache *aCacheCVFS) Nodes() ANodes.Caches {
+func (cache *aCacheCVFS) Nodes() ANodes.MergeWriter {
 
 	var err error
 	ser, exist := cache.cacheSers[ANodes.DBPath]
 	if !exist {
 
-		ser, err = cache.rdonlyCVFS.Nodes().NewCache()
+		ser, err = cache.rdonlyCVFS.Nodes().NewWriter()
 		if err != nil {
 			return nil
 		}
@@ -89,7 +82,7 @@ func (cache *aCacheCVFS) Nodes() ANodes.Caches {
 	}
 
 
-	wt, ok := ser.(ANodes.Caches)
+	wt, ok := ser.(ANodes.MergeWriter)
 
 	if !ok {
 		return nil
@@ -99,13 +92,13 @@ func (cache *aCacheCVFS) Nodes() ANodes.Caches {
 
 }
 
-func (cache *aCacheCVFS) Blocks() ABlock.Caches {
+func (cache *aCacheCVFS) Blocks() ABlock.MergeWriter {
 
 	var err error
 	ser, exist := cache.cacheSers[ABlock.DBPath]
 	if !exist {
 
-		ser, err = cache.rdonlyCVFS.Blocks().NewCache()
+		ser, err = cache.rdonlyCVFS.Blocks().NewWriter()
 		if err != nil {
 			return nil
 		}
@@ -114,7 +107,7 @@ func (cache *aCacheCVFS) Blocks() ABlock.Caches {
 	}
 
 
-	wt, ok := ser.(ABlock.Caches)
+	wt, ok := ser.(ABlock.MergeWriter)
 
 	if !ok {
 		return nil
@@ -123,13 +116,13 @@ func (cache *aCacheCVFS) Blocks() ABlock.Caches {
 	return wt
 }
 
-func (cache *aCacheCVFS) Assetses() AAssetses.Caches {
+func (cache *aCacheCVFS) Assetses() AAssetses.MergeWriter {
 
 	var err error
 	ser, exist := cache.cacheSers[AAssetses.DBPath]
 	if !exist {
 
-		ser, err = cache.rdonlyCVFS.Assetses().NewCache()
+		ser, err = cache.rdonlyCVFS.Assetses().NewWriter()
 		if err != nil {
 			return nil
 		}
@@ -137,7 +130,7 @@ func (cache *aCacheCVFS) Assetses() AAssetses.Caches {
 		cache.cacheSers[AAssetses.DBPath] = ser
 	}
 
-	wt, ok := ser.(AAssetses.Caches)
+	wt, ok := ser.(AAssetses.MergeWriter)
 
 	if !ok {
 		return nil
@@ -146,13 +139,13 @@ func (cache *aCacheCVFS) Assetses() AAssetses.Caches {
 	return wt
 }
 
-func (cache *aCacheCVFS) Receipts() AReceipts.Caches {
+func (cache *aCacheCVFS) Receipts() AReceipts.MergeWriter {
 
 	var err error
 	ser, exist := cache.cacheSers[AReceipts.DBPath]
 	if !exist {
 
-		ser, err = cache.rdonlyCVFS.Receipts().NewCache()
+		ser, err = cache.rdonlyCVFS.Receipts().NewWriter()
 		if err != nil {
 			return nil
 		}
@@ -160,7 +153,7 @@ func (cache *aCacheCVFS) Receipts() AReceipts.Caches {
 		cache.cacheSers[AReceipts.DBPath] = ser
 	}
 
-	wt, ok := ser.(AReceipts.Caches)
+	wt, ok := ser.(AReceipts.MergeWriter)
 
 	if !ok {
 		return nil
@@ -169,13 +162,13 @@ func (cache *aCacheCVFS) Receipts() AReceipts.Caches {
 	return wt
 }
 
-func (cache *aCacheCVFS) Transactions() ATx.Caches {
+func (cache *aCacheCVFS) Transactions() ATx.MergeWriter {
 
 	var err error
 	ser, exist := cache.cacheSers[ATx.DBPath]
 	if !exist {
 
-		ser, err = cache.rdonlyCVFS.Transactions().NewCache()
+		ser, err = cache.rdonlyCVFS.Transactions().NewWriter()
 		if err != nil {
 			return nil
 		}
@@ -184,7 +177,7 @@ func (cache *aCacheCVFS) Transactions() ATx.Caches {
 
 	}
 
-	wt, ok := ser.(ATx.Caches)
+	wt, ok := ser.(ATx.MergeWriter)
 
 	if !ok {
 		return nil

@@ -2,24 +2,23 @@ package receipt
 
 import (
 	AvdbComm "github.com/ayachain/go-aya/vdb/common"
+	"github.com/ayachain/go-aya/vdb/indexes"
 	EComm "github.com/ethereum/go-ethereum/common"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/storage"
-	"github.com/syndtr/goleveldb/leveldb/util"
 )
 
 type aCache struct {
 
-	Caches
+	MergeWriter
 
-	source *leveldb.Snapshot
+	sourceReader *aReceipt
 
 	cdb *leveldb.DB
 }
 
 
-
-func newCache( sourceDB *leveldb.Snapshot ) (Caches, error) {
+func newWriter( sreader *aReceipt ) (MergeWriter, error) {
 
 	memsto := storage.NewMemStorage()
 
@@ -29,61 +28,22 @@ func newCache( sourceDB *leveldb.Snapshot ) (Caches, error) {
 	}
 
 	c := &aCache{
-		source:sourceDB,
+		sourceReader:sreader,
 		cdb:mdb,
 	}
 
 	return c, nil
 }
 
-
-func (cache *aCache) HasTransactionReceipt( txhs EComm.Hash ) bool {
-
-	it := cache.source.NewIterator( util.BytesPrefix(txhs.Bytes()), nil )
-
-	defer it.Release()
-
-	if it.Next() {
-		return true
-	}
-
-	return false
-}
-
-
-func (cache *aCache) GetTransactionReceipt( txhs EComm.Hash ) (*Receipt, error) {
-
-	if !cache.HasTransactionReceipt(txhs) {
-		return nil, leveldb.ErrNotFound
-	}
-
-	it := cache.source.NewIterator( util.BytesPrefix(txhs.Bytes()), nil )
-
-	if !it.Next() {
-		return nil, leveldb.ErrNotFound
-	}
-
-	rp := &Receipt{}
-
-	err := rp.Decode( it.Value() )
-	if err != nil {
-		return nil, err
-	}
-
-	return rp, nil
-}
-
-
 func (cache *aCache) MergerBatch() *leveldb.Batch {
 
 	batch := &leveldb.Batch{}
 
 	it := cache.cdb.NewIterator(nil, nil)
+	defer it.Release()
 
 	for it.Next() {
-
 		batch.Put( it.Key(), it.Value() )
-
 	}
 
 	return batch
@@ -100,7 +60,15 @@ func (cache *aCache) Put( txhs EComm.Hash, bindex uint64, receipt []byte ) {
 
 }
 
-
 func (cache *aCache) Close() {
 	_ = cache.cdb.Close()
+}
+
+/// Reader mock impl
+func (cache *aCache) GetTransactionReceipt( txhs EComm.Hash, idx ... *indexes.Index ) (*Receipt, error) {
+	return cache.sourceReader.GetTransactionReceipt(txhs)
+}
+
+func (cache *aCache) HasTransactionReceipt( txhs EComm.Hash, idx ... *indexes.Index ) bool {
+	return cache.sourceReader.HasTransactionReceipt( txhs )
 }

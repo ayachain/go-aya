@@ -53,9 +53,6 @@ var getCmd = &cmds.Command {
 		case "EARLIEST":
 			idx, err = chain.CVFServices().Indexes().GetIndex(0)
 
-		case "MINING":
-			return ARsponse.EmitSuccessResponse(re, chain.GetTxPool().GetMiningBlock())
-
 		default:
 
 			var (

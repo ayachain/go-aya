@@ -51,6 +51,13 @@ type Transaction struct {
 
 }
 
+type ConfirmTx struct {
+	
+	Transaction
+	Time 			uint64			`json:"Time"`
+	
+}
+
 func ( trsn *Transaction ) Encode() []byte {
 
 	bs, err := json.Marshal(trsn)

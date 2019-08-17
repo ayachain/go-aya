@@ -1,90 +1,68 @@
 package assets
 
 import (
+	"context"
 	ADB "github.com/ayachain/go-aya-alvm-adb"
 	AVdbComm "github.com/ayachain/go-aya/vdb/common"
+	"github.com/ayachain/go-aya/vdb/indexes"
 	EComm "github.com/ethereum/go-ethereum/common"
-	"github.com/ipfs/go-mfs"
-	"github.com/prometheus/common/log"
+	"github.com/ipfs/go-ipfs/core"
 	"github.com/syndtr/goleveldb/leveldb"
-	"github.com/syndtr/goleveldb/leveldb/util"
-	"sync"
 )
 
 type aAssetes struct {
 
 	Services
-	*mfs.Directory
 
-	ldb *leveldb.DB
+	idxs indexes.IndexesServices
 
-	dbSnapshot *leveldb.Snapshot
-	snLock sync.RWMutex
-
-	mfsstorage *ADB.MFSStorage
+	ind *core.IpfsNode
 }
 
-func CreateServices( mdir *mfs.Directory ) Services {
+func CreateServices( ind *core.IpfsNode, idxServices indexes.IndexesServices ) Services {
+	return &aAssetes{
+		idxs:idxServices,
+		ind:ind,
+	}
+}
 
+func (api *aAssetes) AssetsOf( addr EComm.Address, idx... *indexes.Index ) ( *Assets, error ) {
+
+	var lidx *indexes.Index
 	var err error
-	api := &aAssetes{
-		Directory:mdir,
+	if len(idx) > 0 {
+
+		lidx = idx[0]
+
+	} else {
+
+		lidx, err = api.idxs.GetLatest()
+		if err != nil {
+			panic(err)
+		}
 	}
 
-	api.ldb, api.mfsstorage, err = AVdbComm.OpenExistedDB( mdir, DBPath )
+	dbroot, err, cls := AVdbComm.GetDBRoot(context.TODO(), api.ind, lidx.FullCID, DBPath)
 	if err != nil {
 		panic(err)
 	}
-
-	api.dbSnapshot, err = api.ldb.GetSnapshot()
-	if err != nil {
-		_ = api.ldb.Close()
-		log.Error(err)
-		return nil
-	}
-
-	return api
-}
-
-func (api *aAssetes) Shutdown() error {
-
-	api.snLock.Lock()
-	defer api.snLock.Unlock()
-
-	if api.dbSnapshot != nil {
-		api.dbSnapshot.Release()
-	}
-
-	//if err := api.mfsstorage.Close(); err != nil {
-	//	return err
-	//}
-
-	if err := api.ldb.Close(); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-
-func (api *aAssetes) Close() {
-	_ = api.Shutdown()
-}
-
-
-func (api *aAssetes) AssetsOf( addr EComm.Address ) ( *Assets, error ) {
-
-	api.snLock.RLock()
-	defer api.snLock.RUnlock()
-
-	bnc, err := api.dbSnapshot.Get(addr.Bytes(), nil)
-
-	if err != nil {
-		return nil, err
-	}
+	defer cls()
 
 	rcd := &Assets{}
-	if err := rcd.Decode(bnc); err != nil {
+	if err := ADB.ReadClose( dbroot, func(db *leveldb.DB ) error {
+
+		bnc, err := db.Get(addr.Bytes(), nil)
+		if err != nil {
+			return  err
+		}
+
+		if err := rcd.Decode(bnc); err != nil {
+			return err
+		}
+
+		return nil
+
+	}, DBPath); err != nil {
 		return nil, err
 	}
 
@@ -92,47 +70,6 @@ func (api *aAssetes) AssetsOf( addr EComm.Address ) ( *Assets, error ) {
 }
 
 
-func (api *aAssetes) NewCache() (AVdbComm.VDBCacheServices, error) {
-	return newCache( api.dbSnapshot )
-}
-
-
-func (api *aAssetes) OpenTransaction() (*leveldb.Transaction, error) {
-
-	tx, err := api.ldb.OpenTransaction()
-
-	if err != nil {
-		return nil, err
-	}
-
-	return tx, nil
-}
-
-
-func (api *aAssetes) UpdateSnapshot() error {
-
-	api.snLock.Lock()
-	defer api.snLock.Unlock()
-
-	if api.dbSnapshot != nil {
-		api.dbSnapshot.Release()
-	}
-
-	var err error
-	api.dbSnapshot, err = api.ldb.GetSnapshot()
-	if err != nil {
-		log.Error(err)
-		return err
-	}
-
-	return nil
-}
-
-func (api *aAssetes) SyncCache() error {
-
-	if err := api.ldb.CompactRange(util.Range{nil,nil}); err != nil {
-		log.Error(err)
-	}
-
-	return api.mfsstorage.Flush()
+func (api *aAssetes) NewWriter() (AVdbComm.VDBCacheServices, error) {
+	return newWriter( api )
 }

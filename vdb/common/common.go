@@ -7,10 +7,7 @@ import (
 	"github.com/ipfs/go-mfs"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/opt"
-	"github.com/whyrusleeping/go-logging"
 )
-
-var log = logging.MustGetLogger("AVDB")
 
 //var OpenDBOpt = &opt.Options{
 //	BlockCacher:opt.NoCacher,
@@ -21,11 +18,9 @@ var log = logging.MustGetLogger("AVDB")
 //	WriteBuffer:0,
 //}
 
-var OpenDBOpt = &opt.Options{}
+type MessageTypePrefix uint8
 
-var OpenDBReadOnlyOpt = &opt.Options{
-	ReadOnly:true,
-}
+var OpenDBOpt = &opt.Options{}
 
 var StorageDBPaths = []string{"/nodes", "/blocks", "/assets", "/receipts", "/transactions"}
 
@@ -73,21 +68,6 @@ func BigEndianBytesUint16 ( n uint16 ) []byte {
 	return enc
 }
 
-func OpenReadOnlyDB( dir *mfs.Directory, dbKey string ) (*leveldb.DB, *ADB.MFSStorage, error) {
-
-	dbstroage := ADB.NewMFSStorage(dir, dbKey)
-	if dbstroage == nil {
-		panic("create adb storage expected")
-	}
-
-	db, err := leveldb.Open(dbstroage, OpenDBReadOnlyOpt)
-
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return db, dbstroage, nil
-}
 
 func OpenExistedDB( dir *mfs.Directory, dbkey string ) ( *leveldb.DB, *ADB.MFSStorage, error ) {
 
@@ -105,31 +85,7 @@ func OpenExistedDB( dir *mfs.Directory, dbkey string ) ( *leveldb.DB, *ADB.MFSSt
 	return db, dbstroage, nil
 }
 
-func LookupDBPath( root *mfs.Root, path string ) (*mfs.Directory, error) {
 
-	nd, err := mfs.Lookup(root, path)
-
-	if err != nil {
-
-		err := mfs.Mkdir(root, path, mfs.MkdirOpts{ Mkparents:true, Flush:true })
-		if err != nil {
-			return nil, err
-		}
-
-		nd, err = mfs.Lookup(root, path)
-		if err != nil {
-			return nil, err
-		}
-
-	}
-
-	dir, ok := nd.(*mfs.Directory)
-	if !ok {
-		return nil, mfs.ErrInvalidChild
-	}
-
-	return dir, nil
-}
 
 func CacheDel( originDB *leveldb.DB, cacheDB *leveldb.DB, key []byte ) {
 
@@ -138,7 +94,7 @@ func CacheDel( originDB *leveldb.DB, cacheDB *leveldb.DB, key []byte ) {
 
 }
 
-func CacheHas( originDB *leveldb.Snapshot, cacheDB *leveldb.DB, key []byte ) (bool, error) {
+func CacheHas( originDB *leveldb.DB, cacheDB *leveldb.DB, key []byte ) (bool, error) {
 
 	exist, err := cacheDB.Has(key, nil)
 	if err != nil {
@@ -158,7 +114,7 @@ func CacheHas( originDB *leveldb.Snapshot, cacheDB *leveldb.DB, key []byte ) (bo
 	return exist, nil
 }
 
-func CacheGet( originDB *leveldb.Snapshot, cacheDB *leveldb.DB, key []byte ) ([]byte, error) {
+func CacheGet( originDB *leveldb.DB, cacheDB *leveldb.DB, key []byte ) ([]byte, error) {
 
 	exist, err := cacheDB.Has(key, nil)
 	if err != nil {

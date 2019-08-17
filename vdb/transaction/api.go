@@ -2,6 +2,7 @@ package transaction
 
 import (
 	AVdbComm "github.com/ayachain/go-aya/vdb/common"
+	"github.com/ayachain/go-aya/vdb/indexes"
 	EComm "github.com/ethereum/go-ethereum/common"
 )
 
@@ -9,30 +10,29 @@ const DBPath = "/transactions"
 
 type reader interface {
 
-	GetTxByHash( hash EComm.Hash ) (*Transaction, error)
+	GetTxByHash( hash EComm.Hash, idx... *indexes.Index ) (*Transaction, error)
 
-	GetTxByHashBs( hsbs []byte ) (*Transaction, error)
+	GetTxByHashBs( hsbs []byte, idx... *indexes.Index ) (*Transaction, error)
 
-	GetTxCount( address EComm.Address ) (uint64, error)
+	GetTxCount( address EComm.Address, idx... *indexes.Index ) (uint64, error)
 
-	GetHistoryHash( address EComm.Address, offset uint64, size uint64) []EComm.Hash
+	GetHistoryHash( address EComm.Address, offset uint64, size uint64, idx... *indexes.Index) []EComm.Hash
 
-	GetHistoryContent( address EComm.Address, offset uint64, size uint64) ([]*Transaction, error)
+	GetHistoryContent( address EComm.Address, offset uint64, size uint64, idx... *indexes.Index) ([]*Transaction, error)
 }
 
 
 type writer interface {
+
 	Put(tx *Transaction, bidx uint64)
 }
-
 
 type Services interface {
 	AVdbComm.VDBSerices
 	reader
 }
 
-
-type Caches interface {
+type MergeWriter interface {
 	AVdbComm.VDBCacheServices
 	reader
 	writer

@@ -1,11 +1,8 @@
 package block
 
 import (
-	"encoding/binary"
-	"errors"
 	AvdbComm "github.com/ayachain/go-aya/vdb/common"
-	AIndexes "github.com/ayachain/go-aya/vdb/indexes"
-	EComm "github.com/ethereum/go-ethereum/common"
+	"github.com/ayachain/go-aya/vdb/indexes"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/storage"
 )
@@ -14,100 +11,31 @@ type aCache struct {
 
 	writer
 
-	headAPI AIndexes.IndexesServices
-	source *leveldb.Snapshot
 	cdb *leveldb.DB
+
+	sourceReader *aBlocks
+
 }
 
-func newCache( sourceDB *leveldb.Snapshot, idxReader AIndexes.IndexesServices ) (Caches, error) {
+func newWriter( sread *aBlocks ) (MergeWriter, error) {
 
 	memsto := storage.NewMemStorage()
-
 	mdb, err := leveldb.Open(memsto, AvdbComm.OpenDBOpt)
 	if err != nil {
 		return nil, err
 	}
 
 	c := &aCache{
-		source:sourceDB,
+		sourceReader:sread,
 		cdb:mdb,
-		headAPI:idxReader,
 	}
 
 	return c, nil
 }
 
-func (cache *aCache) GetLatestPosBlockIndex() uint64 {
-
-	if exist, err := cache.source.Has(LatestPosBlockIdxKey, nil); err != nil {
-
-		panic(err)
-
-	} else if !exist {
-
-		return 0
-
-	} else {
-
-		if bs, err := cache.source.Get(LatestPosBlockIdxKey, nil); err != nil {
-
-			return 0
-
-		} else {
-
-			return binary.BigEndian.Uint64(bs)
-
-		}
-
-	}
-
-}
-
+/// Writer
 func (cache *aCache) SetLatestPosBlockIndex( idx uint64 ) {
 	_ = cache.cdb.Put(LatestPosBlockIdxKey, AvdbComm.BigEndianBytes(idx), AvdbComm.WriteOpt)
-}
-
-func (cache *aCache) GetBlocks( hashOrIndex...interface{} ) ([]*Block, error) {
-
-	var blist []*Block
-
-	for _, v := range hashOrIndex {
-
-		var bhash EComm.Hash
-
-		switch v.(type) {
-
-		case uint64:
-
-			hd, err := cache.headAPI.GetIndex(v.(uint64))
-			if err != nil {
-				return nil, err
-			}
-			bhash = hd.Hash
-
-
-		case EComm.Hash:
-			bhash = v.(EComm.Hash)
-
-
-		default:
-			return nil, errors.New("input params must be a index(uint64) or cid object")
-		}
-
-		dbval, err := AvdbComm.CacheGet( cache.source, cache.cdb, bhash.Bytes() )
-		if err != nil {
-			return nil, err
-		}
-
-		subBlock := &Block{}
-		if err := subBlock.Decode(dbval); err != nil {
-			return nil, err
-		}
-
-		blist = append(blist, subBlock)
-	}
-
-	return blist, nil
 }
 
 func (cache *aCache) AppendBlocks( blocks...*Block ) {
@@ -139,12 +67,12 @@ func (cache *aCache) Close() {
 	_ = cache.cdb.Close()
 }
 
-
 func (cache *aCache) MergerBatch() *leveldb.Batch {
 
 	batch := &leveldb.Batch{}
 
 	it := cache.cdb.NewIterator(nil, nil)
+	defer it.Release()
 
 	for it.Next() {
 
@@ -153,4 +81,17 @@ func (cache *aCache) MergerBatch() *leveldb.Batch {
 	}
 
 	return batch
+}
+
+/// Reader mock impl
+func (cache *aCache) GetLatestBlock() (*Block, error) {
+	return cache.sourceReader.GetLatestBlock()
+}
+
+func (cache *aCache) GetBlocks( hashOrIndex...interface{} ) ([]*Block, error) {
+	return cache.sourceReader.GetBlocks(hashOrIndex...)
+}
+
+func (cache *aCache) GetLatestPosBlockIndex( idx ... *indexes.Index ) uint64 {
+	return cache.sourceReader.GetLatestPosBlockIndex()
 }

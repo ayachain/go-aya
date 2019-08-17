@@ -2,239 +2,326 @@ package chain
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
+	AMinerPool "github.com/ayachain/go-aya/chain/minerpool"
 	"github.com/ayachain/go-aya/chain/txpool"
-	ACore "github.com/ayachain/go-aya/consensus/core"
-	ACIMPL "github.com/ayachain/go-aya/consensus/impls"
+	"github.com/ayachain/go-aya/consensus/core/worker"
+	AMsgCenter "github.com/ayachain/go-aya/consensus/msgcenter"
 	"github.com/ayachain/go-aya/vdb"
-	ABlock "github.com/ayachain/go-aya/vdb/block"
-	"github.com/ayachain/go-aya/vdb/indexes"
-	ATx "github.com/ayachain/go-aya/vdb/transaction"
-	EAccount "github.com/ethereum/go-ethereum/accounts"
-	"github.com/ipfs/go-datastore"
+	ACBlock "github.com/ayachain/go-aya/vdb/block"
+	ACInfo "github.com/ayachain/go-aya/vdb/chaininfo"
+	AIndexs "github.com/ayachain/go-aya/vdb/indexes"
+	AMBlock "github.com/ayachain/go-aya/vdb/mblock"
+	AMinied "github.com/ayachain/go-aya/vdb/minined"
+	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-ipfs/core"
+	"github.com/ipfs/go-ipfs/pin"
 	"github.com/prometheus/common/log"
+	"time"
 )
 
 var(
 	ErrAlreadyExistConnected		= errors.New("chan already exist connected")
 	ErrCantLinkToChainExpected		= errors.New("not found chain in Aya")
+	ErrMergeFailed					= errors.New("CVFS merge failed")
+	ErrMergeInvalidChainID			= errors.New("invalid chain id")
+	ErrMergeInvalidLatest			= errors.New("invalid latest block")
+	ErrMergeNonlinear				= errors.New("nonlinear merge batch ")
+	ErrMergeUnlinkCVFS				= errors.New("can not link target CVFS")
 )
 
-const (
-	AChainMapKey = "aya.chain.list.map"
-)
+const  AChainMapKey = "aya.chain.list.map"
 
-type AyaChain interface {
+type Chain interface {
 
 	Disconnect()
 
 	CVFServices() vdb.CVFS
 
 	GetTxPool() *txpool.ATxPool
-
-	PublishTx(tx *ATx.Transaction) error
 }
-
 
 type aChain struct {
 
-	AyaChain
+	Chain
 
-	/// Because in Aya, all data must be stored by the core technology of ipfs, and some
-	/// module configurations may depend on IPFSNode, we save this node instance in our
-	/// chain structure, ready for use.
+	ChainId string
+
 	INode *core.IpfsNode
 
-	/// Our Abstract notary structure, in fact, is to better express the operation process
-	/// of the consensus mechanism. We are compared to a "person" serving the node, and
-	/// this person is the same on all nodes. For details, please refer to the corresponding
-	/// documents.
-	Notary ACore.Notary
-
-	/// When you want to close the link of this example, use it. All threads will listen
-	/// for the end and then enter the terminator.generally, it is called in Disslink in the
-	/// AChain interface.
-	ctxCancel context.CancelFunc
+	MainCVFS vdb.CVFS
 
 	TxPool* txpool.ATxPool
 
-	ChainId string
+	Indexs AIndexs.IndexesServices
+
+	AMC AMsgCenter.MessageCenter
+
+	AMP AMinerPool.MinerPool
+
+	CancelCh chan struct{}
 }
 
-var chains = make(map[string]AyaChain)
-
-func Conn( ctx context.Context, chainId string, ind *core.IpfsNode, acc EAccount.Account ) error {
-
-	maplist, err := GenBlocksMap(ind)
-	if err != nil {
-		return err
-	}
-
-	genBlock, exist := maplist[chainId]
-	if !exist {
-		return errors.New(`can't find the corresponding chain, did you not execute "add"`)
-	}
-
-	_, exist = chains[genBlock.ChainID]
-	if exist {
-		return ErrAlreadyExistConnected
-	}
-
-	idxs := indexes.CreateServices(ind, genBlock.ChainID, false)
-	if idxs == nil {
-		return errors.New(`can't find the corresponding chain, did you not execute "add"`)
-	}
-	defer func() {
-		if err := idxs.Close(); err != nil {
-			log.Error(err)
-		}
-	}()
-
-	lidx, err := idxs.GetLatest()
-	if err != nil {
-		log.Error(err)
-		return err
-	}
-	log.Infof("Read Block: %08d CID: %v", lidx.BlockIndex, lidx.FullCID.String())
-
-	vdbfs, err := vdb.LinkVFS(genBlock.ChainID, ind, idxs)
-	if err != nil {
-		return ErrCantLinkToChainExpected
-	}
-	defer func() {
-		if err := vdbfs.Close(); err != nil {
-			log.Error(err)
-		}
-	}()
-
-	notary, err := ACIMPL.CreateNotary( genBlock.Consensus, ind )
-	if err != nil {
-		return err
-	}
-
-	poolCtx, cancel := context.WithCancel( ctx )
-
-	ac := &aChain{
-		INode:ind,
-		Notary:notary,
-		ChainId:genBlock.ChainID,
-		TxPool:txpool.NewTxPool( ind, genBlock, vdbfs, notary, acc),
-		ctxCancel:cancel,
-	}
-
-	chains[genBlock.ChainID] = ac
+func (chain *aChain) LinkStart( ctx context.Context ) error {
 
 	go func() {
 
-		select {
-		case <- ctx.Done():
-			delete(chains, ac.ChainId)
+		sctx, cancel := context.WithCancel(ctx)
+		defer cancel()
 
-		case <- poolCtx.Done():
-			delete(chains, ac.ChainId)
+		for {
+
+			select {
+			case tmsg := <- chain.AMC.TrustMessage():
+				chain.TrustMessageSwitcher(sctx, tmsg)
+
+			case <- ctx.Done():
+				return
+			}
 
 		}
 
 	}()
 
-	if err := ac.TxPool.PowerOnAndLoop(poolCtx); err != nil {
-		return err
+	txPoolCtx, cancel1 := context.WithCancel(ctx)
+	defer cancel1()
+
+	amcCtx, cancel2 := context.WithCancel(ctx)
+	defer cancel2()
+
+	go chain.TxPool.PowerOn(txPoolCtx)
+
+	go chain.AMC.StartListen(amcCtx, chain.ChainId, chain.INode)
+
+	select {
+	case <- chain.CancelCh:
+		return nil
+
+	case <- txPoolCtx.Done():
+		return nil
+
+	case <- amcCtx.Done():
+		return nil
+
+	case <- ctx.Done():
+		return nil
 	}
-
-	return nil
-}
-
-func GenBlocksMap( ind *core.IpfsNode ) (map[string]*ABlock.GenBlock, error) {
-
-	dsk := datastore.NewKey(AChainMapKey)
-	val, err := ind.Repo.Datastore().Get(dsk)
-
-	if err != nil {
-		if err != datastore.ErrNotFound {
-			return nil, err
-		}
-	}
-
-	rmap := make(map[string]*ABlock.GenBlock)
-	if val != nil {
-
-		if err := json.Unmarshal( val, &rmap ); err != nil {
-			return nil, err
-		}
-
-	}
-
-	return rmap, nil
-}
-
-func AddChain( genBlock *ABlock.GenBlock, ind *core.IpfsNode, r bool ) error {
-
-	maplist, err := GenBlocksMap(ind)
-	if err != nil {
-		return err
-	}
-
-	_, exist := maplist[genBlock.ChainID]
-	if exist && !r {
-		return errors.New("chain are already exist")
-	}
-
-	// Create indexes
-	idxServer := indexes.CreateServices(ind, genBlock.ChainID, r)
-	if idxServer == nil {
-		return errors.New("create chain indexes services failed")
-	}
-	defer func() {
-		if err := idxServer.Close(); err != nil {
-			log.Error(err)
-		}
-	}()
-
-	// Create CVFS and write genBlock
-	if _, err := vdb.CreateVFS(genBlock, ind, idxServer); err != nil {
-		return err
-	}
-
-	maplist[genBlock.ChainID] = genBlock
-	bs, err := json.Marshal(maplist)
-	if err != nil {
-		return err
-	}
-
-	dsk := datastore.NewKey(AChainMapKey)
-	if err := ind.Repo.Datastore().Put( dsk, bs ); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func GetChainByIdentifier(chainId string) AyaChain {
-	return chains[chainId]
-}
-
-func DisconnectionAll() {
-
-	for _, chain := range chains {
-		chain.Disconnect()
-	}
-
 }
 
 func (chain *aChain) Disconnect() {
-	chain.ctxCancel()
+	chain.CancelCh <- struct{}{}
 }
 
 func (chain *aChain) GetTxPool() *txpool.ATxPool {
 	return chain.TxPool
 }
 
-func (chain *aChain) PublishTx(tx *ATx.Transaction) error {
-	return chain.TxPool.PublishTx( tx )
+func (chain *aChain) CVFServices() vdb.CVFS {
+	return chain.MainCVFS
 }
 
-func (chain *aChain) CVFServices() vdb.CVFS {
-	return chain.TxPool.ReadOnlyCVFS()
+func (chain *aChain) TrustMessageSwitcher( ctx context.Context, msg []byte ) {
+
+	switch msg[0] {
+
+	case AMBlock.MessagePrefix:
+
+		mblock := &AMBlock.MBlock{}
+		if err := mblock.Decode(msg[1:]); err != nil {
+			return
+		}
+
+		go func() {
+
+			mret := chain.AMP.PutTask(ctx, AMinerPool.NewTask( mblock ), time.Second * 60)
+			if mret.Err != nil {
+				log.Warn(mret.Err)
+				return
+			}
+
+			if err := chain.AMC.PublishMessage( &AMinied.Minined {
+				MBlock:mblock,
+				Batcher:mret.Batcher.Upload(chain.INode),
+
+			}, AMsgCenter.GetChannelTopics(mblock.ChainID, AMsgCenter.MessageChannelBatcher) ); err != nil {
+				log.Warn(err)
+			}
+
+			return
+
+		}()
+
+
+	case AMinied.MessagePrefix:
+
+		batcher := &AMinied.Minined{}
+		if err := batcher.Decode(msg[1:]); err != nil {
+			return
+		}
+
+		if cinfo, err := chain.ForkMergeBatch(ctx, batcher); err != nil {
+
+			log.Warn(err)
+			return
+
+		} else {
+
+			if err := chain.AMC.PublishMessage( cinfo, AMsgCenter.GetChannelTopics(batcher.MBlock.ChainID, AMsgCenter.MessageChannelAppend)); err != nil {
+				log.Warn(err)
+				return
+			}
+
+		}
+
+		return
+
+	case ACInfo.MessagePrefix:
+
+		cinfo := &ACInfo.ChainInfo{}
+		if err := cinfo.Decode(msg[1:]); err != nil {
+			return
+		}
+
+		/// check chain id
+		if cinfo.ChainID != chain.ChainId {
+			return
+		}
+
+		/// check block index
+		lidx, err := chain.Indexs.GetLatest()
+		if err != nil || lidx == nil {
+
+			/// if this chain's current index services has error, use new chain info.
+			if err := chain.Indexs.SyncToCID(cinfo.FinalCVFS); err != nil {
+				panic(err)
+			}
+
+			return
+		}
+
+		/// local node's chain is longer
+		if lidx.BlockIndex >= cinfo.BlockIndex {
+			return
+
+		} else {
+
+			/// chain info's chain is longer use it
+			if err := chain.Indexs.SyncToCID(cinfo.Indexes); err != nil {
+				log.Error(err)
+				return
+			}
+
+		}
+
+		/// appended a new block success, pin this block create's new data
+		lidx, err = chain.Indexs.GetLatest()
+		if err != nil {
+			panic(err)
+		}
+
+		lblock, err := chain.MainCVFS.Blocks().GetLatestBlock()
+		if err != nil {
+			panic(err)
+		}
+
+		chain.INode.Pinning.PinWithMode( lblock.Txs, pin.Any )
+	}
+
+}
+
+func (chain *aChain) ForkMergeBatch( ctx context.Context, mret *AMinied.Minined ) (*ACInfo.ChainInfo, error) {
+
+	if mret.MBlock.ChainID != chain.ChainId {
+		return nil, ErrMergeInvalidChainID
+	}
+
+	lidx, err := chain.Indexs.GetLatest()
+	if err != nil {
+		return nil, ErrMergeInvalidLatest
+	}
+
+	if mret.MBlock.Index - lidx.BlockIndex != 1 {
+		return nil, ErrMergeNonlinear
+	}
+
+	/// Read batcher
+	rctx, cancel := context.WithTimeout(ctx, time.Second * 32)
+	batcher := taskBatchGroupFromCID(rctx, chain.INode, mret.Batcher)
+	defer cancel()
+	if rctx.Err() != nil {
+		return nil, rctx.Err()
+	}
+
+	/// Create confirm block
+	cblock := mret.MBlock.Confirm( mret.Batcher.String() )
+	if cblock == nil {
+		return nil, ErrMergeFailed
+	}
+
+	/// Append confirm block
+	batcher.Put(ACBlock.DBPath, cblock.GetHash().Bytes(), cblock.Encode() )
+
+	/// try merge
+	ccid, err := chain.MainCVFS.ForkMergeBatch(batcher)
+	if err != nil {
+		return nil, ErrMergeFailed
+	}
+
+	/// try fork merge
+	idxfcid, err := AIndexs.ForkMerge(chain.INode, chain.ChainId, &AIndexs.Index{
+		BlockIndex:mret.MBlock.Block.Index,
+		Hash:cblock.GetHash(),
+		FullCID:ccid,
+	})
+
+	if err != nil || idxfcid == cid.Undef {
+		return nil, err
+	}
+
+	/// create chain info waiting review
+	finfo := &ACInfo.ChainInfo{
+		ChainID:mret.MBlock.ChainID,
+		Indexes:idxfcid,
+	}
+
+	return finfo, nil
+}
+
+func taskBatchGroupFromCID ( ctx context.Context, ind *core.IpfsNode, c cid.Cid) *worker.TaskBatchGroup {
+
+	reply := make(chan *worker.TaskBatchGroup)
+	defer close(reply)
+
+	go func() {
+
+		blk, err := ind.Blocks.GetBlock(ctx, c)
+		if err != nil {
+			reply <- nil
+			return
+		}
+
+		if blk == nil || blk.RawData() == nil {
+			reply <- nil
+			return
+		}
+
+		batch := &worker.TaskBatchGroup{}
+		if err := batch.Decode(blk.RawData()); err != nil {
+			reply <- nil
+			return
+		} else {
+
+			reply <- batch
+			return
+		}
+
+	}()
+
+	select {
+	case <- ctx.Done():
+		return nil
+
+	case b := <- reply:
+		return b
+	}
 }

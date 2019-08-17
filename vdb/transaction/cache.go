@@ -1,26 +1,27 @@
 package transaction
 
 import (
+	"context"
 	"encoding/binary"
-	"fmt"
+	ADB "github.com/ayachain/go-aya-alvm-adb"
 	AvdbComm "github.com/ayachain/go-aya/vdb/common"
+	"github.com/ayachain/go-aya/vdb/indexes"
 	EComm "github.com/ethereum/go-ethereum/common"
-	"github.com/pkg/errors"
+	"github.com/prometheus/common/log"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/storage"
-	"github.com/syndtr/goleveldb/leveldb/util"
 )
 
 type aCache struct {
 
-	Caches
+	MergeWriter
 
-	source *leveldb.Snapshot
+	sourceReader *aTransactions
+
 	cdb *leveldb.DB
 }
 
-
-func newCache( sourceDB *leveldb.Snapshot ) (Caches, error) {
+func newWriter( sreader *aTransactions ) (MergeWriter, error) {
 
 	memsto := storage.NewMemStorage()
 
@@ -30,7 +31,7 @@ func newCache( sourceDB *leveldb.Snapshot ) (Caches, error) {
 	}
 
 	c := &aCache{
-		source:sourceDB,
+		sourceReader:sreader,
 		cdb:mdb,
 	}
 
@@ -39,163 +40,140 @@ func newCache( sourceDB *leveldb.Snapshot ) (Caches, error) {
 
 func (cache *aCache) Put(tx *Transaction, bidx uint64) {
 
-	countKey := append(TxOutCountPrefix, tx.From.Bytes()... )
-
-	exist, err := AvdbComm.CacheHas(cache.source, cache.cdb, countKey)
+	lidx, err := cache.sourceReader.idxs.GetLatest()
 	if err != nil {
 		panic(err)
 	}
 
-	var txcount uint64 = 0
-	if exist {
+	dbroot, err, cls := AvdbComm.GetDBRoot(context.TODO(), cache.sourceReader.ind, lidx.FullCID, DBPath)
+	if err != nil {
+		panic(err)
+	}
+	defer cls()
 
-		cbs, err := AvdbComm.CacheGet(cache.source, cache.cdb, countKey)
+	if err := ADB.ReadClose( dbroot, func(db *leveldb.DB) error {
+
+		countKey := append(TxOutCountPrefix, tx.From.Bytes()... )
+
+		exist, err := AvdbComm.CacheHas(db, cache.cdb, countKey)
 		if err != nil {
 			panic(err)
 		}
 
-		txcount = binary.BigEndian.Uint64(cbs)
-	}
+		var txcount uint64 = 0
+		if exist {
 
-	key := append(tx.GetHash256().Bytes(), AvdbComm.BigEndianBytes(bidx)...)
-
-	tx.BlockIndex = bidx
-
-	if err := cache.cdb.Put(key, tx.Encode(), AvdbComm.WriteOpt); err != nil {
-		panic(err)
-	}
-
-	// Block index resolve
-	tx.BlockIndex = 0
-
-	txcount ++
-
-	if err := cache.cdb.Put( countKey, AvdbComm.BigEndianBytes(txcount), AvdbComm.WriteOpt ); err != nil {
-		panic(err)
-	}
-
-	// Write from tx history
-	fromTxTotalKey := append(TxTotalCountPrefix, tx.From.Bytes()...)
-	toTxTotalKey := append(TxTotalCountPrefix, tx.To.Bytes()...)
-
-	var (
-		fromTxTotal uint64 = 0
-		toTxTotal uint64 = 0
-	)
-
-	// from tx total key exist
-	fttke, err := AvdbComm.CacheHas(cache.source, cache.cdb, fromTxTotalKey)
-	if err != nil {
-
-		panic(err)
-
-	} else {
-
-		if fttke {
-
-			cbs, err := AvdbComm.CacheGet(cache.source, cache.cdb, fromTxTotalKey)
+			cbs, err := AvdbComm.CacheGet(db, cache.cdb, countKey)
 			if err != nil {
 				panic(err)
 			}
 
-			fromTxTotal = binary.BigEndian.Uint64(cbs)
-
+			txcount = binary.BigEndian.Uint64(cbs)
 		}
 
-		hkey := append(TxHistoryPrefix, tx.From.Bytes()... )
-		hkey = append(hkey, AvdbComm.BigEndianBytes(fromTxTotal)...)
+		key := append(tx.GetHash256().Bytes(), AvdbComm.BigEndianBytes(bidx)...)
 
-		fromTxTotal ++
+		tx.BlockIndex = bidx
 
-		// Update total count
-		if err := cache.cdb.Put( fromTxTotalKey, AvdbComm.BigEndianBytes(fromTxTotal), AvdbComm.WriteOpt ); err != nil {
+		if err := cache.cdb.Put(key, tx.Encode(), AvdbComm.WriteOpt); err != nil {
 			panic(err)
 		}
 
-		// insert history indexes
-		if err := cache.cdb.Put( hkey, key, AvdbComm.WriteOpt ); err != nil {
+		// Block index resolve
+		tx.BlockIndex = 0
+
+		txcount ++
+
+		if err := cache.cdb.Put( countKey, AvdbComm.BigEndianBytes(txcount), AvdbComm.WriteOpt ); err != nil {
 			panic(err)
 		}
 
-	}
+		// Write from tx history
+		fromTxTotalKey := append(TxTotalCountPrefix, tx.From.Bytes()...)
+		toTxTotalKey := append(TxTotalCountPrefix, tx.To.Bytes()...)
 
-	// to tx total key exist
-	tttke, err :=  AvdbComm.CacheHas(cache.source, cache.cdb, toTxTotalKey)
-	if err != nil {
+		var (
+			fromTxTotal uint64 = 0
+			toTxTotal uint64 = 0
+		)
 
-		panic(err)
+		// from tx total key exist
+		fttke, err := AvdbComm.CacheHas(db, cache.cdb, fromTxTotalKey)
+		if err != nil {
 
-	} else {
-
-		if tttke {
-
-			cbs, err := AvdbComm.CacheGet(cache.source, cache.cdb, toTxTotalKey)
-			if err != nil {
-				panic(err)
-			}
-
-			toTxTotal = binary.BigEndian.Uint64(cbs)
-		}
-
-		hkey := append(TxHistoryPrefix, tx.To.Bytes()... )
-		hkey = append(hkey, AvdbComm.BigEndianBytes(toTxTotal)...)
-
-		toTxTotal ++
-
-		// Update total count
-		if err := cache.cdb.Put( toTxTotalKey, AvdbComm.BigEndianBytes(toTxTotal), AvdbComm.WriteOpt ); err != nil {
 			panic(err)
-		}
 
-		// insert history indexes
-		if err := cache.cdb.Put( hkey, key, AvdbComm.WriteOpt ); err != nil {
-			panic(err)
-		}
-
-	}
-
-}
-
-func (cache *aCache) GetTxByHash( hash EComm.Hash ) (*Transaction, error) {
-
-	tx := &Transaction{}
-
-	val, err := AvdbComm.CacheGet(cache.source, cache.cdb, hash.Bytes())
-	if err != nil {
-		return nil, err
-	}
-
-	if err := tx.Decode(val); err != nil {
-		return nil, fmt.Errorf("%v can't found transaction", hash.String())
-	}
-
-	return tx, nil
-}
-
-func (cache *aCache) GetTxByHashBs( hsbs []byte ) (*Transaction, error) {
-
-	hash := EComm.BytesToHash(hsbs)
-
-	return cache.GetTxByHash(hash)
-}
-
-func (cache *aCache) GetTxCount( address EComm.Address ) (uint64, error) {
-
-	key := append(TxOutCountPrefix, address.Bytes()... )
-
-	v, err := AvdbComm.CacheGet( cache.source, cache.cdb, key )
-
-	if err != nil {
-
-		if err == leveldb.ErrNotFound {
-			return 0, nil
 		} else {
-			return 0, err
+
+			if fttke {
+
+				cbs, err := AvdbComm.CacheGet(db, cache.cdb, fromTxTotalKey)
+				if err != nil {
+					panic(err)
+				}
+
+				fromTxTotal = binary.BigEndian.Uint64(cbs)
+
+			}
+
+			hkey := append(TxHistoryPrefix, tx.From.Bytes()... )
+			hkey = append(hkey, AvdbComm.BigEndianBytes(fromTxTotal)...)
+
+			fromTxTotal ++
+
+			// Update total count
+			if err := cache.cdb.Put( fromTxTotalKey, AvdbComm.BigEndianBytes(fromTxTotal), AvdbComm.WriteOpt ); err != nil {
+				panic(err)
+			}
+
+			// insert history indexes
+			if err := cache.cdb.Put( hkey, key, AvdbComm.WriteOpt ); err != nil {
+				panic(err)
+			}
+
 		}
 
+		// to tx total key exist
+		tttke, err :=  AvdbComm.CacheHas(db, cache.cdb, toTxTotalKey)
+		if err != nil {
+
+			panic(err)
+
+		} else {
+
+			if tttke {
+
+				cbs, err := AvdbComm.CacheGet(db, cache.cdb, toTxTotalKey)
+				if err != nil {
+					panic(err)
+				}
+
+				toTxTotal = binary.BigEndian.Uint64(cbs)
+			}
+
+			hkey := append(TxHistoryPrefix, tx.To.Bytes()... )
+			hkey = append(hkey, AvdbComm.BigEndianBytes(toTxTotal)...)
+
+			toTxTotal ++
+
+			// Update total count
+			if err := cache.cdb.Put( toTxTotalKey, AvdbComm.BigEndianBytes(toTxTotal), AvdbComm.WriteOpt ); err != nil {
+				panic(err)
+			}
+
+			// insert history indexes
+			if err := cache.cdb.Put( hkey, key, AvdbComm.WriteOpt ); err != nil {
+				panic(err)
+			}
+
+		}
+
+		return nil
+
+	}, DBPath ); err != nil {
+		log.Error(err)
 	}
 
-	return binary.BigEndian.Uint64(v), nil
 }
 
 func (cache *aCache) Close() {
@@ -207,6 +185,7 @@ func (cache *aCache) MergerBatch() *leveldb.Batch {
 	batch := &leveldb.Batch{}
 
 	it := cache.cdb.NewIterator(nil, nil)
+	defer it.Release()
 
 	for it.Next() {
 
@@ -217,65 +196,23 @@ func (cache *aCache) MergerBatch() *leveldb.Batch {
 	return batch
 }
 
-
-func (cache *aCache) GetHistoryHash( address EComm.Address, offset uint64, size uint64) []EComm.Hash {
-
-	itkey := append(TxHistoryPrefix, address.Bytes()...)
-
-	it := cache.source.NewIterator( util.BytesPrefix(itkey), nil )
-
-	var hashs []EComm.Hash
-
-	for it.Next() {
-		hashs = append(hashs, EComm.BytesToHash(it.Value()))
-	}
-
-	return hashs
-
+/// Reader mock impl
+func (cache *aCache) GetTxByHash( hash EComm.Hash, idx ... *indexes.Index ) (*Transaction, error) {
+	return cache.sourceReader.GetTxByHash(hash)
 }
 
-func (cache *aCache) GetHistoryContent( address EComm.Address, offset uint64, size uint64) ([]*Transaction, error) {
+func (cache *aCache) GetTxByHashBs( hsbs []byte, idx ... *indexes.Index ) (*Transaction, error) {
+	return cache.sourceReader.GetTxByHashBs(hsbs)
+}
 
-	itkey := append(TxHistoryPrefix, address.Bytes()...)
+func (cache *aCache) GetTxCount( address EComm.Address, idx ... *indexes.Index ) (uint64, error) {
+	return cache.sourceReader.GetTxCount(address)
+}
 
-	it := cache.source.NewIterator( util.BytesPrefix(itkey), nil )
-	defer it.Release()
+func (cache *aCache) GetHistoryHash( address EComm.Address, offset uint64, size uint64, idx ... *indexes.Index ) []EComm.Hash {
+	return cache.sourceReader.GetHistoryHash(address, offset, size)
+}
 
-	var txs []*Transaction
-
-	if offset > 0 {
-
-		seekKey := append(itkey, AvdbComm.BigEndianBytes(offset)...)
-
-		if !it.Seek(seekKey) {
-			return nil, errors.New("seek history key expected ")
-		}
-	}
-
-	s := uint64(0)
-
-	for it.Next() {
-
-		if s >= size - 1 {
-			break
-		}
-
-		bs, err := cache.source.Get(it.Value(), nil)
-		if err != nil {
-			return nil, err
-		}
-
-		tx := &Transaction{}
-
-		if err := tx.Decode(bs); err != nil {
-			return nil, err
-		}
-
-		txs = append(txs, tx)
-
-		s ++
-	}
-
-	return txs, nil
-
+func (cache *aCache) GetHistoryContent( address EComm.Address, offset uint64, size uint64, idx ... *indexes.Index ) ([]*Transaction, error) {
+	return cache.sourceReader.GetHistoryContent(address, offset, size)
 }

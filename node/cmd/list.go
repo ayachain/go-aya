@@ -6,6 +6,7 @@ import (
 	ARsponse "github.com/ayachain/go-aya/response"
 	ANode "github.com/ayachain/go-aya/vdb/node"
 	cmds "github.com/ipfs/go-ipfs-cmds"
+	"github.com/syndtr/goleveldb/leveldb"
 )
 
 var listCMD = &cmds.Command{
@@ -24,19 +25,27 @@ var listCMD = &cmds.Command{
 			return ARsponse.EmitErrorResponse(re, errors.New("not exist chain connection") )
 		}
 
-		it := chain.CVFServices().Nodes().GetSnapshot().NewIterator(nil, nil)
-
 		var retlist[] *ANode.Node
+		if err := chain.CVFServices().Nodes().DoRead(func(db *leveldb.DB) error {
 
-		for it.Next() {
+			it := db.NewIterator(nil, nil)
+			defer it.Release()
 
-			nd := &ANode.Node{}
+			for it.Next() {
 
-			if err := nd.Decode(it.Value()); err != nil {
-				continue
-			} else {
-				retlist = append(retlist, nd)
+				nd := &ANode.Node{}
+
+				if err := nd.Decode(it.Value()); err != nil {
+					continue
+				} else {
+					retlist = append(retlist, nd)
+				}
 			}
+
+			return nil
+
+		}); err != nil {
+			return ARsponse.EmitErrorResponse(re, err)
 		}
 
 		return ARsponse.EmitSuccessResponse(re, retlist)
