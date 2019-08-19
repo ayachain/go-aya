@@ -77,6 +77,7 @@ func Conn( ctx context.Context, chainId string, ind *core.IpfsNode, acc EAccount
 	}
 
 	chains.Store(genBlock.ChainID, ac)
+	defer chains.Delete(genBlock.ChainID)
 
 	sctx, cancel := context.WithCancel(ctx)
 	defer cancel()

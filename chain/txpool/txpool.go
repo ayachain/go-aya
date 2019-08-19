@@ -192,7 +192,6 @@ func (pool *ATxPool) DoPackMBlock() error {
 	}
 
 	return pool.miningBlockBroadcastFun(mblock)
-
 }
 
 func (pool *ATxPool) ElectoralServices() AElectoral.MemServices {
