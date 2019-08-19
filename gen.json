@@ -1,12 +1,8 @@
 {
-  "Index": 0,
   "Chainid": "main",
   "Parent": "f919678e3089f1da5b4eac138c86efa0461555223f71f0d53a5a1ea9472834a0",
   "Timestamp": 1564199977,
   "Append": "SSUyMHJlc2VydmVkJTIwYW4lMjBpbXBvcnRhbnQlMjBtZXNzYWdlJTIwaW4lMjBwYXJlbnQlMjBoYXNoLg==",
-  "ExtraData": "",
-  "Txc": 0,
-  "Txs": "",
   "Consensus": "APOS",
   "Award": {
     "0xB137D22eD06f22A3C6E2C5fdeAB49C612678bd6F": 1000000000000,
