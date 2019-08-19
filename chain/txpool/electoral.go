@@ -140,13 +140,13 @@ func doPingsAndElectoral( ctx context.Context, pool *ATxPool, awaiter *sync.Wait
 	awaiter.Add(1)
 	defer awaiter.Done()
 
-	ptimer := time.NewTimer(time.Second * 10)
-	defer ptimer.Stop()
+	pticker := time.NewTicker(time.Second * 10)
+	defer pticker.Stop()
 
 	for {
 
 		select {
-		case <- ptimer.C :
+		case <- pticker.C :
 
 			superNodes := pool.cvfs.Nodes().GetSuperNodeList()
 
