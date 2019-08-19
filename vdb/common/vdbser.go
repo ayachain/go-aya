@@ -2,10 +2,13 @@ package common
 
 import (
 	"context"
+	ADB "github.com/ayachain/go-aya-alvm-adb"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-ipfs/core"
 	"github.com/ipfs/go-merkledag"
 	"github.com/ipfs/go-mfs"
+	"github.com/ipfs/go-unixfs"
+	"github.com/prometheus/common/log"
 	"github.com/syndtr/goleveldb/leveldb"
 )
 
@@ -67,13 +70,28 @@ func GetDBRoot( ctx context.Context, ind *core.IpfsNode, vcid cid.Cid, dbpath st
 
 	vdir, err := LookupDBPath(mroot, dbpath)
 	if err != nil {
-
 		_ = mroot.Close()
 		return nil, err, nil
+	}
+
+	// is a empty db
+	vnd, err := vdir.GetNode()
+	if err != nil {
+		_ = mroot.Close()
+		return nil, err, nil
+	}
+
+	if vnd.Cid() == unixfs.EmptyDirNode().Cid() {
+		// create this
+		if err := ADB.CreateEmptyDB(vdir); err != nil {
+			log.Error(err)
+			return nil, err, nil
+		}
+
+		_ = vdir.Flush()
 	}
 
 	return vdir, nil, func() {
 		_ = mroot.Close()
 	}
-
 }
