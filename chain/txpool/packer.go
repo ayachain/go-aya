@@ -2,6 +2,7 @@ package txpool
 
 import (
 	"context"
+	ASD "github.com/ayachain/go-aya/chain/sdaemon/common"
 	AElectoral "github.com/ayachain/go-aya/vdb/electoral"
 	"github.com/ayachain/go-aya/vdb/node"
 	peer "github.com/libp2p/go-libp2p-peer"
@@ -13,10 +14,10 @@ import (
 	"time"
 )
 
-func (pool *ATxPool) threadElectoralAndPacker ( ctx context.Context ) {
+func (pool *aTxPool) threadElectoralAndPacker ( ctx context.Context ) {
 
-	log.Info("ATxPool Thread On: " + ATxPoolThreadElectoral)
-	defer log.Info("ATxPool Thread Off: " + ATxPoolThreadElectoral)
+	log.Info("ATxPool Thread On: " + ATxPoolThreadTxPackage)
+	defer log.Info("ATxPool Thread Off: " + ATxPoolThreadTxPackage)
 
 	ctx1, cancel1 := context.WithCancel(ctx)
 	ctx2, cancel2 := context.WithCancel(ctx)
@@ -50,12 +51,12 @@ func (pool *ATxPool) threadElectoralAndPacker ( ctx context.Context ) {
 	return
 }
 
-func subscribeThread( ctx context.Context, pool *ATxPool, awaiter *sync.WaitGroup ) {
+func subscribeThread( ctx context.Context, pool *aTxPool, awaiter *sync.WaitGroup ) {
 
 	awaiter.Add(1)
 	defer awaiter.Done()
 
-	sub, err := pool.ind.PubSub.Subscribe( pool.channelTopics[ATxPoolThreadElectoral] )
+	sub, err := pool.ind.PubSub.Subscribe( pool.channelTopics[ATxPoolThreadTxPackage] )
 	if err != nil {
 		return
 	}
@@ -91,10 +92,31 @@ func subscribeThread( ctx context.Context, pool *ATxPool, awaiter *sync.WaitGrou
 
 }
 
-func winerListnerThread( ctx context.Context, pool *ATxPool, awaiter *sync.WaitGroup ) {
+func winerListnerThread( ctx context.Context, pool *aTxPool, awaiter *sync.WaitGroup ) {
 
 	awaiter.Add(1)
 	defer awaiter.Done()
+
+	/// chain core event observer
+	_ = pool.asd.AddTimeoutObserver(func(s ASD.Signal) {
+
+		switch s {
+		case ASD.SignalObserved:
+
+		case ASD.SignalInterrupt:
+
+		case ASD.SignalDoPacking:
+
+		case ASD.SignalDoMining:
+
+		case ASD.SignalDoReceipting:
+
+		case ASD.SignalDoConfirming:
+
+		case ASD.SignalOnConfirmed:
+		
+		}
+	})
 
 	for {
 
@@ -107,35 +129,36 @@ func winerListnerThread( ctx context.Context, pool *ATxPool, awaiter *sync.WaitG
 			continue
 		}
 
+		idx, err := pool.cvfs.Indexes().GetLatest()
+		if err != nil {
+			panic(err)
+		}
+
+		pool.asd.SendingSignal( idx.BlockIndex + 1, ASD.SignalDoPacking )
+
 		if strings.EqualFold( packer.PackerPeerID, pool.ind.Identity.Pretty() ) {
 
-			if idx, err := pool.cvfs.Indexes().GetLatest(); err != nil {
+			if pool.packerState == AElectoral.ATxPackStateLookup && packer.PackBlockIndex == idx.BlockIndex + 1 {
 
-				continue
+				if pool.GetState().Queue > 0 {
 
-			} else {
+					pool.changePackerState(AElectoral.ATxPackStateMaster)
 
-				if pool.packerState == AElectoral.ATxPackStateLookup && packer.PackBlockIndex == idx.BlockIndex + 1 {
+					if err := pool.DoPackMBlock(); err != nil {
+						log.Warn(err)
 
-					if pool.GetState().Queue > 0 {
-
-						pool.changePackerState(AElectoral.ATxPackStateMaster)
-
-						if err := pool.DoPackMBlock(); err != nil {
-							log.Warn(err)
-						}
 					}
-
 				}
 			}
 
 		} else {
+
 			pool.changePackerState(AElectoral.ATxPackStateFollower)
 		}
 	}
 }
 
-func doPingsAndElectoral( ctx context.Context, pool *ATxPool, awaiter *sync.WaitGroup ) {
+func doPingsAndElectoral( ctx context.Context, pool *aTxPool, awaiter *sync.WaitGroup ) {
 
 	awaiter.Add(1)
 	defer awaiter.Done()
@@ -236,7 +259,7 @@ func doPingsAndElectoral( ctx context.Context, pool *ATxPool, awaiter *sync.Wait
 					Time:time.Now().Unix(),
 				}
 
-				if err := pool.doBroadcast(vote, pool.channelTopics[ATxPoolThreadElectoral]); err != nil {
+				if err := pool.doBroadcast(vote, pool.channelTopics[ATxPoolThreadTxPackage]); err != nil {
 					log.Warnf("DoElectoral:%v", err.Error())
 				}
 			}

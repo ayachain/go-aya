@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	AMinerPool "github.com/ayachain/go-aya/chain/minerpool"
+	ASDaemon "github.com/ayachain/go-aya/chain/sdaemon/common"
 	"github.com/ayachain/go-aya/chain/txpool"
 	"github.com/ayachain/go-aya/consensus/core/worker"
 	AMsgCenter "github.com/ayachain/go-aya/consensus/msgcenter"
@@ -38,7 +39,7 @@ type Chain interface {
 
 	CVFServices() vdb.CVFS
 
-	GetTxPool() *txpool.ATxPool
+	GetTxPool() txpool.TxPool
 }
 
 type aChain struct {
@@ -49,15 +50,17 @@ type aChain struct {
 
 	INode *core.IpfsNode
 
-	MainCVFS vdb.CVFS
+	CVFS vdb.CVFS
 
-	TxPool* txpool.ATxPool
+	IDX AIndexs.IndexesServices
 
-	Indexs AIndexs.IndexesServices
+	TXP txpool.TxPool
 
 	AMC AMsgCenter.MessageCenter
 
 	AMP AMinerPool.MinerPool
+
+	ASD ASDaemon.StatDaemon
 
 	CancelCh chan struct{}
 }
@@ -83,15 +86,18 @@ func (chain *aChain) LinkStart( ctx context.Context ) error {
 
 	}()
 
-	txPoolCtx, cancel1 := context.WithCancel(ctx)
-	defer cancel1()
+	txPoolCtx, txpoolCancel := context.WithCancel(ctx)
+	defer txpoolCancel()
 
-	amcCtx, cancel2 := context.WithCancel(ctx)
-	defer cancel2()
+	amcCtx, amcCancel := context.WithCancel(ctx)
+	defer amcCancel()
 
-	go chain.TxPool.PowerOn(txPoolCtx)
+	asdCtx, asdCancel := context.WithCancel(ctx)
+	defer asdCancel()
 
-	go chain.AMC.StartListen(amcCtx, chain.ChainId, chain.INode)
+	go chain.AMC.PowerOn(amcCtx, chain.ChainId, chain.INode)
+	go chain.ASD.PowerOn(asdCtx)
+	go chain.TXP.PowerOn(txPoolCtx)
 
 	select {
 	case <- chain.CancelCh:
@@ -112,12 +118,12 @@ func (chain *aChain) Disconnect() {
 	chain.CancelCh <- struct{}{}
 }
 
-func (chain *aChain) GetTxPool() *txpool.ATxPool {
-	return chain.TxPool
+func (chain *aChain) GetTxPool() txpool.TxPool {
+	return chain.TXP
 }
 
 func (chain *aChain) CVFServices() vdb.CVFS {
-	return chain.MainCVFS
+	return chain.CVFS
 }
 
 func (chain *aChain) TrustMessageSwitcher( ctx context.Context, msg []byte ) {
@@ -131,6 +137,8 @@ func (chain *aChain) TrustMessageSwitcher( ctx context.Context, msg []byte ) {
 			return
 		}
 
+		chain.ASD.SendingSignal( mblock.Index, ASDaemon.SignalDoMining )
+
 		go func() {
 
 			mret := chain.AMP.PutTask(ctx, AMinerPool.NewTask( mblock ), time.Second * 60)
@@ -142,10 +150,11 @@ func (chain *aChain) TrustMessageSwitcher( ctx context.Context, msg []byte ) {
 			if err := chain.AMC.PublishMessage( &AMinied.Minined {
 				MBlock:mblock,
 				Batcher:mret.Batcher.Upload(chain.INode),
-
 			}, AMsgCenter.GetChannelTopics(mblock.ChainID, AMsgCenter.MessageChannelBatcher) ); err != nil {
 				log.Warn(err)
 			}
+
+			chain.ASD.SendingSignal( mblock.Index, ASDaemon.SignalDoReceipting )
 
 			return
 
@@ -160,7 +169,6 @@ func (chain *aChain) TrustMessageSwitcher( ctx context.Context, msg []byte ) {
 		}
 
 		if cinfo, err := chain.ForkMergeBatch(ctx, batcher); err != nil {
-
 			log.Warn(err)
 			return
 
@@ -171,6 +179,7 @@ func (chain *aChain) TrustMessageSwitcher( ctx context.Context, msg []byte ) {
 				return
 			}
 
+			chain.ASD.SendingSignal( batcher.MBlock.Index, ASDaemon.SignalDoConfirming )
 		}
 
 		return
@@ -188,14 +197,15 @@ func (chain *aChain) TrustMessageSwitcher( ctx context.Context, msg []byte ) {
 		}
 
 		/// check block index
-		lidx, err := chain.Indexs.GetLatest()
+		lidx, err := chain.IDX.GetLatest()
 		if err != nil || lidx == nil {
 
 			/// if this chain's current index services has error, use new chain info.
-			if err := chain.Indexs.SyncToCID(cinfo.FinalCVFS); err != nil {
+			if err := chain.IDX.SyncToCID(cinfo.FinalCVFS); err != nil {
 				panic(err)
 			}
 
+			chain.ASD.SendingSignal( cinfo.BlockIndex, ASDaemon.SignalOnConfirmed )
 			return
 		}
 
@@ -206,7 +216,7 @@ func (chain *aChain) TrustMessageSwitcher( ctx context.Context, msg []byte ) {
 		} else {
 
 			/// chain info's chain is longer use it
-			if err := chain.Indexs.SyncToCID(cinfo.Indexes); err != nil {
+			if err := chain.IDX.SyncToCID(cinfo.Indexes); err != nil {
 				log.Error(err)
 				return
 			}
@@ -214,12 +224,12 @@ func (chain *aChain) TrustMessageSwitcher( ctx context.Context, msg []byte ) {
 		}
 
 		/// appended a new block success, pin this block create's new data
-		lidx, err = chain.Indexs.GetLatest()
+		lidx, err = chain.IDX.GetLatest()
 		if err != nil {
 			panic(err)
 		}
 
-		lblock, err := chain.MainCVFS.Blocks().GetLatestBlock()
+		lblock, err := chain.CVFS.Blocks().GetLatestBlock()
 		if err != nil {
 			panic(err)
 		}
@@ -235,7 +245,7 @@ func (chain *aChain) ForkMergeBatch( ctx context.Context, mret *AMinied.Minined 
 		return nil, ErrMergeInvalidChainID
 	}
 
-	lidx, err := chain.Indexs.GetLatest()
+	lidx, err := chain.IDX.GetLatest()
 	if err != nil {
 		return nil, ErrMergeInvalidLatest
 	}
@@ -262,7 +272,7 @@ func (chain *aChain) ForkMergeBatch( ctx context.Context, mret *AMinied.Minined 
 	batcher.Put(ACBlock.DBPath, cblock.GetHash().Bytes(), cblock.Encode() )
 
 	/// try merge
-	ccid, err := chain.MainCVFS.ForkMergeBatch(batcher)
+	ccid, err := chain.CVFS.ForkMergeBatch(batcher)
 	if err != nil {
 		return nil, ErrMergeFailed
 	}

@@ -2,6 +2,7 @@ package minerpool
 
 import (
 	"context"
+	ASD "github.com/ayachain/go-aya/chain/sdaemon/common"
 	"github.com/ayachain/go-aya/vdb"
 	AIndexes "github.com/ayachain/go-aya/vdb/indexes"
 	"github.com/ipfs/go-ipfs/core"
@@ -24,14 +25,17 @@ type aMinerPool struct {
 	idxs AIndexes.IndexesServices
 
 	chainID string
+
+	asd ASD.StatDaemon
 }
 
-func NewMinerPool( chainID string, ind *core.IpfsNode, idxser AIndexes.IndexesServices ) MinerPool {
+func NewPool( chainID string, ind *core.IpfsNode, idxser AIndexes.IndexesServices, asd ASD.StatDaemon ) MinerPool {
 
 	return &aMinerPool{
 		ind:ind,
 		idxs:idxser,
 		chainID:chainID,
+		asd:asd,
 	}
 
 }

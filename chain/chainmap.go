@@ -4,13 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"github.com/ayachain/go-aya/chain/minerpool"
+	AMinerPool "github.com/ayachain/go-aya/chain/minerpool"
+	AStatDaemon "github.com/ayachain/go-aya/chain/sdaemon"
 	"github.com/ayachain/go-aya/chain/txpool"
 	AMsgCenter "github.com/ayachain/go-aya/consensus/msgcenter"
 	"github.com/ayachain/go-aya/vdb"
 	ABlock "github.com/ayachain/go-aya/vdb/block"
 	"github.com/ayachain/go-aya/vdb/indexes"
-	"github.com/ayachain/go-aya/vdb/mblock"
 	EAccount "github.com/ethereum/go-ethereum/accounts"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-ipfs/core"
@@ -52,27 +52,31 @@ func Conn( ctx context.Context, chainId string, ind *core.IpfsNode, acc EAccount
 		log.Error(err)
 		return err
 	}
-	log.Infof("Read Block: %08d CID: %v", lidx.BlockIndex, lidx.FullCID.String())
+	log.Infof("Read Block: %012d CID: %v", lidx.BlockIndex, lidx.FullCID.String())
 
 	vdbfs, err := vdb.LinkVFS(genBlock.ChainID, ind, idxs)
 	if err != nil {
 		return ErrCantLinkToChainExpected
 	}
 
-	amc := AMsgCenter.New( vdbfs, AMsgCenter.DefaultTrustedConfig )
+	/// core services
+	asd := AStatDaemon.NewDaemon(AStatDaemon.DefaultConfig)
 
-	amp := minerpool.NewMinerPool(chainId, ind, idxs)
+	amp := AMinerPool.NewPool(chainId, ind, idxs, asd)
+
+	amc := AMsgCenter.NewCenter( vdbfs, AMsgCenter.DefaultTrustedConfig, asd )
+
+	txp := txpool.NewTxPool( ind, chainId, vdbfs, acc, AMsgCenter.GetChannelTopics(chainId, AMsgCenter.MessageChannelMiningBlock), asd)
 
 	ac := &aChain{
 		ChainId:chainId,
 		INode:ind,
-		MainCVFS:vdbfs,
-		TxPool:txpool.NewTxPool( ind, chainId, vdbfs, acc, func(mblock *mblock.MBlock) error {
-			return amc.PublishMessage(mblock, AMsgCenter.GetChannelTopics(chainId, AMsgCenter.MessageChannelMiningBlock))
-		}),
-		Indexs:idxs,
+		CVFS:vdbfs,
+		TXP:txp,
+		IDX:idxs,
 		AMC:amc,
 		AMP:amp,
+		ASD:asd,
 		CancelCh:make(chan struct{}),
 	}
 

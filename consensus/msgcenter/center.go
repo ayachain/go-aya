@@ -3,6 +3,7 @@ package msgcenter
 import (
 	"context"
 	"errors"
+	ASD "github.com/ayachain/go-aya/chain/sdaemon/common"
 	"github.com/ayachain/go-aya/vdb"
 	AvdbComm "github.com/ayachain/go-aya/vdb/common"
 	"github.com/ethereum/go-ethereum/common"
@@ -27,7 +28,7 @@ type MessageCenter interface {
 
 	Refresh()
 
-	StartListen( ctx context.Context, chainID string, ind *core.IpfsNode )
+	PowerOn( ctx context.Context, chainID string, ind *core.IpfsNode )
 }
 
 
@@ -51,15 +52,18 @@ type aMessageCenter struct {
 	totalCount uint64
 
 	ind *core.IpfsNode
+
+	asd ASD.StatDaemon
 }
 
 
-func New(cvfs vdb.CVFS, cnf TrustedConfig) MessageCenter {
+func NewCenter(cvfs vdb.CVFS, cnf TrustedConfig, asd ASD.StatDaemon) MessageCenter {
 
 	c := &aMessageCenter{
 		cvfs:cvfs,
 		cnf:cnf,
 		replay:make(chan []byte),
+		asd:asd,
 	}
 
 	c.Refresh()
@@ -131,7 +135,7 @@ func (mc *aMessageCenter) TrustMessage() <- chan []byte {
 	return mc.replay
 }
 
-func (mc *aMessageCenter) StartListen( ctx context.Context, chainID string, ind *core.IpfsNode ) {
+func (mc *aMessageCenter) PowerOn( ctx context.Context, chainID string, ind *core.IpfsNode ) {
 
 	log.Info("AMessageCenter PowerOn")
 	defer log.Info("AMessageCenter PowerOff")

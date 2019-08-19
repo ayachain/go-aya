@@ -6,7 +6,7 @@ import (
 	"github.com/prometheus/common/log"
 )
 
-func (pool *ATxPool) threadTransactionListener( ctx context.Context ) {
+func (pool *aTxPool) threadTransactionListener( ctx context.Context ) {
 
 	log.Info("ATxPool Thread On: " + ATxPoolThreadTxListen)
 	defer log.Info("ATxPool Thread Off: " + ATxPoolThreadTxListen)
