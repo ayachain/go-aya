@@ -14,7 +14,7 @@ var (
 
 	DefaultConfig				= &common.TimeoutConfig {
 		PackingDuration:	time.Second * 8,
-		MiningDuration:		time.Second * 60,
+		MiningDuration:		time.Second * 12,
 		ReceiptDuration:	time.Second * 8,
 		ConfirmDuration:	time.Second * 8,
 	}
@@ -139,7 +139,12 @@ func (d *aStatDaemon) SendingSignal( bindex uint64, signal common.Signal ) {
 		d.waitingTimer.Reset(d.tcnf.ConfirmDuration)
 
 	case common.SignalOnConfirmed:
+
 		d.waitingTimer.Stop()
+
+		for _, f := range d.observers {
+			go f( common.SignalOnConfirmed )
+		}
 
 	case common.SignalInterrupt:
 		d.waitingTimer.Stop()

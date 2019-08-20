@@ -2,13 +2,10 @@ package msgcenter
 
 type TrustedConfig struct {
 
-	// Default 0.50 (50%)
 	VotePercentage float32
 
-	// 3
 	SuperNodeMin uint
 
-	// 3
 	NodeTotalMin uint
 
 }

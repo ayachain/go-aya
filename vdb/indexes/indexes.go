@@ -387,7 +387,7 @@ func ( i *aIndexes ) SyncToCID( fullCID cid.Cid ) error {
 		goto NeedRollBack
 	}
 
-	log.Infof("SyncTo: %12d - %v", lidx.BlockIndex, i.latestCID.String())
+	log.Infof("SyncTo: %08d - %v", lidx.BlockIndex, i.latestCID.String())
 
 	_ = rbroot.Close()
 
