@@ -39,13 +39,8 @@ var (
 
 type AtxPoolWorkMode uint8
 type ATxPoolThreadsName string
-type ATxPoolQueueName string
 
 const (
-
-	ATxPoolQueueNameUnknown			ATxPoolQueueName	= "Unknown"
-	ATxPoolQueueNameMining			ATxPoolQueueName	= "MiningPool"
-	ATxPoolQueueNameQueue			ATxPoolQueueName  	= "QueuePool"
 
 	PackageTxsLimit 									= 2048
 
@@ -71,13 +66,9 @@ type TxPool interface {
 
 	GetState() *State
 
-	TxExist( hash EComm.Hash ) (exist bool, mname ATxPoolQueueName)
-
-	GetTx( hash EComm.Hash, mname ATxPoolQueueName ) *ATx.Transaction
+	GetTx( hash EComm.Hash ) *ATx.Transaction
 
 	ConfirmBestBlock( cblock *ABlock.Block ) error
-
-	MoveTxsToMining( txs []*ATx.Transaction ) error
 }
 
 type aTxPool struct {
@@ -87,12 +78,8 @@ type aTxPool struct {
 	idxServices indexes.IndexesServices
 	cvfs vdb.CVFS
 
-	mnmu sync.Mutex
-	qemu sync.Mutex
-
-	mining map[EComm.Address]*txlist.TxList
-	queue map[EComm.Address]*txlist.TxList
-
+	pmu sync.Mutex
+	pending map[EComm.Address]*txlist.TxList
 	channelTopics map[ATxPoolThreadsName] string
 
 	workmode AtxPoolWorkMode
@@ -104,8 +91,9 @@ type aTxPool struct {
 	eleservices AElectoral.MemServices
 
 	mblockChannel string
-
 	asd ASD.StatDaemon
+
+	lmblock *AMBlock.MBlock
 }
 
 func NewTxPool( ind *core.IpfsNode, chainID string, cvfs vdb.CVFS, acc EAccount.Account, mchannel string, asd ASD.StatDaemon ) TxPool {
@@ -119,8 +107,7 @@ func NewTxPool( ind *core.IpfsNode, chainID string, cvfs vdb.CVFS, acc EAccount.
 	}
 
 	return &aTxPool{
-		mining:make(map[EComm.Address]*txlist.TxList),
-		queue:make(map[EComm.Address]*txlist.TxList),
+		pending:make(map[EComm.Address]*txlist.TxList),
 		cvfs:cvfs,
 		workmode:AtxPoolWorkModeNormal,
 		ind:ind,
@@ -209,22 +196,6 @@ func (pool *aTxPool) PublishTx( tx *ATx.Transaction ) error {
 	return pool.doBroadcast(tx, pool.channelTopics[ATxPoolThreadTxListen])
 }
 
-func (pool *aTxPool) DoPackMBlock() error {
-
-	mblock := pool.createMiningBlock()
-	if mblock == nil {
-		return ErrCannotCreateMiningBlock
-	}
-
-	cbs := mblock.RawMessageEncode()
-
-	if len(cbs) <= 0 {
-		return ErrRawDBEndoedZeroLen
-	}
-
-	return pool.ind.PubSub.Publish( pool.channelTopics[ATxPoolThreadRepeater], cbs )
-}
-
 func (pool *aTxPool) ElectoralServices() AElectoral.MemServices {
 	return pool.eleservices
 }
@@ -235,20 +206,14 @@ func (pool *aTxPool) GetWorkMode() AtxPoolWorkMode {
 
 func (pool *aTxPool) GetState() *State {
 
-	queueSum := 0
-	for k := range pool.queue {
-		queueSum += pool.queue[k].Len()
-	}
-
-	miningSum := 0
-	for k := range pool.mining {
-		miningSum += pool.mining[k].Len()
+	pendingSum := 0
+	for k := range pool.pending {
+		pendingSum += pool.pending[k].Len()
 	}
 
 	s := &State{
 		Account	: pool.ownerAccount.Address.String(),
-		Queue	: queueSum,
-		Mining	: miningSum,
+		Pending	: pendingSum,
 		Version	: AtxPoolVersion,
 	}
 
@@ -259,111 +224,20 @@ func (pool *aTxPool) GetState() *State {
 	} else {
 
 		s.WorkMode = "Normal"
-
 	}
 
 	return s
 }
 
-func (pool *aTxPool) TxExist( hash EComm.Hash ) (exist bool, mname ATxPoolQueueName) {
+func (pool *aTxPool) GetTx( hash EComm.Hash ) *ATx.Transaction {
 
-	pool.qemu.Lock()
-	defer pool.qemu.Unlock()
+	pool.pmu.Lock()
+	defer pool.pmu.Unlock()
 
-	pool.mnmu.Lock()
-	defer pool.mnmu.Unlock()
-
-	for _, tlist := range pool.mining {
+	for _, tlist := range pool.pending {
 
 		if tlist.Exist(hash) {
-
-			return true, ATxPoolQueueNameMining
-
-		}
-
-	}
-
-	for _, tlist := range pool.queue {
-
-		if tlist.Exist(hash) {
-
-			return true, ATxPoolQueueNameQueue
-
-		}
-
-
-	}
-
-	return false, ATxPoolQueueNameUnknown
-
-}
-
-func (pool *aTxPool) GetTx( hash EComm.Hash, mname ATxPoolQueueName ) *ATx.Transaction {
-
-	switch mname {
-
-	case ATxPoolQueueNameMining :
-
-		pool.qemu.Lock()
-		defer pool.qemu.Unlock()
-
-		for _, tlist := range pool.mining {
-
-			if tlist.Exist(hash) {
-
-				return tlist.Get(hash)
-
-			}
-
-		}
-
-		return nil
-
-
-	case ATxPoolQueueNameQueue :
-
-		pool.mnmu.Lock()
-		defer pool.mnmu.Unlock()
-
-		for _, tlist := range pool.mining {
-
-			if tlist.Exist(hash) {
-
-				return tlist.Get(hash)
-
-			}
-
-		}
-	}
-
-	return nil
-
-}
-
-func (pool *aTxPool) MoveTxsToMining( txs []*ATx.Transaction ) error {
-
-	pool.qemu.Lock()
-	defer pool.qemu.Unlock()
-
-	pool.mnmu.Lock()
-	defer pool.mnmu.Unlock()
-
-	for _, stx := range txs {
-
-		if tlist, exist := pool.queue[stx.From]; exist {
-
-			tlist.RemoveFromTid( stx.Tid )
-
-			if plist, pexist := pool.mining[stx.From]; pexist {
-
-				_ = plist.AddTx(stx)
-
-			} else {
-
-				pool.mining[stx.From] = txlist.NewTxList(stx)
-
-			}
-
+			return tlist.Get(hash)
 		}
 
 	}
@@ -371,16 +245,12 @@ func (pool *aTxPool) MoveTxsToMining( txs []*ATx.Transaction ) error {
 	return nil
 
 }
-
 
 /// Private methods
 func (pool *aTxPool) createMiningBlock() *AMBlock.MBlock {
 
-	pool.qemu.Lock()
-	defer pool.qemu.Unlock()
-
-	pool.mnmu.Lock()
-	defer pool.mnmu.Unlock()
+	pool.pmu.Lock()
+	defer pool.pmu.Unlock()
 
 	if pool.packerState != AElectoral.ATxPackStateMaster {
 		return nil
@@ -388,7 +258,7 @@ func (pool *aTxPool) createMiningBlock() *AMBlock.MBlock {
 
 	var packtxs []*ATx.Transaction
 
-	for addr, txl := range pool.queue {
+	for addr, txl := range pool.pending {
 
 		if txcount, err := pool.cvfs.Transactions().GetTxCount(addr); err != nil {
 
@@ -494,11 +364,8 @@ func (pool *aTxPool) changePackerState( s AElectoral.ATxPackerState ) {
 
 func (pool *aTxPool) storeTransaction( tx *ATx.Transaction ) error {
 
-	pool.qemu.Lock()
-	defer pool.qemu.Unlock()
-
-	pool.mnmu.Lock()
-	defer pool.mnmu.Unlock()
+	pool.pmu.Lock()
+	defer pool.pmu.Unlock()
 
 	if !tx.Verify() {
 		return ErrMessageVerifyExpected
@@ -510,9 +377,9 @@ func (pool *aTxPool) storeTransaction( tx *ATx.Transaction ) error {
 		return ErrTxVerifyExpected
 	}
 
-	if list, exist := pool.queue[tx.From]; !exist {
+	if list, exist := pool.pending[tx.From]; !exist {
 
-		pool.queue[tx.From] = txlist.NewTxList(tx)
+		pool.pending[tx.From] = txlist.NewTxList(tx)
 
 		return nil
 
@@ -525,34 +392,34 @@ func (pool *aTxPool) storeTransaction( tx *ATx.Transaction ) error {
 
 func (pool *aTxPool) confirmTxs( txs []*ATx.Transaction ) error {
 
-	pool.qemu.Lock()
-	defer pool.qemu.Unlock()
-
-	pool.mnmu.Lock()
-	defer pool.mnmu.Unlock()
+	pool.pmu.Lock()
+	defer pool.pmu.Unlock()
 
 	for _, stx := range txs {
 
-		removed := false
-
-		if tlist, exist := pool.mining[stx.From]; exist {
-
-			removed = tlist.RemoveFromTid( stx.Tid )
-
-		}
-
-		if !removed {
-
-			if tlist, exist := pool.queue[stx.From]; exist {
-
-				_ = tlist.RemoveFromTid( stx.Tid )
-
-			}
-
+		if tlist, exist := pool.pending[stx.From]; exist {
+			_ = tlist.RemoveFromTid( stx.Tid )
 		}
 
 	}
 
 	return nil
+}
 
+func (pool *aTxPool) doPackMBlock() (*AMBlock.MBlock, error) {
+
+	mblock := pool.createMiningBlock()
+	if mblock == nil {
+		return nil, ErrCannotCreateMiningBlock
+	}
+
+	cbs := mblock.RawMessageEncode()
+
+	if len(cbs) <= 0 {
+		return nil, ErrRawDBEndoedZeroLen
+	}
+
+	err := pool.ind.PubSub.Publish( pool.channelTopics[ATxPoolThreadRepeater], cbs )
+
+	return mblock, err
 }

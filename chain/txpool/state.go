@@ -4,9 +4,7 @@ type State struct {
 
 	Account string
 
-	Mining int
-
-	Queue int
+	Pending int
 
 	WorkMode string
 

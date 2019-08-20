@@ -5,6 +5,7 @@ import (
 	ASD "github.com/ayachain/go-aya/chain/sdaemon/common"
 	AElectoral "github.com/ayachain/go-aya/vdb/electoral"
 	"github.com/ayachain/go-aya/vdb/node"
+	"github.com/ipfs/go-ipfs/pin"
 	peer "github.com/libp2p/go-libp2p-peer"
 	peerstore "github.com/libp2p/go-libp2p-peerstore"
 	"github.com/libp2p/go-libp2p/p2p/protocol/ping"
@@ -22,10 +23,6 @@ func (pool *aTxPool) threadElectoralAndPacker ( ctx context.Context ) {
 	ctx1, cancel1 := context.WithCancel(ctx)
 	ctx2, cancel2 := context.WithCancel(ctx)
 	ctx3, cancel3 := context.WithCancel(ctx)
-
-	defer cancel1()
-	defer cancel2()
-	defer cancel3()
 
 	awaiter := &sync.WaitGroup{}
 
@@ -47,7 +44,11 @@ func (pool *aTxPool) threadElectoralAndPacker ( ctx context.Context ) {
 		break
 	}
 
+	cancel1()
+	cancel2()
+	cancel3()
 	awaiter.Wait()
+
 	return
 }
 
@@ -97,26 +98,32 @@ func winerListnerThread( ctx context.Context, pool *aTxPool, awaiter *sync.WaitG
 	awaiter.Add(1)
 	defer awaiter.Done()
 
-	/// chain core event observer
-	_ = pool.asd.AddTimeoutObserver(func(s ASD.Signal) {
+	var lockPacker = true
+
+	observerFunc := func(s ASD.Signal) {
 
 		switch s {
-		case ASD.SignalObserved:
-
-		case ASD.SignalInterrupt:
-
-		case ASD.SignalDoPacking:
-
-		case ASD.SignalDoMining:
-
-		case ASD.SignalDoReceipting:
-
-		case ASD.SignalDoConfirming:
+		default:
+			lockPacker = false
 
 		case ASD.SignalOnConfirmed:
-		
+
+			if pool.lmblock != nil {
+
+				pool.ind.Pinning.PinWithMode( pool.lmblock.Txs, pin.Any )
+
+				txs := pool.lmblock.ReadTxsFromDAG(context.TODO(), pool.ind)
+
+				_ = pool.confirmTxs( txs )
+			}
+
+			lockPacker = false
 		}
-	})
+	}
+
+	/// chain core event observer
+	_ = pool.asd.AddTimeoutObserver(observerFunc)
+	defer pool.asd.RemoveObserver(observerFunc)
 
 	for {
 
@@ -125,7 +132,7 @@ func winerListnerThread( ctx context.Context, pool *aTxPool, awaiter *sync.WaitG
 			return
 		}
 
-		if packer == nil {
+		if packer == nil || lockPacker {
 			continue
 		}
 
@@ -140,19 +147,22 @@ func winerListnerThread( ctx context.Context, pool *aTxPool, awaiter *sync.WaitG
 
 			if pool.packerState == AElectoral.ATxPackStateLookup && packer.PackBlockIndex == idx.BlockIndex + 1 {
 
-				if pool.GetState().Queue > 0 {
+				if pool.GetState().Pending > 0 {
 
 					pool.changePackerState(AElectoral.ATxPackStateMaster)
 
-					if err := pool.DoPackMBlock(); err != nil {
+					if _, err := pool.doPackMBlock(); err != nil {
+
 						log.Warn(err)
+						continue
 
 					}
+
+					lockPacker = true
 				}
 			}
 
 		} else {
-
 			pool.changePackerState(AElectoral.ATxPackStateFollower)
 		}
 	}
@@ -163,8 +173,27 @@ func doPingsAndElectoral( ctx context.Context, pool *aTxPool, awaiter *sync.Wait
 	awaiter.Add(1)
 	defer awaiter.Done()
 
-	pticker := time.NewTicker(time.Second * 10)
+	pticker := time.NewTicker(time.Second * 5)
 	defer pticker.Stop()
+
+	//var timeOutPeers []*peer.ID
+	//
+	//var lepeer *peer.ID
+	//
+	//observerFunc := func(s ASD.Signal) {
+	//
+	//	switch s {
+	//	case ASD.SignalDoPacking:
+	//		timeOutPeers = append(timeOutPeers, lepeer)
+	//
+	//	case ASD.SignalOnConfirmed:
+	//		timeOutPeers = make([]*peer.ID, 0)
+	//	}
+	//}
+	//
+	///// chain core event observer
+	//_ = pool.asd.AddTimeoutObserver(observerFunc)
+	//defer pool.asd.RemoveObserver(observerFunc)
 
 	for {
 

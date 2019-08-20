@@ -16,7 +16,6 @@ import (
 	AMinied "github.com/ayachain/go-aya/vdb/minined"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-ipfs/core"
-	"github.com/ipfs/go-ipfs/pin"
 	"github.com/prometheus/common/log"
 	"time"
 )
@@ -222,19 +221,6 @@ func (chain *aChain) TrustMessageSwitcher( ctx context.Context, msg []byte ) {
 			}
 
 		}
-
-		/// appended a new block success, pin this block create's new data
-		lidx, err = chain.IDX.GetLatest()
-		if err != nil {
-			panic(err)
-		}
-
-		lblock, err := chain.CVFS.Blocks().GetLatestBlock()
-		if err != nil {
-			panic(err)
-		}
-
-		chain.INode.Pinning.PinWithMode( lblock.Txs, pin.Any )
 	}
 
 }

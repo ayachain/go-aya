@@ -5,7 +5,6 @@ import (
 	MBlock "github.com/ayachain/go-aya/vdb/mblock"
 	"github.com/ayachain/go-aya/vdb/node"
 	"github.com/prometheus/common/log"
-	"time"
 )
 
 func (pool *aTxPool) threadMiningBlockRepeater( ctx context.Context ) {
@@ -19,9 +18,6 @@ func (pool *aTxPool) threadMiningBlockRepeater( ctx context.Context ) {
 		return
 	}
 	defer sub.Cancel()
-
-	var latestRecvMBlock *MBlock.MBlock
-	var latestPublishTime int64
 
 	for {
 
@@ -51,37 +47,13 @@ func (pool *aTxPool) threadMiningBlockRepeater( ctx context.Context ) {
 			continue
 		}
 
-		if mblock.GetHash() == latestRecvMBlock.GetHash() {
-
-			if latestPublishTime - time.Now().Unix() < 10 {
-
-				continue
-
-			} else {
-
-				if err := pool.ind.PubSub.Publish(pool.mblockChannel, msg.Data); err != nil {
-					log.Error(err)
-					continue
-				}
-
-				latestPublishTime = time.Now().Unix()
-
-				continue
-
-			}
-
-		} else {
-
-			if err := pool.ind.PubSub.Publish(pool.mblockChannel, msg.Data); err != nil {
-				log.Error(err)
-				continue
-			}
-
-			latestRecvMBlock = mblock
-			latestPublishTime = time.Now().Unix()
-
+		if err := pool.ind.PubSub.Publish(pool.mblockChannel, msg.Data); err != nil {
+			log.Error(err)
 			continue
 		}
 
+		pool.lmblock = mblock
+
+		continue
 	}
 }

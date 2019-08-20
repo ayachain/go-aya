@@ -98,6 +98,8 @@ func (d *aStatDaemon) PowerOn(ctx context.Context) {
 		for _, f := range d.observers {
 			go f( d.lsig )
 		}
+
+		_ = d.waitingTimer.Stop()
 	}
 }
 
