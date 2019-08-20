@@ -173,7 +173,7 @@ func (chain *aChain) TrustMessageSwitcher( ctx context.Context, msg []byte ) {
 
 		sctx, cancel := context.WithTimeout(ctx, time.Second * 32)
 		defer cancel()
-		
+
 		if cinfo, err := chain.ForkMergeBatch(sctx, batcher); err != nil {
 			log.Warn(err)
 			return

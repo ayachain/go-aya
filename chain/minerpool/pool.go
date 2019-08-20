@@ -10,9 +10,7 @@ import (
 )
 
 type MinerPool interface {
-
 	PutTask( ctx context.Context, task *MiningTask ) *MiningResult
-
 }
 
 
@@ -109,5 +107,5 @@ func (mp *aMinerPool) PutTask( ctx context.Context, task *MiningTask ) *MiningRe
 	/// payload mining task object
 	task.VWriter = vwriter
 
-	return newMiner().DoTask(ctx, task)
+	return mp.DoTask(ctx, task)
 }

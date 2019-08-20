@@ -6,59 +6,9 @@ import (
 	APosComm "github.com/ayachain/go-aya/consensus/impls/APOS/common"
 	ARsp "github.com/ayachain/go-aya/vdb/receipt"
 	ATx "github.com/ayachain/go-aya/vdb/transaction"
-	"sync"
 )
 
-type WorkingStat int
-
-const (
-	WorkingStatIdle 	WorkingStat = 0
-	WorkingStateBuzy	WorkingStat = 1
-)
-
-type Miner interface {
-
-	DoTask( ctx context.Context, task *MiningTask ) *MiningResult
-
-	GetState() WorkingStat
-
-}
-
-type aMiner struct {
-
-	Miner
-
-	state WorkingStat
-	smu sync.Mutex
-}
-
-func newMiner() Miner {
-
-	return &aMiner{
-		state:WorkingStatIdle,
-	}
-}
-
-func (n *aMiner) GetState() WorkingStat {
-
-	n.smu.Lock()
-	defer n.smu.Unlock()
-
-	return n.state
-}
-
-func (n *aMiner) DoTask( ctx context.Context, task *MiningTask ) *MiningResult {
-
-	n.smu.Lock()
-	defer n.smu.Unlock()
-
-	n.state = WorkingStateBuzy
-
-	defer func() {
-		n.smu.Lock()
-		n.state = WorkingStatIdle
-		n.smu.Unlock()
-	}()
+func (mp *aMinerPool) DoTask( ctx context.Context, task *MiningTask ) *MiningResult {
 
 	for i, tx := range task.Txs {
 
