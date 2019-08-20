@@ -225,6 +225,8 @@ func (chain *aChain) TrustMessageSwitcher( ctx context.Context, msg []byte ) {
 				return
 			}
 
+			chain.ASD.SendingSignal( cinfo.BlockIndex, ASDaemon.SignalOnConfirmed )
+			return
 		}
 	}
 
