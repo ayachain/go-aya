@@ -143,6 +143,7 @@ func (chain *aChain) TrustMessageSwitcher( ctx context.Context, msg []byte ) {
 			mret := chain.AMP.PutTask(ctx, AMinerPool.NewTask( mblock ), time.Second * 60)
 			if mret.Err != nil {
 				log.Warn(mret.Err)
+				chain.ASD.SendingSignal( mblock.Index, ASDaemon.SignalInterrupt )
 				return
 			}
 

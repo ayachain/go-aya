@@ -96,6 +96,7 @@ func (d *aStatDaemon) PowerOn(ctx context.Context) {
 
 		case <- d.waitingTimer.C:
 			log.Infof("%v Waiting timeout", d.lsig)
+			d.lsig = common.SignalInterrupt
 			break
 		}
 
