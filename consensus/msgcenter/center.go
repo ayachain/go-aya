@@ -57,13 +57,14 @@ type aMessageCenter struct {
 }
 
 
-func NewCenter(cvfs vdb.CVFS, cnf TrustedConfig, asd ASD.StatDaemon) MessageCenter {
+func NewCenter( ind *core.IpfsNode, cvfs vdb.CVFS, cnf TrustedConfig, asd ASD.StatDaemon) MessageCenter {
 
 	c := &aMessageCenter{
 		cvfs:cvfs,
 		cnf:cnf,
 		replay:make(chan []byte),
 		asd:asd,
+		ind:ind,
 	}
 
 	c.Refresh()

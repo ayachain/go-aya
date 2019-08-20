@@ -27,7 +27,7 @@ type aMinerPool struct {
 	asd ASD.StatDaemon
 }
 
-func NewPool( chainID string, ind *core.IpfsNode, idxser AIndexes.IndexesServices, asd ASD.StatDaemon ) MinerPool {
+func NewPool( ind *core.IpfsNode, chainID string, idxser AIndexes.IndexesServices, asd ASD.StatDaemon ) MinerPool {
 
 	return &aMinerPool{
 		ind:ind,

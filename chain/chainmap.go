@@ -62,9 +62,9 @@ func Conn( ctx context.Context, chainId string, ind *core.IpfsNode, acc EAccount
 	/// core services
 	asd := AStatDaemon.NewDaemon(AStatDaemon.DefaultConfig)
 
-	amp := AMinerPool.NewPool(chainId, ind, idxs, asd)
+	amp := AMinerPool.NewPool( ind, chainId, idxs, asd )
 
-	amc := AMsgCenter.NewCenter( vdbfs, AMsgCenter.DefaultTrustedConfig, asd )
+	amc := AMsgCenter.NewCenter( ind, vdbfs, AMsgCenter.DefaultTrustedConfig, asd )
 
 	txp := txpool.NewTxPool( ind, chainId, vdbfs, acc, AMsgCenter.GetChannelTopics(chainId, AMsgCenter.MessageChannelMiningBlock), asd)
 
