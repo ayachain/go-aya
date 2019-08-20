@@ -376,7 +376,8 @@ func ( i *aIndexes ) SyncToCID( fullCID cid.Cid ) error {
 	i.latestCID = fullCID
 
 	// test read latest index
-	if !i.simpleVerifyNoLock() {
+	lidx, success := i.simpleVerifyNoLock()
+	if !success {
 		goto NeedRollBack
 	}
 
@@ -386,7 +387,7 @@ func ( i *aIndexes ) SyncToCID( fullCID cid.Cid ) error {
 		goto NeedRollBack
 	}
 
-	log.Infof("Sync Indexes DB : %v", i.latestCID.String())
+	log.Infof("SyncTo: %12d - %v", lidx.BlockIndex, i.latestCID.String())
 
 	_ = rbroot.Close()
 
@@ -402,31 +403,31 @@ NeedRollBack:
 	return ErrSyncRollback
 }
 
-func ( i *aIndexes ) simpleVerifyNoLock() bool {
+func ( i *aIndexes ) simpleVerifyNoLock() (*Index, bool) {
 
 	nd, err := i.mfsroot.GetDirectory().Child(idbLatestIndex)
 	if err != nil {
 		if err == os.ErrNotExist {
-			return false
+			return nil, false
 		} else {
-			return false
+			return nil, false
 		}
 	}
 
 	fi, ok := nd.(*mfs.File)
 	if !ok {
-		return false
+		return nil, false
 	}
 
 	fd, err := fi.Open(mfs.Flags{Read:true,Sync:false})
 	if err != nil {
-		return false
+		return nil, false
 	}
 	defer fd.Close()
 
 	bs, err := ioutil.ReadAll(fd)
 	if err != nil {
-		return false
+		return nil, false
 	}
 
 	// latest block index number by int64
@@ -440,35 +441,35 @@ func ( i *aIndexes ) simpleVerifyNoLock() bool {
 
 	nd, err = i.mfsroot.GetDirectory().Child(fname)
 	if err != nil {
-		return false
+		return nil, false
 	}
 
 	fi, ok = nd.(*mfs.File)
 	if !ok {
-		return false
+		return nil, false
 	}
 
 	fd, err = fi.Open(mfs.Flags{Read:true,Sync:false})
 	if err != nil {
-		return false
+		return nil, false
 	}
 	defer fd.Close()
 
 	if _, err := fd.Seek( int64(offset) * StaticSize,io.SeekStart); err != nil {
-		return false
+		return nil, false
 	}
 
 	idxbs := make([]byte, StaticSize)
 	if _, err := fd.Read(idxbs); err != nil {
-		return false
+		return nil, false
 	}
 
 	idx := &Index{}
 	if err := idx.Decode(idxbs); err != nil {
-		return false
+		return nil, false
 	}
 
-	return true
+	return idx, true
 }
 
 func ForkMerge( ind *core.IpfsNode, chainId string, index *Index ) (cid.Cid, error) {
