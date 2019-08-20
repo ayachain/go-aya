@@ -95,7 +95,7 @@ func (d *aStatDaemon) PowerOn(ctx context.Context) {
 			return
 
 		case <- d.waitingTimer.C:
-			log.Infof("%v <- Time.C", d.lsig)
+			log.Infof("%v Waiting timeout", d.lsig)
 			break
 		}
 

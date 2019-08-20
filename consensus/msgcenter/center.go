@@ -121,6 +121,8 @@ func (mc *aMessageCenter) Push( msg *pubsub.Message ) {
 
 		m.AddConfirmNode(sender)
 
+		log.Infof("Confirm Hash:%v <- %v", m.Hash.String(), sender.PeerID )
+
 		v, s, n := m.VoteInfo()
 		if v > mc.threshold && s > mc.cnf.SuperNodeMin && n > mc.cnf.NodeTotalMin {
 			mc.replay <- m.Content
