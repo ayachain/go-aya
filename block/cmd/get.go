@@ -12,6 +12,7 @@ import (
 	"github.com/pkg/errors"
 	"strconv"
 	"strings"
+	"time"
 )
 
 var getCmd = &cmds.Command {
@@ -102,7 +103,7 @@ var getCmd = &cmds.Command {
 					return ARsponse.EmitErrorResponse(re, err)
 				}
 
-				rctx, rcancel := context.WithTimeout(req.Context, 25)
+				rctx, rcancel := context.WithTimeout(req.Context, time.Second * 32)
 				defer rcancel()
 
 				type BlockDetail struct {
