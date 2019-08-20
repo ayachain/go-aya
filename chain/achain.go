@@ -140,12 +140,17 @@ func (chain *aChain) TrustMessageSwitcher( ctx context.Context, msg []byte ) {
 
 		go func() {
 
-			mret := chain.AMP.PutTask(ctx, AMinerPool.NewTask( mblock ), time.Second * 60)
+			sctx, cancel := context.WithTimeout(ctx, time.Second * 32)
+			defer cancel()
+
+			mret := chain.AMP.PutTask(sctx, AMinerPool.NewTask( mblock ) )
 			if mret.Err != nil {
 				log.Warn(mret.Err)
 				chain.ASD.SendingSignal( mblock.Index, ASDaemon.SignalInterrupt )
 				return
 			}
+
+			chain.ASD.SendingSignal( mblock.Index, ASDaemon.SignalDoReceipting )
 
 			if err := chain.AMC.PublishMessage( &AMinied.Minined {
 				MBlock:mblock,
@@ -153,8 +158,6 @@ func (chain *aChain) TrustMessageSwitcher( ctx context.Context, msg []byte ) {
 			}, AMsgCenter.GetChannelTopics(mblock.ChainID, AMsgCenter.MessageChannelBatcher) ); err != nil {
 				log.Warn(err)
 			}
-
-			chain.ASD.SendingSignal( mblock.Index, ASDaemon.SignalDoReceipting )
 
 			return
 
@@ -168,7 +171,10 @@ func (chain *aChain) TrustMessageSwitcher( ctx context.Context, msg []byte ) {
 			return
 		}
 
-		if cinfo, err := chain.ForkMergeBatch(ctx, batcher); err != nil {
+		sctx, cancel := context.WithTimeout(ctx, time.Second * 32)
+		defer cancel()
+		
+		if cinfo, err := chain.ForkMergeBatch(sctx, batcher); err != nil {
 			log.Warn(err)
 			return
 
