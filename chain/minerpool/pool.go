@@ -10,7 +10,7 @@ import (
 )
 
 type MinerPool interface {
-	PutTask( ctx context.Context, task *MiningTask ) *MiningResult
+	PutTask( task *MiningTask ) *MiningResult
 }
 
 
@@ -38,7 +38,7 @@ func NewPool( chainID string, ind *core.IpfsNode, idxser AIndexes.IndexesService
 
 }
 
-func (mp *aMinerPool) PutTask( ctx context.Context, task *MiningTask ) *MiningResult {
+func (mp *aMinerPool) PutTask( task *MiningTask ) *MiningResult {
 
 	var err error
 
@@ -107,5 +107,5 @@ func (mp *aMinerPool) PutTask( ctx context.Context, task *MiningTask ) *MiningRe
 	/// payload mining task object
 	task.VWriter = vwriter
 
-	return mp.DoTask(ctx, task)
+	return mp.doTask(task)
 }

@@ -1,28 +1,15 @@
 package minerpool
 
 import (
-	"context"
 	ATxFlow "github.com/ayachain/go-aya/chain/minerpool/tx"
 	APosComm "github.com/ayachain/go-aya/consensus/impls/APOS/common"
 	ARsp "github.com/ayachain/go-aya/vdb/receipt"
 	ATx "github.com/ayachain/go-aya/vdb/transaction"
 )
 
-func (mp *aMinerPool) DoTask( ctx context.Context, task *MiningTask ) *MiningResult {
+func (mp *aMinerPool) doTask( task *MiningTask ) *MiningResult {
 
 	for i, tx := range task.Txs {
-
-		select {
-		case <- ctx.Done():
-
-			return &MiningResult{
-				Err:ErrContextCancel,
-				Task:task,
-			}
-
-		default:
-
-		}
 
 		// Is transaction override ?
 		txc, err := task.VWriter.Transactions().GetTxCount(tx.From)
@@ -63,17 +50,6 @@ func (mp *aMinerPool) DoTask( ctx context.Context, task *MiningTask ) *MiningRes
 			Err:ErrCreateBatch,
 			Task:task,
 		}
-	}
-
-	select {
-	case <- ctx.Done():
-		return &MiningResult{
-			Err:ErrContextCancel,
-			Task:task,
-		}
-
-	default:
-
 	}
 
 	return &MiningResult{
