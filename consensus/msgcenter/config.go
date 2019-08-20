@@ -16,5 +16,5 @@ type TrustedConfig struct {
 var DefaultTrustedConfig = TrustedConfig{
 	VotePercentage:0.5,
 	SuperNodeMin:3,
-	NodeTotalMin:3,
+	NodeTotalMin:2,
 }
