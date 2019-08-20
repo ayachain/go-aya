@@ -15,20 +15,20 @@ import (
 	"time"
 )
 
-func (pool *aTxPool) threadElectoralAndPacker ( ctx context.Context ) {
+func (pool *aTxPool) threadElectoralAndPacker ( ctx context.Context, awaiter *sync.WaitGroup ) {
 
-	//log.Info("ATxPool Thread On: " + ATxPoolThreadTxPackage)
-	//defer log.Info("ATxPool Thread Off: " + ATxPoolThreadTxPackage)
+	awaiter.Add(1)
+	defer awaiter.Done()
 
 	ctx1, cancel1 := context.WithCancel(ctx)
 	ctx2, cancel2 := context.WithCancel(ctx)
 	ctx3, cancel3 := context.WithCancel(ctx)
 
-	awaiter := &sync.WaitGroup{}
+	subwg := &sync.WaitGroup{}
 
-	go subscribeThread( ctx1, pool, awaiter )
-	go winerListnerThread( ctx2, pool, awaiter )
-	go doPingsAndElectoral( ctx3, pool, awaiter )
+	go subscribeThread( ctx1, pool, subwg )
+	go winerListnerThread( ctx2, pool, subwg )
+	go doPingsAndElectoral( ctx3, pool, subwg )
 
 	select {
 	case <- ctx1.Done():
@@ -47,7 +47,7 @@ func (pool *aTxPool) threadElectoralAndPacker ( ctx context.Context ) {
 	cancel1()
 	cancel2()
 	cancel3()
-	awaiter.Wait()
+	subwg.Wait()
 
 	return
 }

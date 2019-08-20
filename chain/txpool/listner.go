@@ -4,12 +4,13 @@ import (
 	"context"
 	ATx "github.com/ayachain/go-aya/vdb/transaction"
 	"github.com/prometheus/common/log"
+	"sync"
 )
 
-func (pool *aTxPool) threadTransactionListener( ctx context.Context ) {
+func (pool *aTxPool) threadTransactionListener( ctx context.Context, awaiter *sync.WaitGroup ) {
 
-	//log.Info("ATxPool Thread On: " + ATxPoolThreadTxListen)
-	//defer log.Info("ATxPool Thread Off: " + ATxPoolThreadTxListen)
+	awaiter.Add(1)
+	defer awaiter.Done()
 
 	// subscribe
 	sub, err := pool.ind.PubSub.Subscribe( pool.channelTopics[ATxPoolThreadTxListen] )

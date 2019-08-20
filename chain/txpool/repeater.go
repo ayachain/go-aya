@@ -5,12 +5,13 @@ import (
 	MBlock "github.com/ayachain/go-aya/vdb/mblock"
 	"github.com/ayachain/go-aya/vdb/node"
 	"github.com/prometheus/common/log"
+	"sync"
 )
 
-func (pool *aTxPool) threadMiningBlockRepeater( ctx context.Context ) {
+func (pool *aTxPool) threadMiningBlockRepeater( ctx context.Context, awaiter *sync.WaitGroup ) {
 
-	log.Info("ATxPool Thread On: " + ATxPoolThreadRepeater)
-	defer log.Info("ATxPool Thread Off: " + ATxPoolThreadRepeater)
+	awaiter.Add(1)
+	defer awaiter.Done()
 
 	// subscribe
 	sub, err := pool.ind.PubSub.Subscribe( pool.channelTopics[ATxPoolThreadRepeater] )

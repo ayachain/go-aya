@@ -119,42 +119,55 @@ func (pool *aTxPool) PowerOn( ctx context.Context ) {
 	log.Info("TXP On")
 	defer log.Info("TXP Off")
 
+	wg := &sync.WaitGroup{}
+
 	switch pool.judgingMode() {
 	case AtxPoolWorkModeSuper:
 
 		ctx1, cancel1 := context.WithCancel(ctx)
 		ctx2, cancel2 := context.WithCancel(ctx)
-		defer cancel1()
-		defer cancel2()
+		ctx3, cancel3 := context.WithCancel(ctx)
 
-		go pool.threadTransactionListener(ctx1)
-		go pool.threadElectoralAndPacker(ctx2)
+		go pool.threadTransactionListener(ctx1, wg)
+		go pool.threadElectoralAndPacker(ctx2, wg)
+		go pool.threadMiningBlockRepeater(ctx3, wg)
 
 		select {
 		case <- ctx.Done():
-			return
+			break
 
 		case <- ctx1.Done():
-			return
+			break
 
 		case <- ctx2.Done():
-			return
+			break
+
+		case <- ctx3.Done():
+			break
 		}
+
+		cancel1()
+		cancel2()
+		cancel3()
+
+		wg.Wait()
 
 	default :
 
 		ctx1, cancel1 := context.WithCancel(ctx)
-		defer cancel1()
 
-		go pool.threadTransactionListener(ctx1)
+		go pool.threadTransactionListener(ctx1, wg)
 
 		select {
 		case <- ctx.Done():
-			return
+			break
 
 		case <- ctx1.Done():
-			return
+			break
 		}
+
+		cancel1()
+		wg.Wait()
 	}
 }
 
