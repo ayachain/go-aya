@@ -75,7 +75,7 @@ func (d *aStatDaemon) AddTimeoutObserver( timeoutFunc func( s common.Signal ) ) 
 
 	d.observers = append( d.observers, timeoutFunc )
 
-	timeoutFunc(common.SignalDoMining)
+	timeoutFunc(common.SignalObserved)
 
 	return nil
 }
