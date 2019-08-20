@@ -71,7 +71,7 @@ func (mp *aMinerPool) PutTask( task *MiningTask ) *MiningResult {
 	}
 
 	/// Read tx list from IPFS dag services
-	txsCtx, txsCancel := context.WithTimeout(ctx, time.Second * 16)
+	txsCtx, txsCancel := context.WithTimeout(context.TODO(), time.Second * 16)
 	defer txsCancel()
 
 	task.Txs = task.MiningBlock.ReadTxsFromDAG(txsCtx, mp.ind)
