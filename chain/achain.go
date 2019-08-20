@@ -283,6 +283,8 @@ func (chain *aChain) ForkMergeBatch( ctx context.Context, mret *AMinied.Minined 
 	finfo := &ACInfo.ChainInfo{
 		ChainID:mret.MBlock.ChainID,
 		Indexes:idxfcid,
+		BlockIndex:mret.MBlock.Index,
+		FinalCVFS:ccid,
 	}
 
 	return finfo, nil
