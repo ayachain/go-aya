@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/ayachain/go-aya/chain/sdaemon/common"
+	"github.com/prometheus/common/log"
 	"sync"
 	"time"
 )
@@ -12,10 +13,10 @@ var (
 	ErrObserverAlreadyExists 	= errors.New("observer function already exist")
 
 	DefaultConfig				= &common.TimeoutConfig {
-		PackingDuration:8,
-		MiningDuration:60,
-		ReceiptDuration:8,
-		ConfirmDuration:8,
+		PackingDuration:	time.Second * 8,
+		MiningDuration:		time.Second * 60,
+		ReceiptDuration:	time.Second * 8,
+		ConfirmDuration:	time.Second * 8,
 	}
 )
 
@@ -81,8 +82,10 @@ func (d *aStatDaemon) AddTimeoutObserver( timeoutFunc func( s common.Signal ) ) 
 
 func (d *aStatDaemon) PowerOn(ctx context.Context) {
 
+	log.Info("ASD On")
 	defer func() {
 		d.observers = make([]func( s common.Signal ), 0)
+		log.Info("ASD Off")
 	}()
 
 	for {
@@ -92,14 +95,13 @@ func (d *aStatDaemon) PowerOn(ctx context.Context) {
 			return
 
 		case <- d.waitingTimer.C:
+			log.Infof("%v <- Time.C", d.lsig)
 			break
 		}
 
 		for _, f := range d.observers {
 			go f( d.lsig )
 		}
-
-		_ = d.waitingTimer.Stop()
 	}
 }
 

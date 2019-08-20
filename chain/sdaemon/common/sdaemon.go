@@ -5,16 +5,16 @@ import (
 	"time"
 )
 
-type Signal int8
+type Signal string
 
 const (
-	SignalInterrupt		Signal	= -1
-	SignalObserved 		Signal	= 0
-	SignalDoPacking		Signal	= 1
-	SignalDoMining		Signal  = 2
-	SignalDoReceipting	Signal 	= 3
-	SignalDoConfirming	Signal	= 4
-	SignalOnConfirmed	Signal 	= 5
+	SignalInterrupt		Signal	= "Interrupt"
+	SignalObserved 		Signal	= "Observed"
+	SignalDoPacking		Signal	= "DoPacking"
+	SignalDoMining		Signal  = "DoMining"
+	SignalDoReceipting	Signal 	= "DoReceipting"
+	SignalDoConfirming	Signal	= "DoConfirming"
+	SignalOnConfirmed	Signal 	= "OnConfirmed"
 )
 
 type TimeoutConfig struct {

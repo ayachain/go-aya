@@ -34,9 +34,7 @@ func (pool *aTxPool) threadMiningBlockRepeater( ctx context.Context ) {
 		} else {
 
 			if nd.Type != node.NodeTypeSuper {
-
 				continue
-
 			}
 
 		}

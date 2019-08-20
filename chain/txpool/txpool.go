@@ -8,7 +8,6 @@ import (
 	ASD "github.com/ayachain/go-aya/chain/sdaemon/common"
 	"github.com/ayachain/go-aya/chain/txpool/txlist"
 	"github.com/ayachain/go-aya/vdb"
-	ABlock "github.com/ayachain/go-aya/vdb/block"
 	AvdbComm "github.com/ayachain/go-aya/vdb/common"
 	AElectoral "github.com/ayachain/go-aya/vdb/electoral"
 	"github.com/ayachain/go-aya/vdb/indexes"
@@ -67,8 +66,6 @@ type TxPool interface {
 	GetState() *State
 
 	GetTx( hash EComm.Hash ) *ATx.Transaction
-
-	ConfirmBestBlock( cblock *ABlock.Block ) error
 }
 
 type aTxPool struct {
@@ -84,10 +81,7 @@ type aTxPool struct {
 
 	workmode AtxPoolWorkMode
 	ownerAccount EAccount.Account
-	miningBlock *AMBlock.MBlock
 
-	packerState AElectoral.ATxPackerState
-	latestPackerStateChangeTime int64
 	eleservices AElectoral.MemServices
 
 	mblockChannel string
@@ -114,8 +108,6 @@ func NewTxPool( ind *core.IpfsNode, chainID string, cvfs vdb.CVFS, acc EAccount.
 		channelTopics:topicmap,
 		ownerAccount:acc,
 		chainID:chainID,
-		packerState:AElectoral.ATxPackStateLookup,
-		latestPackerStateChangeTime:time.Now().Unix(),
 		eleservices:AElectoral.CreateServices(cvfs, 10),
 		mblockChannel:mchannel,
 		asd:asd,
@@ -124,8 +116,8 @@ func NewTxPool( ind *core.IpfsNode, chainID string, cvfs vdb.CVFS, acc EAccount.
 
 func (pool *aTxPool) PowerOn( ctx context.Context ) {
 
-	log.Info("ATxPool PowerOn")
-	defer log.Info("ATxPool PowerOff")
+	log.Info("TXP On")
+	defer log.Info("TXP Off")
 
 	switch pool.judgingMode() {
 	case AtxPoolWorkModeSuper:
@@ -164,27 +156,6 @@ func (pool *aTxPool) PowerOn( ctx context.Context ) {
 			return
 		}
 	}
-}
-
-func (pool *aTxPool) ConfirmBestBlock( cblock *ABlock.Block ) error {
-
-	// clear txpool
-	dagReadCtx, dagReadCancel := context.WithCancel(context.TODO())
-
-	confirmTxlist := cblock.ReadTxsFromDAG(dagReadCtx, pool.ind)
-
-	dagReadCancel()
-
-	if err := pool.confirmTxs( confirmTxlist ); err != nil {
-		log.Error(err)
-		return err
-	}
-
-	pool.changePackerState(AElectoral.ATxPackStateLookup)
-
-	pool.miningBlock = nil
-
-	return nil
 }
 
 func (pool *aTxPool) PublishTx( tx *ATx.Transaction ) error {
@@ -251,10 +222,6 @@ func (pool *aTxPool) createMiningBlock() *AMBlock.MBlock {
 
 	pool.pmu.Lock()
 	defer pool.pmu.Unlock()
-
-	if pool.packerState != AElectoral.ATxPackStateMaster {
-		return nil
-	}
 
 	var packtxs []*ATx.Transaction
 
@@ -352,13 +319,6 @@ func (pool *aTxPool) doBroadcast( coder AvdbComm.AMessageEncode, topic string) e
 	}
 
 	return pool.ind.PubSub.Publish( topic, cbs )
-
-}
-
-func (pool *aTxPool) changePackerState( s AElectoral.ATxPackerState ) {
-
-	pool.latestPackerStateChangeTime = time.Now().Unix()
-	pool.packerState = s
 
 }
 

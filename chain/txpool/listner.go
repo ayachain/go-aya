@@ -8,8 +8,8 @@ import (
 
 func (pool *aTxPool) threadTransactionListener( ctx context.Context ) {
 
-	log.Info("ATxPool Thread On: " + ATxPoolThreadTxListen)
-	defer log.Info("ATxPool Thread Off: " + ATxPoolThreadTxListen)
+	//log.Info("ATxPool Thread On: " + ATxPoolThreadTxListen)
+	//defer log.Info("ATxPool Thread Off: " + ATxPoolThreadTxListen)
 
 	// subscribe
 	sub, err := pool.ind.PubSub.Subscribe( pool.channelTopics[ATxPoolThreadTxListen] )

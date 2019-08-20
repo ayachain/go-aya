@@ -137,8 +137,8 @@ func (mc *aMessageCenter) TrustMessage() <- chan []byte {
 
 func (mc *aMessageCenter) PowerOn( ctx context.Context, chainID string, ind *core.IpfsNode ) {
 
-	log.Info("AMessageCenter PowerOn")
-	defer log.Info("AMessageCenter PowerOff")
+	log.Info("AMC On")
+	defer log.Info("AMC Off")
 
 	var (
 

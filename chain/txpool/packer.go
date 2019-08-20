@@ -17,8 +17,8 @@ import (
 
 func (pool *aTxPool) threadElectoralAndPacker ( ctx context.Context ) {
 
-	log.Info("ATxPool Thread On: " + ATxPoolThreadTxPackage)
-	defer log.Info("ATxPool Thread Off: " + ATxPoolThreadTxPackage)
+	//log.Info("ATxPool Thread On: " + ATxPoolThreadTxPackage)
+	//defer log.Info("ATxPool Thread Off: " + ATxPoolThreadTxPackage)
 
 	ctx1, cancel1 := context.WithCancel(ctx)
 	ctx2, cancel2 := context.WithCancel(ctx)
@@ -104,6 +104,7 @@ func winerListnerThread( ctx context.Context, pool *aTxPool, awaiter *sync.WaitG
 
 		switch s {
 		default:
+			log.Infof("<- %v", s)
 			lockPacker = false
 
 		case ASD.SignalOnConfirmed:
@@ -145,25 +146,18 @@ func winerListnerThread( ctx context.Context, pool *aTxPool, awaiter *sync.WaitG
 
 		if strings.EqualFold( packer.PackerPeerID, pool.ind.Identity.Pretty() ) {
 
-			if pool.packerState == AElectoral.ATxPackStateLookup && packer.PackBlockIndex == idx.BlockIndex + 1 {
+			if packer.PackBlockIndex == idx.BlockIndex + 1 && pool.GetState().Pending > 0 {
 
-				if pool.GetState().Pending > 0 {
+				if _, err := pool.doPackMBlock(); err != nil {
 
-					pool.changePackerState(AElectoral.ATxPackStateMaster)
+					log.Warn(err)
+					continue
 
-					if _, err := pool.doPackMBlock(); err != nil {
-
-						log.Warn(err)
-						continue
-
-					}
-
-					lockPacker = true
 				}
+
+				lockPacker = true
 			}
 
-		} else {
-			pool.changePackerState(AElectoral.ATxPackStateFollower)
 		}
 	}
 }

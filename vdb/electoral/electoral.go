@@ -61,15 +61,3 @@ func (vote *Electoral) RawMessageDecode( bs []byte ) error {
 	return vote.Decode(bs[1:])
 
 }
-
-
-type ATxPackerState string
-
-const (
-
-	ATxPackStateUnknown			ATxPackerState	=	"Unknown"
-	ATxPackStateMaster 			ATxPackerState	=	"Master"
-	ATxPackStateNextMaster		ATxPackerState	=	"NextMaster"
-	ATxPackStateFollower		ATxPackerState	=	"Follower"
-	ATxPackStateLookup			ATxPackerState  =   "Looking"
-)
