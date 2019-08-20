@@ -1,4 +1,4 @@
-package worker
+package merger
 
 import (
 	"bufio"
@@ -6,7 +6,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
-	AVdbComm "github.com/ayachain/go-aya/vdb/common"
+	VDBComm "github.com/ayachain/go-aya/vdb/common"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-ipfs/core"
@@ -15,34 +15,47 @@ import (
 	"strings"
 )
 
-// In order to ensure that the final task group can write concurrently, the
-// target of each database should have as many as one task. The same task cannot
-// be included in the group, and if so, it needs to be merged.
-type TaskBatchGroup struct {
-	AVdbComm.RawDBCoder
+type CVFSMerger interface {
+
+	VDBComm.RawDBCoder
+
+	GetBatchMap() map[string]*leveldb.Batch
+
+	Put( dbKey string, k []byte, v []byte )
+
+	Del( dbKey string, k []byte )
+
+	Upload( ind *core.IpfsNode ) cid.Cid
+
+}
+
+type aCVFSMerger struct {
+
+	CVFSMerger
+
 	batchs map[string]*leveldb.Batch
 }
 
-func NewGroup() *TaskBatchGroup {
-	return &TaskBatchGroup{
+func NewMerger() CVFSMerger {
+	return &aCVFSMerger{
 		batchs:make(map[string]*leveldb.Batch),
 	}
 }
 
-func (tbg *TaskBatchGroup) GetBatchMap() map[string]*leveldb.Batch{
+func (tbg *aCVFSMerger) GetBatchMap() map[string]*leveldb.Batch{
 	return tbg.batchs
 }
 
 // Byte 0 - 7 		: Header json bytes content len
 // Byte 8 - HeadLen : json bytes content
 // Bate .... 		: Batch dump bytes
-func (tbg *TaskBatchGroup) Encode() []byte {
+func (tbg *aCVFSMerger) Encode() []byte {
 
 	batchBuff := bytes.NewBuffer([]byte{})
 
 	var head []string
 
-	for _, k := range AVdbComm.StorageDBPaths {
+	for _, k := range VDBComm.StorageDBPaths {
 
 		if batch, exist := tbg.batchs[k]; exist {
 
@@ -63,7 +76,7 @@ func (tbg *TaskBatchGroup) Encode() []byte {
 		return nil
 	}
 
-	logbuf := bytes.NewBuffer( AVdbComm.BigEndianBytes( uint64(len(headBs))) )
+	logbuf := bytes.NewBuffer( VDBComm.BigEndianBytes( uint64(len(headBs))) )
 	logbuf.Write( headBs )
 
 	_, err = batchBuff.WriteTo(logbuf)
@@ -74,7 +87,7 @@ func (tbg *TaskBatchGroup) Encode() []byte {
 	return logbuf.Bytes()
 }
 
-func (tgb *TaskBatchGroup) Decode( bs []byte ) error {
+func (tgb *aCVFSMerger) Decode( bs []byte ) error {
 
 	buff := bufio.NewReader( bytes.NewReader(bs) )
 
@@ -89,7 +102,7 @@ func (tgb *TaskBatchGroup) Decode( bs []byte ) error {
 		return err
 	}
 
-	head := []string{}
+	var head []string
 	if err := json.Unmarshal(hcbs, &head); err != nil {
 		return err
 	}
@@ -115,35 +128,34 @@ func (tgb *TaskBatchGroup) Decode( bs []byte ) error {
 		}
 
 		tgb.batchs[k] = batch
-
 	}
 
 	return nil
 }
 
-func (tgb *TaskBatchGroup) Put( dbkey string, k []byte, v []byte ) {
+func (tgb *aCVFSMerger) Put( dbKey string, k []byte, v []byte ) {
 
-	batch, exist := tgb.batchs[dbkey]
+	batch, exist := tgb.batchs[dbKey]
 	if !exist {
 		batch = &leveldb.Batch{}
-		tgb.batchs[dbkey] = batch
+		tgb.batchs[dbKey] = batch
 	}
 
 	batch.Put(k, v)
 }
 
-func (tgb *TaskBatchGroup) Del( dbkey string, k []byte ) {
+func (tgb *aCVFSMerger) Del( dbKey string, k []byte ) {
 
-	batch, exist := tgb.batchs[dbkey]
+	batch, exist := tgb.batchs[dbKey]
 	if !exist {
 		batch := &leveldb.Batch{}
-		tgb.batchs[dbkey] = batch
+		tgb.batchs[dbKey] = batch
 	}
 
 	batch.Delete(k)
 }
 
-func (tgb *TaskBatchGroup) Upload( ind *core.IpfsNode ) cid.Cid {
+func (tgb *aCVFSMerger) Upload( ind *core.IpfsNode ) cid.Cid {
 
 	dumpbs := tgb.Encode()
 

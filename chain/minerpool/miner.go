@@ -2,7 +2,7 @@ package minerpool
 
 import (
 	ATxFlow "github.com/ayachain/go-aya/chain/minerpool/tx"
-	APosComm "github.com/ayachain/go-aya/consensus/impls/APOS/common"
+	ACComm "github.com/ayachain/go-aya/chain/common"
 	ARsp "github.com/ayachain/go-aya/vdb/receipt"
 	ATx "github.com/ayachain/go-aya/vdb/transaction"
 )
@@ -40,7 +40,7 @@ func (mp *aMinerPool) doTask( task *MiningTask ) *MiningResult {
 		case ATx.NormalTransfer : _ = ATxFlow.DoTransfer( tx, task.VWriter )
 
 		default:
-			task.VWriter.Receipts().Put(tx.GetHash256(), task.MiningBlock.Index, ARsp.ExpectedReceipt(APosComm.TxUnsupportTransactionType, nil).Encode())
+			task.VWriter.Receipts().Put(tx.GetHash256(), task.MiningBlock.Index, ARsp.ExpectedReceipt(ACComm.TxUnsupportTransactionType, nil).Encode())
 		}
 	}
 

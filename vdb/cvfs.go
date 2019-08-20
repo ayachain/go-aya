@@ -4,11 +4,11 @@ import (
 	"context"
 	"errors"
 	ADB "github.com/ayachain/go-aya-alvm-adb"
-	AWrok "github.com/ayachain/go-aya/consensus/core/worker"
-	AAssetses "github.com/ayachain/go-aya/vdb/assets"
+	AAssets "github.com/ayachain/go-aya/vdb/assets"
 	ABlock "github.com/ayachain/go-aya/vdb/block"
-	AVdbComm "github.com/ayachain/go-aya/vdb/common"
+	VDBComm "github.com/ayachain/go-aya/vdb/common"
 	AIndexes "github.com/ayachain/go-aya/vdb/indexes"
+	VDBMerge "github.com/ayachain/go-aya/vdb/merger"
 	ANodes "github.com/ayachain/go-aya/vdb/node"
 	AReceipts "github.com/ayachain/go-aya/vdb/receipt"
 	ATx "github.com/ayachain/go-aya/vdb/transaction"
@@ -34,13 +34,13 @@ type CVFS interface {
 
 	Blocks() ABlock.Services
 
-	Assetses() AAssetses.Services
+	Assetses() AAssets.Services
 
 	Receipts() AReceipts.Services
 
 	Transactions() ATx.Services
 
-	ForkMergeBatch( group *AWrok.TaskBatchGroup ) ( cid.Cid, error )
+	ForkMergeBatch( merger VDBMerge.CVFSMerger) ( cid.Cid, error )
 
 	NewCVFSWriter() (CacheCVFS, error)
 }
@@ -90,7 +90,7 @@ func CreateVFS( block *ABlock.GenBlock, ind *core.IpfsNode, idxSer AIndexes.Inde
 	}
 
 	cvfs.servies.Store( ANodes.DBPath, ANodes.CreateServices(ind, idxSer) )
-	cvfs.servies.Store( AAssetses.DBPath, AAssetses.CreateServices(ind, idxSer) )
+	cvfs.servies.Store( AAssets.DBPath, AAssets.CreateServices(ind, idxSer) )
 	cvfs.servies.Store( ABlock.DBPath, ABlock.CreateServices(ind, idxSer) )
 	cvfs.servies.Store( ATx.DBPath, ATx.CreateServices(ind, idxSer) )
 	cvfs.servies.Store( AReceipts.DBPath, AReceipts.CreateServices(ind, idxSer) )
@@ -109,7 +109,7 @@ func CreateVFS( block *ABlock.GenBlock, ind *core.IpfsNode, idxSer AIndexes.Inde
 	// Award
 	for addr, amount := range block.Award {
 
-		assetBn := AAssetses.NewAssets( amount / 2, amount, amount / 2 )
+		assetBn := AAssets.NewAssets( amount / 2, amount, amount / 2 )
 
 		writer.Assetses().Put( EComm.HexToAddress(addr), assetBn )
 	}
@@ -158,7 +158,7 @@ func LinkVFS( chainId string, ind *core.IpfsNode, idxSer AIndexes.IndexesService
 	}
 
 	vfs.servies.Store( ANodes.DBPath, ANodes.CreateServices(ind, idxSer) )
-	vfs.servies.Store( AAssetses.DBPath, AAssetses.CreateServices(ind, idxSer) )
+	vfs.servies.Store( AAssets.DBPath, AAssets.CreateServices(ind, idxSer) )
 	vfs.servies.Store( ABlock.DBPath, ABlock.CreateServices(ind, idxSer) )
 	vfs.servies.Store( ATx.DBPath, ATx.CreateServices(ind, idxSer) )
 	vfs.servies.Store( AReceipts.DBPath, AReceipts.CreateServices(ind, idxSer) )
@@ -177,11 +177,11 @@ func ( vfs *aCVFS ) Nodes() ANodes.Services {
 	return v.(ANodes.Services)
 }
 
-func ( vfs *aCVFS ) Assetses() AAssetses.Services {
+func ( vfs *aCVFS ) Assetses() AAssets.Services {
 
-	v, _ := vfs.servies.Load(AAssetses.DBPath)
+	v, _ := vfs.servies.Load(AAssets.DBPath)
 
-	return v.(AAssetses.Services)
+	return v.(AAssets.Services)
 }
 
 func ( vfs *aCVFS ) Blocks() ABlock.Services {
@@ -209,19 +209,19 @@ func ( vfs *aCVFS ) NewCVFSWriter() (CacheCVFS, error) {
 	return NewCacheCVFS(vfs)
 }
 
-func ( vfs *aCVFS ) writeGenBatch( root *mfs.Root, group *AWrok.TaskBatchGroup ) (cid. Cid, error) {
+func ( vfs *aCVFS ) writeGenBatch( root *mfs.Root, merger VDBMerge.CVFSMerger ) (cid. Cid, error) {
 
 	vfs.smu.Lock()
 	defer vfs.smu.Unlock()
 
 	var err error
-	for dbkey, batch := range group.GetBatchMap() {
+	for dbkey, batch := range merger.GetBatchMap() {
 
 		if batch == nil {
 			continue
 		}
 
-		vdbroot, err := AVdbComm.LookupDBPath(root, dbkey)
+		vdbroot, err := VDBComm.LookupDBPath(root, dbkey)
 		if err != nil {
 			panic(err)
 		}
@@ -239,7 +239,7 @@ func ( vfs *aCVFS ) writeGenBatch( root *mfs.Root, group *AWrok.TaskBatchGroup )
 	return nd.Cid(), nil
 }
 
-func ( vfs *aCVFS ) ForkMergeBatch( group *AWrok.TaskBatchGroup ) (cid.Cid, error) {
+func ( vfs *aCVFS ) ForkMergeBatch( merger VDBMerge.CVFSMerger ) (cid.Cid, error) {
 
 	vfs.smu.Lock()
 	defer vfs.smu.Unlock()
@@ -260,13 +260,13 @@ func ( vfs *aCVFS ) ForkMergeBatch( group *AWrok.TaskBatchGroup ) (cid.Cid, erro
 	}
 
 	var err error
-	for dbkey, batch := range group.GetBatchMap() {
+	for dbkey, batch := range merger.GetBatchMap() {
 
 		if batch == nil {
 			continue
 		}
 
-		vdbroot, err := AVdbComm.LookupDBPath(root, dbkey)
+		vdbroot, err := VDBComm.LookupDBPath(root, dbkey)
 		if err != nil {
 			panic(err)
 		}

@@ -2,7 +2,7 @@ package workflow
 
 import (
 	"errors"
-	APosComm "github.com/ayachain/go-aya/consensus/impls/APOS/common"
+	ACComm "github.com/ayachain/go-aya/chain/common"
 	"github.com/ayachain/go-aya/vdb"
 	AAsset "github.com/ayachain/go-aya/vdb/assets"
 	ARsp "github.com/ayachain/go-aya/vdb/receipt"
@@ -28,9 +28,9 @@ func DoCostHandle( tx *ATx.Transaction, base vdb.CacheCVFS, txindex int ) error 
 		// expected
 		if astfrom.Avail < ATx.StaticCostMapping[tx.Type] || astfrom.Vote < ATx.StaticCostMapping[tx.Type] {
 
-			base.Receipts().Put( txHash, tx.BlockIndex, ARsp.ExpectedReceipt(APosComm.TxInsufficientFunds, nil).Encode() )
+			base.Receipts().Put( txHash, tx.BlockIndex, ARsp.ExpectedReceipt(ACComm.TxInsufficientFunds, nil).Encode() )
 
-			return errors.New( "Insufficient funds" )
+			return errors.New( "insufficient funds" )
 		}
 
 		// success

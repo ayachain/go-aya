@@ -5,7 +5,7 @@ import (
 	"errors"
 	ASD "github.com/ayachain/go-aya/chain/sdaemon/common"
 	"github.com/ayachain/go-aya/vdb"
-	AvdbComm "github.com/ayachain/go-aya/vdb/common"
+	VDBComm "github.com/ayachain/go-aya/vdb/common"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ipfs/go-ipfs/core"
@@ -22,7 +22,7 @@ type MessageCenter interface {
 
 	Push( msg *pubsub.Message )
 
-	PublishMessage( coder AvdbComm.AMessageEncode, topic string ) error
+	PublishMessage( coder VDBComm.AMessageEncode, topic string ) error
 
 	TrustMessage() <- chan []byte
 
@@ -171,13 +171,13 @@ func (mc *aMessageCenter) PowerOn( ctx context.Context, chainID string, ind *cor
 	}
 	defer mblockSuber.Cancel()
 
-	batchSuber, err = ind.PubSub.Subscribe( GetChannelTopics(chainID, MessageChannelBatcher ) )
+	batchSuber, err = ind.PubSub.Subscribe( GetChannelTopics(chainID, MessageChannelBatcher) )
 	if err != nil {
 		goto ErrorReturn
 	}
 	defer batchSuber.Cancel()
 
-	appendSuber, err = ind.PubSub.Subscribe( GetChannelTopics(chainID, MessageChannelAppend ) )
+	appendSuber, err = ind.PubSub.Subscribe( GetChannelTopics(chainID, MessageChannelAppend) )
 	if err != nil {
 		goto ErrorReturn
 	}
@@ -265,7 +265,7 @@ ErrorReturn:
 	return
 }
 
-func (mc *aMessageCenter) PublishMessage( coder AvdbComm.AMessageEncode, topic string ) error {
+func (mc *aMessageCenter) PublishMessage( coder VDBComm.AMessageEncode, topic string ) error {
 
 	cbs := coder.RawMessageEncode()
 

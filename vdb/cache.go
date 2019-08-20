@@ -1,11 +1,11 @@
 package vdb
 
 import (
-	AWroker "github.com/ayachain/go-aya/consensus/core/worker"
 	AAssetses "github.com/ayachain/go-aya/vdb/assets"
 	ABlock "github.com/ayachain/go-aya/vdb/block"
 	"github.com/ayachain/go-aya/vdb/common"
 	AVDBComm "github.com/ayachain/go-aya/vdb/common"
+	"github.com/ayachain/go-aya/vdb/merger"
 	ANodes "github.com/ayachain/go-aya/vdb/node"
 	AReceipts "github.com/ayachain/go-aya/vdb/receipt"
 	ATx "github.com/ayachain/go-aya/vdb/transaction"
@@ -28,7 +28,7 @@ type CacheCVFS interface {
 
 	Transactions() ATx.MergeWriter
 
-	MergeGroup() *AWroker.TaskBatchGroup
+	MergeGroup() merger.CVFSMerger
 }
 
 
@@ -186,9 +186,9 @@ func (cache *aCacheCVFS) Transactions() ATx.MergeWriter {
 	return wt
 }
 
-func (cache *aCacheCVFS) MergeGroup() *AWroker.TaskBatchGroup {
+func (cache *aCacheCVFS) MergeGroup() merger.CVFSMerger {
 
-	group := AWroker.NewGroup()
+	merger := merger.NewMerger()
 
 	for _, path := range AVDBComm.StorageDBPaths {
 
@@ -202,11 +202,11 @@ func (cache *aCacheCVFS) MergeGroup() *AWroker.TaskBatchGroup {
 
 				if batch.Len() > 0 {
 
-					group.GetBatchMap()[path] = batch
+					merger.GetBatchMap()[path] = batch
 
 				} else {
 
-					group.GetBatchMap()[path] = nil
+					merger.GetBatchMap()[path] = nil
 				}
 
 			}
@@ -215,5 +215,5 @@ func (cache *aCacheCVFS) MergeGroup() *AWroker.TaskBatchGroup {
 
 	}
 
-	return group
+	return merger
 }

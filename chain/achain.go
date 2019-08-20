@@ -4,15 +4,15 @@ import (
 	"context"
 	"errors"
 	AMinerPool "github.com/ayachain/go-aya/chain/minerpool"
+	AMsgCenter "github.com/ayachain/go-aya/chain/msgcenter"
 	ASDaemon "github.com/ayachain/go-aya/chain/sdaemon/common"
 	"github.com/ayachain/go-aya/chain/txpool"
-	"github.com/ayachain/go-aya/consensus/core/worker"
-	AMsgCenter "github.com/ayachain/go-aya/consensus/msgcenter"
 	"github.com/ayachain/go-aya/vdb"
 	ACBlock "github.com/ayachain/go-aya/vdb/block"
 	ACInfo "github.com/ayachain/go-aya/vdb/chaininfo"
 	AIndexs "github.com/ayachain/go-aya/vdb/indexes"
 	AMBlock "github.com/ayachain/go-aya/vdb/mblock"
+	VDBMerge "github.com/ayachain/go-aya/vdb/merger"
 	AMinied "github.com/ayachain/go-aya/vdb/minined"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-ipfs/core"
@@ -172,6 +172,7 @@ func (chain *aChain) TrustMessageSwitcher( ctx context.Context, msg []byte ) {
 		defer cancel()
 
 		if cinfo, err := chain.ForkMergeBatch(sctx, batcher); err != nil {
+
 			log.Warn(err)
 			return
 
@@ -246,7 +247,7 @@ func (chain *aChain) ForkMergeBatch( ctx context.Context, mret *AMinied.Minined 
 
 	/// Read batcher
 	rctx, cancel := context.WithTimeout(ctx, time.Second * 32)
-	batcher := taskBatchGroupFromCID(rctx, chain.INode, mret.Batcher)
+	merger := ReadMergeFromCID(rctx, chain.INode, mret.Batcher)
 	defer cancel()
 	if rctx.Err() != nil {
 		return nil, rctx.Err()
@@ -259,10 +260,10 @@ func (chain *aChain) ForkMergeBatch( ctx context.Context, mret *AMinied.Minined 
 	}
 
 	/// Append confirm block
-	batcher.Put(ACBlock.DBPath, cblock.GetHash().Bytes(), cblock.Encode() )
+	merger.Put(ACBlock.DBPath, cblock.GetHash().Bytes(), cblock.Encode() )
 
 	/// try merge
-	ccid, err := chain.CVFS.ForkMergeBatch(batcher)
+	ccid, err := chain.CVFS.ForkMergeBatch(merger)
 	if err != nil {
 		return nil, ErrMergeFailed
 	}
@@ -287,9 +288,9 @@ func (chain *aChain) ForkMergeBatch( ctx context.Context, mret *AMinied.Minined 
 	return finfo, nil
 }
 
-func taskBatchGroupFromCID ( ctx context.Context, ind *core.IpfsNode, c cid.Cid) *worker.TaskBatchGroup {
+func ReadMergeFromCID ( ctx context.Context, ind *core.IpfsNode, c cid.Cid) VDBMerge.CVFSMerger {
 
-	reply := make(chan *worker.TaskBatchGroup)
+	reply := make(chan VDBMerge.CVFSMerger)
 	defer close(reply)
 
 	go func() {
@@ -305,13 +306,13 @@ func taskBatchGroupFromCID ( ctx context.Context, ind *core.IpfsNode, c cid.Cid)
 			return
 		}
 
-		batch := &worker.TaskBatchGroup{}
-		if err := batch.Decode(blk.RawData()); err != nil {
+		merger := VDBMerge.NewMerger()
+		if err := merger.Decode(blk.RawData()); err != nil {
 			reply <- nil
 			return
 		} else {
 
-			reply <- batch
+			reply <- merger
 			return
 		}
 

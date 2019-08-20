@@ -7,7 +7,6 @@ import (
 	"time"
 )
 
-
 type ReviewMessage struct {
 
 	Content []byte
