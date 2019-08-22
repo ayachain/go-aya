@@ -6,6 +6,7 @@ import (
 	"github.com/ayachain/go-aya/vdb"
 	AIndexes "github.com/ayachain/go-aya/vdb/indexes"
 	"github.com/ipfs/go-ipfs/core"
+	"github.com/prometheus/common/log"
 	"time"
 )
 
@@ -40,6 +41,9 @@ func NewPool( ind *core.IpfsNode, chainID string, idxser AIndexes.IndexesService
 
 func (mp *aMinerPool) PutTask( task *MiningTask ) *MiningResult {
 
+	st := time.Now().Unix()
+	defer log.Infof("Mining BlockIndex:%v(%vs)", task.MiningBlock.Index, time.Now().Unix() - st)
+
 	var err error
 
 	/// Compare chainid
@@ -51,6 +55,7 @@ func (mp *aMinerPool) PutTask( task *MiningTask ) *MiningResult {
 		}
 	}
 
+	log.Infof(" > ReadIDX:%v(%vs)", task.MiningBlock.Index, time.Now().Unix() - st)
 	/// Read latest block index
 	lidx, err := mp.idxs.GetLatest()
 	if err != nil {
@@ -74,6 +79,7 @@ func (mp *aMinerPool) PutTask( task *MiningTask ) *MiningResult {
 	txsCtx, txsCancel := context.WithTimeout(context.TODO(), time.Second * 16)
 	defer txsCancel()
 
+	log.Infof(" > ReadTxs:%v(%vs)", task.MiningBlock.Index, time.Now().Unix() - st)
 	task.Txs = task.MiningBlock.ReadTxsFromDAG(txsCtx, mp.ind)
 	if txsCtx.Err() != nil {
 		return &MiningResult{
@@ -83,6 +89,7 @@ func (mp *aMinerPool) PutTask( task *MiningTask ) *MiningResult {
 		}
 	}
 
+	log.Infof(" > LinkVFS:%v(%vs)", task.MiningBlock.Index, time.Now().Unix() - st)
 	/// Create chain data vdb services
 	cvfs, err := vdb.LinkVFS(task.MiningBlock.ChainID, mp.ind, mp.idxs)
 	if err != nil {
@@ -93,6 +100,7 @@ func (mp *aMinerPool) PutTask( task *MiningTask ) *MiningResult {
 		}
 	}
 
+	log.Infof(" > CreateCVFSMerge:%v(%vs)", task.MiningBlock.Index, time.Now().Unix() - st)
 	/// Create cvfs writer
 	vwriter, err := cvfs.NewCVFSWriter()
 	if err != nil {
@@ -107,5 +115,6 @@ func (mp *aMinerPool) PutTask( task *MiningTask ) *MiningResult {
 	/// payload mining task object
 	task.VWriter = vwriter
 
+	log.Infof(" > DoTask:%v(%vs)", task.MiningBlock.Index, time.Now().Unix() - st)
 	return mp.doTask(task)
 }
