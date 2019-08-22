@@ -1,6 +1,7 @@
 package msgcenter
 
 import (
+	"bytes"
 	ANode "github.com/ayachain/go-aya/vdb/node"
 	EComm "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -15,7 +16,6 @@ type ReviewMessage struct {
 
 	Nodes []*ANode.Node
 }
-
 
 func NewReviewMessage( contnet []byte, sender *ANode.Node, dfunc func(hash EComm.Hash) ) *ReviewMessage {
 
@@ -39,7 +39,6 @@ func NewReviewMessage( contnet []byte, sender *ANode.Node, dfunc func(hash EComm
 
 	return message
 }
-
 
 func (msg *ReviewMessage) AddConfirmNode( confirmer *ANode.Node ) {
 
@@ -65,4 +64,8 @@ func (msg *ReviewMessage) VoteInfo() (votes uint64, scount uint, ncount uint) {
 	}
 
 	return votes, scount, uint(len(msg.Nodes))
+}
+
+func (msg *ReviewMessage) Description() string {
+	return  string(bytes.ToUpper(msg.Content[:1]))
 }
