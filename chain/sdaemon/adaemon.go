@@ -14,8 +14,8 @@ var (
 
 	DefaultConfig				= &common.TimeoutConfig {
 		PackingDuration:	time.Second * 8,
-		MiningDuration:		time.Second * 24,
-		ReceiptDuration:	time.Second * 8,
+		MiningDuration:		time.Second * 16,
+		ReceiptDuration:	time.Second * 16,
 		ConfirmDuration:	time.Second * 8,
 	}
 )
