@@ -147,7 +147,7 @@ func (chain *aChain) TrustMessageSwitcher( ctx context.Context, msg interface{} 
 			if err := chain.AMC.PublishMessage( &im.Minined {
 				MBlock:mblock,
 				Batcher:mret.Batcher.Upload(chain.INode).Bytes(),
-			}, AMsgCenter.GetChannelTopics(mblock.ChainID, AMsgCenter.MessageChannelMiningBlock) ); err != nil {
+			}, AMsgCenter.GetChannelTopics(mblock.ChainID, AMsgCenter.MessageChannelMined) ); err != nil {
 				log.Warn(err)
 			}
 
