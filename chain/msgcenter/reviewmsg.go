@@ -1,7 +1,6 @@
 package msgcenter
 
 import (
-	"bytes"
 	"github.com/ayachain/go-aya/vdb/im"
 	EComm "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -67,8 +66,4 @@ func (msg *ReviewMessage) VoteInfo() (votes uint64, scount uint, ncount uint) {
 	}
 
 	return votes, scount, uint(len(msg.Nodes))
-}
-
-func (msg *ReviewMessage) Description() string {
-	return  string(bytes.ToUpper(msg.Content[:1]))
 }
