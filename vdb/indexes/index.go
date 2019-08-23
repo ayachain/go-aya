@@ -10,11 +10,12 @@ import (
 
 type Index struct {
 
-	common.RawDBCoder		`json:"-"`
-
 	BlockIndex 	uint64 		`json:"Index"`
+
 	Hash		EComm.Hash 	`json:"Hash"`
+
 	FullCID 	cid.Cid 	`json:"FullCID"`
+
 }
 
 const StaticSize = 74
@@ -32,12 +33,12 @@ func (i *Index) Encode() []byte {
 
 func (i *Index) Decode(bs []byte) error {
 
-	cid, err := cid.Cast( bs[8+32:] )
+	ccid, err := cid.Cast( bs[8+32:] )
 	if err != nil {
 		return err
 	}
 
-	i.FullCID = cid
+	i.FullCID = ccid
 	i.BlockIndex = binary.BigEndian.Uint64( bs[:8] )
 	i.Hash = EComm.BytesToHash( bs[8:8+32] )
 

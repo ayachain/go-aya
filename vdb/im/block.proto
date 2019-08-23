@@ -1,0 +1,52 @@
+syntax = "proto3";
+
+package im;
+
+import "node.proto";
+
+message Block {
+
+    string  ChainID = 1;
+
+    string  Parent = 2;
+
+    uint64  Index = 3;
+
+    uint32  Timestamp = 4;
+
+    string  Packager = 5;
+
+    uint32  Txc = 6;
+
+    bytes   Txs = 7;                // Cid
+
+    bytes   ExtraData = 8;          // Cid
+
+    bytes   AppendData = 9;
+
+}
+
+message GenBlock {
+
+    string      ChainID = 1;
+
+    string      Parent = 2;
+
+    uint64      Index = 3;
+
+    uint32      Timestamp = 4;
+
+    string      Packager = 5;
+
+    uint32      Txc = 6;
+
+    bytes       Txs = 7;             // Cid
+
+    bytes       ExtraData = 8;       // Cid
+
+    bytes       AppendData = 9;
+
+    map<string, uint64> Award = 10;
+
+    repeated Node SuperNodes = 11;
+}

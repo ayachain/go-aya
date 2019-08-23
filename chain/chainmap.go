@@ -9,7 +9,7 @@ import (
 	AStatDaemon "github.com/ayachain/go-aya/chain/sdaemon"
 	"github.com/ayachain/go-aya/chain/txpool"
 	"github.com/ayachain/go-aya/vdb"
-	ABlock "github.com/ayachain/go-aya/vdb/block"
+	"github.com/ayachain/go-aya/vdb/im"
 	"github.com/ayachain/go-aya/vdb/indexes"
 	EAccount "github.com/ethereum/go-ethereum/accounts"
 	"github.com/ipfs/go-datastore"
@@ -89,7 +89,7 @@ func Conn( ctx context.Context, chainId string, ind *core.IpfsNode, acc EAccount
 	return ac.LinkStart(sctx)
 }
 
-func GenBlocksMap( ind *core.IpfsNode ) (map[string]*ABlock.GenBlock, error) {
+func GenBlocksMap( ind *core.IpfsNode ) (map[string]*im.GenBlock, error) {
 
 	dsk := datastore.NewKey(AChainMapKey)
 	val, err := ind.Repo.Datastore().Get(dsk)
@@ -100,11 +100,11 @@ func GenBlocksMap( ind *core.IpfsNode ) (map[string]*ABlock.GenBlock, error) {
 		}
 	}
 
-	rmap := make(map[string]*ABlock.GenBlock)
+	rmap := make(map[string]*im.GenBlock)
 	if val != nil {
 
 		if err := json.Unmarshal( val, &rmap ); err != nil {
-			return nil, err
+			return rmap, nil
 		}
 
 	}
@@ -112,7 +112,7 @@ func GenBlocksMap( ind *core.IpfsNode ) (map[string]*ABlock.GenBlock, error) {
 	return rmap, nil
 }
 
-func AddChain( genBlock *ABlock.GenBlock, ind *core.IpfsNode, r bool ) error {
+func AddChain( genBlock *im.GenBlock, ind *core.IpfsNode, r bool ) error {
 
 	maplist, err := GenBlocksMap(ind)
 	if err != nil {

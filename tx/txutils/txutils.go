@@ -1,19 +1,19 @@
 package txutils
 
 import (
+	"github.com/ayachain/go-aya/vdb/im"
 	EComm "github.com/ethereum/go-ethereum/common"
-	ATransaction "github.com/ayachain/go-aya/vdb/transaction"
 )
 
-func MakeTransferAvail( from EComm.Address, to EComm.Address, value uint64, tid uint64 ) *ATransaction.Transaction {
+func MakeTransferAvail( from EComm.Address, to EComm.Address, value uint64, tid uint64 ) *im.Transaction {
 
-	tx := &ATransaction.Transaction{}
-	tx.From = from
-	tx.To = to
+	tx := &im.Transaction{}
+	tx.From = from.Bytes()
+	tx.To = to.Bytes()
 	tx.Value = value
 	tx.Data = ""
 	tx.Tid = tid
-	tx.Type = ATransaction.NormalTransfer
+	tx.Type = im.TransactionType_Normal
 
 	return tx
 

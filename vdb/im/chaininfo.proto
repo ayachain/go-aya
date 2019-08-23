@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package im;
+
+message ChainInfo {
+
+    string     ChainID = 1;
+
+    uint64     BlockIndex = 2;
+
+    bytes      Indexes = 3;        //cid.Cid
+
+    bytes      FinalCVFS = 4;      //cid.Cid
+
+}

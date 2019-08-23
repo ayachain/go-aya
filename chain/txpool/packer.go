@@ -4,7 +4,10 @@ import (
 	"context"
 	ASD "github.com/ayachain/go-aya/chain/sdaemon/common"
 	AElectoral "github.com/ayachain/go-aya/vdb/electoral"
+	"github.com/ayachain/go-aya/vdb/im"
 	"github.com/ayachain/go-aya/vdb/node"
+	"github.com/golang/protobuf/proto"
+	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-ipfs/pin"
 	peer "github.com/libp2p/go-libp2p-peer"
 	peerstore "github.com/libp2p/go-libp2p-peerstore"
@@ -78,10 +81,10 @@ func subscribeThread( ctx context.Context, pool *aTxPool, awaiter *sync.WaitGrou
 
 		} else {
 
-			if nd.Type == node.NodeTypeSuper {
+			if nd.Type == im.NodeType_Super {
 
-				ele := &AElectoral.Electoral{}
-				if err := ele.RawMessageDecode(msg.Data); err != nil {
+				ele := &im.Electoral{}
+				if err := proto.Unmarshal(msg.Data, ele); err != nil {
 					log.Error(err)
 					continue
 				}
@@ -111,7 +114,9 @@ func winerListnerThread( ctx context.Context, pool *aTxPool, awaiter *sync.WaitG
 
 			if pool.lmblock != nil {
 
-				pool.ind.Pinning.PinWithMode( pool.lmblock.Txs, pin.Any )
+				pinCid, _ := cid.Cast(pool.lmblock.Txs)
+
+				pool.ind.Pinning.PinWithMode( pinCid, pin.Any )
 
 				txs := pool.lmblock.ReadTxsFromDAG(context.TODO(), pool.ind)
 
@@ -209,7 +214,7 @@ func doPingsAndElectoral( ctx context.Context, pool *aTxPool, awaiter *sync.Wait
 				sctx, _ := context.WithCancel(ctx)
 				wg.Add(1)
 
-				go func(ctx context.Context, n *node.Node) {
+				go func(ctx context.Context, n *im.Node) {
 
 					defer wg.Done()
 
@@ -274,12 +279,12 @@ func doPingsAndElectoral( ctx context.Context, pool *aTxPool, awaiter *sync.Wait
 					continue
 				}
 
-				vote := &AElectoral.Electoral {
+				vote := &im.Electoral {
 					BestIndex:idx.BlockIndex,
 					BlockIndex:idx.BlockIndex + 1,
-					From:pool.ownerAccount.Address,
+					From:pool.ownerAccount.Address.Bytes(),
 					ToPeerId: packer.PeerID,
-					Time:time.Now().Unix(),
+					Time:uint32(time.Now().Unix()),
 				}
 
 				if err := pool.doBroadcast(vote, pool.channelTopics[ATxPoolThreadTxPackage]); err != nil {

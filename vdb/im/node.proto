@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package im;
+
+enum NodeType {
+    Super   = 0;
+    Master  = 1;
+}
+
+message Node {
+
+    NodeType   Type = 1;
+
+    uint64     Votes = 2;
+
+    string     PeerID = 3;
+
+    bytes      Owner = 5;
+
+    bytes      Sig = 4;
+
+}

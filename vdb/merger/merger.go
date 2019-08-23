@@ -17,8 +17,6 @@ import (
 
 type CVFSMerger interface {
 
-	VDBComm.RawDBCoder
-
 	GetBatchMap() map[string]*leveldb.Batch
 
 	Put( dbKey string, k []byte, v []byte )
@@ -26,6 +24,10 @@ type CVFSMerger interface {
 	Del( dbKey string, k []byte )
 
 	Upload( ind *core.IpfsNode ) cid.Cid
+
+	Dump() []byte
+
+	Load([]byte) error
 
 }
 
@@ -49,7 +51,7 @@ func (tbg *aCVFSMerger) GetBatchMap() map[string]*leveldb.Batch{
 // Byte 0 - 7 		: Header json bytes content len
 // Byte 8 - HeadLen : json bytes content
 // Bate .... 		: Batch dump bytes
-func (tbg *aCVFSMerger) Encode() []byte {
+func (tbg *aCVFSMerger) Dump() []byte {
 
 	batchBuff := bytes.NewBuffer([]byte{})
 
@@ -87,7 +89,7 @@ func (tbg *aCVFSMerger) Encode() []byte {
 	return logbuf.Bytes()
 }
 
-func (tgb *aCVFSMerger) Decode( bs []byte ) error {
+func (tgb *aCVFSMerger) Load( bs []byte ) error {
 
 	buff := bufio.NewReader( bytes.NewReader(bs) )
 
@@ -157,7 +159,7 @@ func (tgb *aCVFSMerger) Del( dbKey string, k []byte ) {
 
 func (tgb *aCVFSMerger) Upload( ind *core.IpfsNode ) cid.Cid {
 
-	dumpbs := tgb.Encode()
+	dumpbs := tgb.Dump()
 
 	dblk := blocks.NewBlock(dumpbs)
 

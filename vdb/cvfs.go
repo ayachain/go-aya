@@ -7,6 +7,7 @@ import (
 	AAssets "github.com/ayachain/go-aya/vdb/assets"
 	ABlock "github.com/ayachain/go-aya/vdb/block"
 	VDBComm "github.com/ayachain/go-aya/vdb/common"
+	"github.com/ayachain/go-aya/vdb/im"
 	AIndexes "github.com/ayachain/go-aya/vdb/indexes"
 	VDBMerge "github.com/ayachain/go-aya/vdb/merger"
 	ANodes "github.com/ayachain/go-aya/vdb/node"
@@ -20,10 +21,6 @@ import (
 	"github.com/ipfs/go-unixfs"
 	"github.com/prometheus/common/log"
 	"sync"
-)
-
-var (
-	ErrVDBServicesNotExist = errors.New("vdb services not exist in cvfs")
 )
 
 type CVFS interface {
@@ -57,7 +54,7 @@ type aCVFS struct {
 	smu sync.Mutex
 }
 
-func CreateVFS( block *ABlock.GenBlock, ind *core.IpfsNode, idxSer AIndexes.IndexesServices ) (cid.Cid, error) {
+func CreateVFS( block *im.GenBlock, ind *core.IpfsNode, idxSer AIndexes.IndexesServices ) (cid.Cid, error) {
 
 	if idxSer == nil {
 		return cid.Undef, errors.New("indexes services can not be nil")

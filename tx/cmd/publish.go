@@ -4,8 +4,9 @@ import (
 	"errors"
 	AChain "github.com/ayachain/go-aya/chain"
 	ARsponse "github.com/ayachain/go-aya/response"
-	"github.com/ayachain/go-aya/vdb/transaction"
+	"github.com/ayachain/go-aya/vdb/im"
 	EComm "github.com/ethereum/go-ethereum/common"
+	"github.com/golang/protobuf/proto"
 	cmds "github.com/ipfs/go-ipfs-cmds"
 )
 
@@ -32,8 +33,8 @@ var publishCMD = &cmds.Command{
 			return ARsponse.EmitErrorResponse(re, errors.New("invalid transaction"))
 		}
 
-		tx := &transaction.Transaction{}
-		if err := tx.Decode(txbs); err != nil {
+		tx := &im.Transaction{}
+		if err := proto.Unmarshal(txbs, tx); err != nil {
 			return ARsponse.EmitErrorResponse(re, errors.New("can not resolve transaction object"))
 		}
 
@@ -41,7 +42,7 @@ var publishCMD = &cmds.Command{
 			return ARsponse.EmitErrorResponse(re, errors.New("transaction verify failed"))
 		}
 
-		c, err := chain.CVFServices().Transactions().GetTxCount(tx.From)
+		c, err := chain.CVFServices().Transactions().GetTxCount( EComm.BytesToAddress(tx.From) )
 		if err != nil {
 			return ARsponse.EmitErrorResponse(re, err)
 		}

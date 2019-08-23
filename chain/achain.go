@@ -8,12 +8,12 @@ import (
 	ASDaemon "github.com/ayachain/go-aya/chain/sdaemon/common"
 	"github.com/ayachain/go-aya/chain/txpool"
 	"github.com/ayachain/go-aya/vdb"
+	ABlock "github.com/ayachain/go-aya/vdb/block"
 	ACBlock "github.com/ayachain/go-aya/vdb/block"
-	ACInfo "github.com/ayachain/go-aya/vdb/chaininfo"
+	"github.com/ayachain/go-aya/vdb/im"
 	AIndexs "github.com/ayachain/go-aya/vdb/indexes"
-	AMBlock "github.com/ayachain/go-aya/vdb/mblock"
 	VDBMerge "github.com/ayachain/go-aya/vdb/merger"
-	AMinied "github.com/ayachain/go-aya/vdb/minined"
+	"github.com/golang/protobuf/proto"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-ipfs/core"
 	"github.com/prometheus/common/log"
@@ -125,16 +125,13 @@ func (chain *aChain) CVFServices() vdb.CVFS {
 	return chain.CVFS
 }
 
-func (chain *aChain) TrustMessageSwitcher( ctx context.Context, msg []byte ) {
+func (chain *aChain) TrustMessageSwitcher( ctx context.Context, msg interface{} ) {
 
-	switch msg[0] {
+	switch msg.(type) {
 
-	case AMBlock.MessagePrefix:
+	case *im.Block:
 
-		mblock := &AMBlock.MBlock{}
-		if err := mblock.Decode(msg[1:]); err != nil {
-			return
-		}
+		mblock := msg.(*im.Block)
 
 		chain.ASD.SendingSignal( mblock.Index, ASDaemon.SignalDoMining )
 
@@ -148,11 +145,10 @@ func (chain *aChain) TrustMessageSwitcher( ctx context.Context, msg []byte ) {
 			}
 
 			chain.ASD.SendingSignal( mblock.Index, ASDaemon.SignalDoReceipting )
-
-			if err := chain.AMC.PublishMessage( &AMinied.Minined {
+			if err := chain.AMC.PublishMessage( &im.Minined {
 				MBlock:mblock,
-				Batcher:mret.Batcher.Upload(chain.INode),
-			}, AMsgCenter.GetChannelTopics(mblock.ChainID, AMsgCenter.MessageChannelBatcher) ); err != nil {
+				Batcher:mret.Batcher.Upload(chain.INode).Bytes(),
+			}, AMsgCenter.GetChannelTopics(mblock.ChainID, AMsgCenter.MessageChannelMiningBlock) ); err != nil {
 				log.Warn(err)
 			}
 
@@ -161,39 +157,33 @@ func (chain *aChain) TrustMessageSwitcher( ctx context.Context, msg []byte ) {
 		}()
 
 
-	case AMinied.MessagePrefix:
+	case *im.Minined:
 
-		batcher := &AMinied.Minined{}
-		if err := batcher.Decode(msg[1:]); err != nil {
-			return
-		}
+		mined := msg.(*im.Minined)
 
 		sctx, cancel := context.WithTimeout(ctx, time.Second * 32)
 		defer cancel()
 
-		if cinfo, err := chain.ForkMergeBatch(sctx, batcher); err != nil {
+		if cinfo, err := chain.ForkMergeBatch(sctx, mined); err != nil {
 
 			log.Warn(err)
 			return
 
 		} else {
 
-			if err := chain.AMC.PublishMessage( cinfo, AMsgCenter.GetChannelTopics(batcher.MBlock.ChainID, AMsgCenter.MessageChannelAppend)); err != nil {
+			if err := chain.AMC.PublishMessage( cinfo, AMsgCenter.GetChannelTopics(mined.MBlock.ChainID, AMsgCenter.MessageChannelChainInfo)); err != nil {
 				log.Warn(err)
 				return
 			}
 
-			chain.ASD.SendingSignal( batcher.MBlock.Index, ASDaemon.SignalDoConfirming )
+			chain.ASD.SendingSignal( mined.MBlock.Index, ASDaemon.SignalDoConfirming )
 		}
 
 		return
 
-	case ACInfo.MessagePrefix:
+	case *im.ChainInfo:
 
-		cinfo := &ACInfo.ChainInfo{}
-		if err := cinfo.Decode(msg[1:]); err != nil {
-			return
-		}
+		cinfo := msg.(*im.ChainInfo)
 
 		/// check chain id
 		if cinfo.ChainID != chain.ChainId {
@@ -205,7 +195,13 @@ func (chain *aChain) TrustMessageSwitcher( ctx context.Context, msg []byte ) {
 		if err != nil || lidx == nil {
 
 			/// if this chain's current index services has error, use new chain info.
-			if err := chain.IDX.SyncToCID(cinfo.FinalCVFS); err != nil {
+			ccid, err := cid.Cast(cinfo.FinalCVFS)
+			if err != nil {
+				log.Error(err)
+				return
+			}
+
+			if err := chain.IDX.SyncToCID( ccid ); err != nil {
 				panic(err)
 			}
 
@@ -219,8 +215,14 @@ func (chain *aChain) TrustMessageSwitcher( ctx context.Context, msg []byte ) {
 
 		} else {
 
+			ccid, err := cid.Cast(cinfo.Indexes)
+			if err != nil {
+				log.Error(err)
+				return
+			}
+
 			/// chain info's chain is longer use it
-			if err := chain.IDX.SyncToCID(cinfo.Indexes); err != nil {
+			if err := chain.IDX.SyncToCID(ccid); err != nil {
 				log.Error(err)
 				return
 			}
@@ -232,7 +234,7 @@ func (chain *aChain) TrustMessageSwitcher( ctx context.Context, msg []byte ) {
 
 }
 
-func (chain *aChain) ForkMergeBatch( ctx context.Context, mret *AMinied.Minined ) (*ACInfo.ChainInfo, error) {
+func (chain *aChain) ForkMergeBatch( ctx context.Context, mret *im.Minined ) (*im.ChainInfo, error) {
 
 	if mret.MBlock.ChainID != chain.ChainId {
 		return nil, ErrMergeInvalidChainID
@@ -248,31 +250,45 @@ func (chain *aChain) ForkMergeBatch( ctx context.Context, mret *AMinied.Minined 
 	}
 
 	/// Read batcher
+	ccid, err := cid.Cast(mret.Batcher)
+	if err != nil {
+		return nil, err
+	}
+
 	rctx, cancel := context.WithTimeout(ctx, time.Second * 32)
-	merger := ReadMergeFromCID(rctx, chain.INode, mret.Batcher)
+	merger := ReadMergeFromCID(rctx, chain.INode, ccid)
 	defer cancel()
 	if rctx.Err() != nil {
 		return nil, rctx.Err()
 	}
 
 	/// Create confirm block
-	cblock := mret.MBlock.Confirm( mret.Batcher.String() )
+	ccid, err = cid.Cast(mret.Batcher)
+	if err != nil {
+		return nil, err
+	}
+
+	cblock := ABlock.ConfirmBlock(mret.MBlock, ccid )
 	if cblock == nil {
 		return nil, ErrMergeFailed
 	}
 
 	/// Append confirm block
-	merger.Put(ACBlock.DBPath, cblock.GetHash().Bytes(), cblock.Encode() )
+	bbc, err := proto.Marshal(cblock)
+	if err != nil {
+		return nil, err
+	}
+	merger.Put(ACBlock.DBPath, cblock.GetHash().Bytes(), bbc )
 
 	/// try merge
-	ccid, err := chain.CVFS.ForkMergeBatch(merger)
+	ccid, err = chain.CVFS.ForkMergeBatch(merger)
 	if err != nil {
 		return nil, ErrMergeFailed
 	}
 
 	/// try fork merge
 	idxfcid, err := AIndexs.ForkMerge(chain.INode, chain.ChainId, &AIndexs.Index{
-		BlockIndex:mret.MBlock.Block.Index,
+		BlockIndex:mret.MBlock.Index,
 		Hash:cblock.GetHash(),
 		FullCID:ccid,
 	})
@@ -282,11 +298,11 @@ func (chain *aChain) ForkMergeBatch( ctx context.Context, mret *AMinied.Minined 
 	}
 
 	/// create chain info waiting review
-	finfo := &ACInfo.ChainInfo{
+	finfo := &im.ChainInfo{
 		ChainID:mret.MBlock.ChainID,
-		Indexes:idxfcid,
+		Indexes:idxfcid.Bytes(),
 		BlockIndex:mret.MBlock.Index,
-		FinalCVFS:ccid,
+		FinalCVFS:ccid.Bytes(),
 	}
 
 	return finfo, nil
@@ -311,7 +327,7 @@ func ReadMergeFromCID ( ctx context.Context, ind *core.IpfsNode, c cid.Cid) VDBM
 		}
 
 		merger := VDBMerge.NewMerger()
-		if err := merger.Decode(blk.RawData()); err != nil {
+		if err := merger.Load(blk.RawData()); err != nil {
 			reply <- nil
 			return
 		} else {

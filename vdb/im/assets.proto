@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package im;
+
+message Assets {
+
+    uint64  Avail = 2;
+
+    uint64  Vote = 3;
+
+    uint64  Locked = 4;
+
+}

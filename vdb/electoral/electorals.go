@@ -3,7 +3,9 @@ package electoral
 import (
 	"context"
 	"github.com/ayachain/go-aya/vdb"
+	"github.com/ayachain/go-aya/vdb/im"
 	"github.com/ayachain/go-aya/vdb/node"
+	EComm "github.com/ethereum/go-ethereum/common"
 	"sync"
 	"time"
 )
@@ -17,7 +19,7 @@ type aElectorals struct {
 
 	exp int64
 
-	votoMapping map[string]*Electoral
+	votoMapping map[string]*im.Electoral
 	votoMu sync.Mutex
 
 	pingMapping map[string]*node.PingRet
@@ -37,18 +39,18 @@ func CreateServices( cvfs vdb.CVFS, exptime int64 ) MemServices {
 		vfs:cvfs,
 		exp:exptime,
 		packerChan:make(chan *EleRet),
-		votoMapping:make(map[string]*Electoral),
+		votoMapping:make(map[string]*im.Electoral),
 		pingMapping:make(map[string]*node.PingRet),
 	}
 
 }
 
-func (aele *aElectorals) UpdateVote( electoral *Electoral ) {
+func (aele *aElectorals) UpdateVote( electoral *im.Electoral ) {
 
 	aele.votoMu.Lock()
 	defer aele.votoMu.Unlock()
 
-	aele.votoMapping[electoral.From.String()] = electoral
+	aele.votoMapping[ EComm.BytesToAddress(electoral.From).String() ] = electoral
 
 	//log.Infof( "From:%v -> PeerID:%v", electoral.From.String(), electoral.ToPeerId )
 
@@ -117,7 +119,7 @@ func (aele *aElectorals) UpdatePingRet( pret *node.PingRet ) {
 }
 
 
-func (aele *aElectorals) GetNearestOnlineNode( bindex uint64 ) *node.Node {
+func (aele *aElectorals) GetNearestOnlineNode( bindex uint64 ) *im.Node {
 
 	nds := aele.vfs.Nodes().GetSuperNodeList()
 
@@ -199,7 +201,7 @@ func (aele *aElectorals) GetNodesPingStates() []*ConnState {
 
 				rets = append(rets, &ConnState {
 					BestBlockIndex:0,
-					OwnerAddress:nd.Owner,
+					OwnerAddress:EComm.BytesToAddress(nd.Owner),
 					PID:nd.PeerID,
 					RTT:pret.RTT,
 				})
@@ -209,7 +211,7 @@ func (aele *aElectorals) GetNodesPingStates() []*ConnState {
 				rets = append(rets, &ConnState{
 
 					BestBlockIndex:ele.BestIndex,
-					OwnerAddress:nd.Owner,
+					OwnerAddress:EComm.BytesToAddress(nd.Owner),
 					PID:nd.PeerID,
 					RTT:pret.RTT,
 				})
@@ -220,7 +222,7 @@ func (aele *aElectorals) GetNodesPingStates() []*ConnState {
 			rets = append(rets, &ConnState {
 
 				BestBlockIndex:0,
-				OwnerAddress:nd.Owner,
+				OwnerAddress:EComm.BytesToAddress(nd.Owner),
 				PID:nd.PeerID,
 				RTT:KPingTimeout,
 			})

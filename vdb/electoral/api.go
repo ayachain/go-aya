@@ -2,6 +2,7 @@ package electoral
 
 import (
 	"context"
+	"github.com/ayachain/go-aya/vdb/im"
 	"github.com/ayachain/go-aya/vdb/node"
 	"github.com/ethereum/go-ethereum/common"
 	"time"
@@ -23,7 +24,7 @@ type ConnState struct {
 
 type MemServices interface {
 
-	UpdateVote( electoral *Electoral )
+	UpdateVote( electoral *im.Electoral )
 
 	UpdatePingRet( pret *node.PingRet )
 
@@ -31,7 +32,7 @@ type MemServices interface {
 
 	GetNodesPingStates() []*ConnState
 
-	GetNearestOnlineNode( bindex uint64 ) *node.Node
+	GetNearestOnlineNode( bindex uint64 ) *im.Node
 
 	FightPacker(ctx context.Context) (*EleRet, error)
 

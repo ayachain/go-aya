@@ -1,7 +1,7 @@
 package keystore
 
 import (
-	AMsgTransation "github.com/ayachain/go-aya/vdb/transaction"
+	"github.com/ayachain/go-aya/vdb/im"
 	EAccount "github.com/ethereum/go-ethereum/accounts"
 	EKeyStore "github.com/ethereum/go-ethereum/accounts/keystore"
 	EComm "github.com/ethereum/go-ethereum/common"
@@ -97,7 +97,7 @@ func FindAccount( hexAddr string ) (EAccount.Account, error) {
 	return EAccount.Account{}, errors.New("not found")
 }
 
-func SignTransaction( tx *AMsgTransation.Transaction, acc EAccount.Account ) error {
+func SignTransaction( tx *im.Transaction, acc EAccount.Account ) error {
 
 	hash := tx.GetHash256()
 
@@ -106,7 +106,7 @@ func SignTransaction( tx *AMsgTransation.Transaction, acc EAccount.Account ) err
 		return err
 	}
 
-	tx.Sig = EComm.Bytes2Hex(sig)
+	tx.Sig = sig
 
 	return nil
 }

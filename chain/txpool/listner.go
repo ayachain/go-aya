@@ -2,7 +2,8 @@ package txpool
 
 import (
 	"context"
-	ATx "github.com/ayachain/go-aya/vdb/transaction"
+	"github.com/ayachain/go-aya/vdb/im"
+	"github.com/golang/protobuf/proto"
 	"github.com/prometheus/common/log"
 	"sync"
 )
@@ -26,8 +27,9 @@ func (pool *aTxPool) threadTransactionListener( ctx context.Context, awaiter *sy
 			return
 		}
 
-		tx := &ATx.Transaction{}
-		if err := tx.RawMessageDecode(msg.Data); err != nil {
+		tx := &im.Transaction{}
+
+		if err := proto.Unmarshal(msg.Data, tx); err != nil {
 			log.Warn(err)
 			continue
 		}

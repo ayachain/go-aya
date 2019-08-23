@@ -5,11 +5,15 @@ import (
 	"errors"
 	ASD "github.com/ayachain/go-aya/chain/sdaemon/common"
 	"github.com/ayachain/go-aya/vdb"
-	VDBComm "github.com/ayachain/go-aya/vdb/common"
+	ACInfo "github.com/ayachain/go-aya/vdb/chaininfo"
+	"github.com/ayachain/go-aya/vdb/im"
+	AMBlock "github.com/ayachain/go-aya/vdb/mblock"
+	AMined "github.com/ayachain/go-aya/vdb/minined"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/golang/protobuf/proto"
 	"github.com/ipfs/go-ipfs/core"
-	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	"github.com/libp2p/go-libp2p-pubsub"
 	"github.com/prometheus/common/log"
 	"sync"
 )
@@ -20,11 +24,11 @@ var (
 
 type MessageCenter interface {
 
-	Push( msg *pubsub.Message )
+	Push( msg *pubsub.Message, prefix string )
 
-	PublishMessage( coder VDBComm.AMessageEncode, topic string ) error
+	PublishMessage( pmsg proto.Message, topic string ) error
 
-	TrustMessage() <- chan []byte
+	TrustMessage() <- chan interface{}
 
 	Refresh()
 
@@ -45,7 +49,7 @@ type aMessageCenter struct {
 
 	threshold uint64
 
-	replay chan []byte
+	replay chan interface{}
 
 	rmu sync.Mutex
 
@@ -62,7 +66,7 @@ func NewCenter( ind *core.IpfsNode, cvfs vdb.CVFS, cnf TrustedConfig, asd ASD.St
 	c := &aMessageCenter{
 		cvfs:cvfs,
 		cnf:cnf,
-		replay:make(chan []byte),
+		replay:make(chan interface{}),
 		asd:asd,
 		ind:ind,
 	}
@@ -82,7 +86,7 @@ func (mc *aMessageCenter) Refresh() {
 	mc.threshold = uint64( mc.cvfs.Nodes().GetSuperMaterTotalVotes() / 100 * p )
 }
 
-func (mc *aMessageCenter) Push( msg *pubsub.Message ) {
+func (mc *aMessageCenter) Push( msg *pubsub.Message, prefix string ) {
 
 	mc.rmu.Lock()
 	defer mc.rmu.Unlock()
@@ -103,7 +107,7 @@ func (mc *aMessageCenter) Push( msg *pubsub.Message ) {
 	rmsg, exist := mc.reviewMsgMap.Load(msgHash)
 	if !exist {
 
-		rmsg = NewReviewMessage( msg.Data, sender, func(hash common.Hash) {
+		rmsg = NewReviewMessage( msg.Data, sender, prefix, func(hash common.Hash) {
 			mc.reviewMsgMap.Delete(hash)
 			mc.totalCount --
 		})
@@ -126,7 +130,38 @@ func (mc *aMessageCenter) Push( msg *pubsub.Message ) {
 
 		v, s, n := m.VoteInfo()
 		if v > mc.threshold && s > mc.cnf.SuperNodeMin && n > mc.cnf.NodeTotalMin {
-			mc.replay <- m.Content
+
+			switch m.MsgPrefix {
+
+			case AMBlock.MessagePrefix:
+
+				msg := &im.Block{}
+				if err := proto.Unmarshal(m.Content, msg); err != nil {
+					return
+				}
+				mc.replay <- msg
+
+			case AMined.MessagePrefix:
+
+				msg := &im.Minined{}
+				if err := proto.Unmarshal(m.Content, msg); err != nil {
+					return
+				}
+				mc.replay <- msg
+
+			case ACInfo.MessagePrefix:
+
+				msg := &im.ChainInfo{}
+				if err := proto.Unmarshal(m.Content, msg); err != nil {
+					return
+				}
+				mc.replay <- msg
+
+			default:
+				return
+
+			}
+
 			return
 		}
 
@@ -134,7 +169,7 @@ func (mc *aMessageCenter) Push( msg *pubsub.Message ) {
 
 }
 
-func (mc *aMessageCenter) TrustMessage() <- chan []byte {
+func (mc *aMessageCenter) TrustMessage() <- chan interface{} {
 	return mc.replay
 }
 
@@ -171,13 +206,13 @@ func (mc *aMessageCenter) PowerOn( ctx context.Context, chainID string, ind *cor
 	}
 	defer mblockSuber.Cancel()
 
-	batchSuber, err = ind.PubSub.Subscribe( GetChannelTopics(chainID, MessageChannelBatcher) )
+	batchSuber, err = ind.PubSub.Subscribe( GetChannelTopics(chainID, MessageChannelMined) )
 	if err != nil {
 		goto ErrorReturn
 	}
 	defer batchSuber.Cancel()
 
-	appendSuber, err = ind.PubSub.Subscribe( GetChannelTopics(chainID, MessageChannelAppend) )
+	appendSuber, err = ind.PubSub.Subscribe( GetChannelTopics(chainID, MessageChannelChainInfo) )
 	if err != nil {
 		goto ErrorReturn
 	}
@@ -196,7 +231,7 @@ func (mc *aMessageCenter) PowerOn( ctx context.Context, chainID string, ind *cor
 				return
 			}
 
-			mc.Push(msg)
+			mc.Push(msg, AMBlock.MessagePrefix)
 		}
 
 	}()
@@ -214,7 +249,7 @@ func (mc *aMessageCenter) PowerOn( ctx context.Context, chainID string, ind *cor
 				return
 			}
 
-			mc.Push(msg)
+			mc.Push(msg, AMined.MessagePrefix)
 		}
 
 	}()
@@ -232,7 +267,7 @@ func (mc *aMessageCenter) PowerOn( ctx context.Context, chainID string, ind *cor
 				return
 			}
 
-			mc.Push(msg)
+			mc.Push(msg, ACInfo.MessagePrefix)
 		}
 
 	}()
@@ -265,9 +300,12 @@ ErrorReturn:
 	return
 }
 
-func (mc *aMessageCenter) PublishMessage( coder VDBComm.AMessageEncode, topic string ) error {
+func (mc *aMessageCenter) PublishMessage( pmsg proto.Message, topic string ) error {
 
-	cbs := coder.RawMessageEncode()
+	cbs, err := proto.Marshal(pmsg)
+	if err != nil {
+		return err
+	}
 
 	if len(cbs) <= 0 {
 		return ErrPublishedContentEmpty

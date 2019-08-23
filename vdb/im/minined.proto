@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package im;
+
+import "block.proto";
+
+message Minined {
+
+    Block    MBlock = 1;
+
+    bytes          Batcher = 2;       //Cid
+
+}

@@ -4,8 +4,10 @@ import (
 	"context"
 	ADB "github.com/ayachain/go-aya-alvm-adb"
 	AVdbComm "github.com/ayachain/go-aya/vdb/common"
+	"github.com/ayachain/go-aya/vdb/im"
 	"github.com/ayachain/go-aya/vdb/indexes"
 	EComm "github.com/ethereum/go-ethereum/common"
+	"github.com/golang/protobuf/proto"
 	"github.com/ipfs/go-ipfs/core"
 	"github.com/syndtr/goleveldb/leveldb"
 )
@@ -26,7 +28,7 @@ func CreateServices( ind *core.IpfsNode, idxServices indexes.IndexesServices ) S
 	}
 }
 
-func (api *aAssetes) AssetsOf( addr EComm.Address, idx... *indexes.Index ) ( *Assets, error ) {
+func (api *aAssetes) AssetsOf( addr EComm.Address, idx... *indexes.Index ) ( *im.Assets, error ) {
 
 	var lidx *indexes.Index
 	var err error
@@ -48,7 +50,7 @@ func (api *aAssetes) AssetsOf( addr EComm.Address, idx... *indexes.Index ) ( *As
 	}
 	defer cls()
 
-	rcd := &Assets{}
+	rcd := &im.Assets{}
 	if err := ADB.ReadClose( dbroot, func(db *leveldb.DB ) error {
 
 		bnc, err := db.Get(addr.Bytes(), nil)
@@ -56,7 +58,7 @@ func (api *aAssetes) AssetsOf( addr EComm.Address, idx... *indexes.Index ) ( *As
 			return  err
 		}
 
-		if err := rcd.Decode(bnc); err != nil {
+		if err := proto.Unmarshal(bnc, rcd); err != nil {
 			return err
 		}
 

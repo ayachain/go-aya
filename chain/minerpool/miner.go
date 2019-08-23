@@ -1,10 +1,10 @@
 package minerpool
 
 import (
-	ATxFlow "github.com/ayachain/go-aya/chain/minerpool/tx"
 	ACComm "github.com/ayachain/go-aya/chain/common"
-	ARsp "github.com/ayachain/go-aya/vdb/receipt"
-	ATx "github.com/ayachain/go-aya/vdb/transaction"
+	ATxFlow "github.com/ayachain/go-aya/chain/minerpool/tx"
+	"github.com/ayachain/go-aya/vdb/im"
+	"github.com/ethereum/go-ethereum/common"
 )
 
 func (mp *aMinerPool) doTask( task *MiningTask ) *MiningResult {
@@ -12,7 +12,7 @@ func (mp *aMinerPool) doTask( task *MiningTask ) *MiningResult {
 	for i, tx := range task.Txs {
 
 		// Is transaction override ?
-		txc, err := task.VWriter.Transactions().GetTxCount(tx.From)
+		txc, err := task.VWriter.Transactions().GetTxCount( common.BytesToAddress(tx.From) )
 
 		if err != nil {
 			continue
@@ -37,10 +37,10 @@ func (mp *aMinerPool) doTask( task *MiningTask ) *MiningResult {
 		//		return nil, err
 		//	}
 
-		case ATx.NormalTransfer : _ = ATxFlow.DoTransfer( tx, task.VWriter )
+		case im.TransactionType_Normal : _ = ATxFlow.DoTransfer( tx, task.VWriter )
 
 		default:
-			task.VWriter.Receipts().Put(tx.GetHash256(), task.MiningBlock.Index, ARsp.ExpectedReceipt(ACComm.TxUnsupportTransactionType, nil).Encode())
+			task.VWriter.Receipts().Put(tx.GetHash256(), task.MiningBlock.Index, im.ExpectedReceipt(ACComm.TxUnsupportTransactionType, nil))
 		}
 	}
 

@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package im;
+
+message Electoral {
+
+    uint64     BestIndex = 1;
+
+    uint64     BlockIndex = 2;
+
+    bytes      From = 3;
+
+    string     ToPeerId = 4;
+
+    uint32     Time = 5;
+
+}

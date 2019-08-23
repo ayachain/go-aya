@@ -5,8 +5,10 @@ import (
 	"encoding/binary"
 	ADB "github.com/ayachain/go-aya-alvm-adb"
 	AvdbComm "github.com/ayachain/go-aya/vdb/common"
+	"github.com/ayachain/go-aya/vdb/im"
 	"github.com/ayachain/go-aya/vdb/indexes"
 	EComm "github.com/ethereum/go-ethereum/common"
+	"github.com/golang/protobuf/proto"
 	"github.com/prometheus/common/log"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/storage"
@@ -38,7 +40,7 @@ func newWriter( sreader *aTransactions ) (MergeWriter, error) {
 	return c, nil
 }
 
-func (cache *aCache) Put(tx *Transaction, bidx uint64) {
+func (cache *aCache) Put(tx *im.Transaction, bidx uint64) {
 
 	lidx, err := cache.sourceReader.idxs.GetLatest()
 	if err != nil {
@@ -53,7 +55,7 @@ func (cache *aCache) Put(tx *Transaction, bidx uint64) {
 
 	if err := ADB.ReadClose( dbroot, func(db *leveldb.DB) error {
 
-		countKey := append(TxOutCountPrefix, tx.From.Bytes()... )
+		countKey := append(TxOutCountPrefix, tx.From... )
 
 		exist, err := AvdbComm.CacheHas(db, cache.cdb, countKey)
 		if err != nil {
@@ -75,7 +77,12 @@ func (cache *aCache) Put(tx *Transaction, bidx uint64) {
 
 		tx.BlockIndex = bidx
 
-		if err := cache.cdb.Put(key, tx.Encode(), AvdbComm.WriteOpt); err != nil {
+		bs, err := proto.Marshal(tx)
+		if err != nil {
+			panic(err)
+		}
+
+		if err := cache.cdb.Put(key, bs, AvdbComm.WriteOpt); err != nil {
 			panic(err)
 		}
 
@@ -89,8 +96,8 @@ func (cache *aCache) Put(tx *Transaction, bidx uint64) {
 		}
 
 		// Write from tx history
-		fromTxTotalKey := append(TxTotalCountPrefix, tx.From.Bytes()...)
-		toTxTotalKey := append(TxTotalCountPrefix, tx.To.Bytes()...)
+		fromTxTotalKey := append(TxTotalCountPrefix, tx.From...)
+		toTxTotalKey := append(TxTotalCountPrefix, tx.To...)
 
 		var (
 			fromTxTotal uint64 = 0
@@ -116,7 +123,7 @@ func (cache *aCache) Put(tx *Transaction, bidx uint64) {
 
 			}
 
-			hkey := append(TxHistoryPrefix, tx.From.Bytes()... )
+			hkey := append(TxHistoryPrefix, tx.From... )
 			hkey = append(hkey, AvdbComm.BigEndianBytes(fromTxTotal)...)
 
 			fromTxTotal ++
@@ -151,7 +158,7 @@ func (cache *aCache) Put(tx *Transaction, bidx uint64) {
 				toTxTotal = binary.BigEndian.Uint64(cbs)
 			}
 
-			hkey := append(TxHistoryPrefix, tx.To.Bytes()... )
+			hkey := append(TxHistoryPrefix, tx.To... )
 			hkey = append(hkey, AvdbComm.BigEndianBytes(toTxTotal)...)
 
 			toTxTotal ++
@@ -197,11 +204,11 @@ func (cache *aCache) MergerBatch() *leveldb.Batch {
 }
 
 /// Reader mock impl
-func (cache *aCache) GetTxByHash( hash EComm.Hash, idx ... *indexes.Index ) (*Transaction, error) {
+func (cache *aCache) GetTxByHash( hash EComm.Hash, idx ... *indexes.Index ) (*im.Transaction, error) {
 	return cache.sourceReader.GetTxByHash(hash)
 }
 
-func (cache *aCache) GetTxByHashBs( hsbs []byte, idx ... *indexes.Index ) (*Transaction, error) {
+func (cache *aCache) GetTxByHashBs( hsbs []byte, idx ... *indexes.Index ) (*im.Transaction, error) {
 	return cache.sourceReader.GetTxByHashBs(hsbs)
 }
 
@@ -213,6 +220,6 @@ func (cache *aCache) GetHistoryHash( address EComm.Address, offset uint64, size 
 	return cache.sourceReader.GetHistoryHash(address, offset, size)
 }
 
-func (cache *aCache) GetHistoryContent( address EComm.Address, offset uint64, size uint64, idx ... *indexes.Index ) ([]*Transaction, error) {
+func (cache *aCache) GetHistoryContent( address EComm.Address, offset uint64, size uint64, idx ... *indexes.Index ) ([]*im.Transaction, error) {
 	return cache.sourceReader.GetHistoryContent(address, offset, size)
 }

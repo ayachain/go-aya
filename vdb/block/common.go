@@ -3,10 +3,14 @@ package block
 import (
 	"bytes"
 	"context"
+	"encoding/gob"
 	"encoding/json"
+	"github.com/ayachain/go-aya/vdb/im"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-ipfs/core"
 )
+
+const MessagePrefix = byte('b')
 
 const (
 	Genesis = 0
@@ -16,20 +20,12 @@ const (
 	BlockNameGen 	= "genesis"
 )
 
-func BlockEqual( a *Block, b *Block ) bool {
-
-	abs, _ := json.Marshal(a)
-	bbs, _ := json.Marshal(b)
-
-	return bytes.Equal(abs, bbs)
-}
-
-func GetBlocks( ind *core.IpfsNode, c ... cid.Cid ) ([]*Block, error) {
+func GetBlocks( ind *core.IpfsNode, c ... cid.Cid ) ([]*im.Block, error) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	var blks []*Block
+	var blks []*im.Block
 
 	cchan := ind.Blocks.GetBlocks( ctx, c )
 
@@ -41,7 +37,7 @@ func GetBlocks( ind *core.IpfsNode, c ... cid.Cid ) ([]*Block, error) {
 			break
 		}
 
-		sblk := &Block{}
+		sblk := &im.Block{}
 
 		if err := json.Unmarshal(b.RawData(), sblk); err != nil {
 			return nil, err
@@ -51,4 +47,22 @@ func GetBlocks( ind *core.IpfsNode, c ... cid.Cid ) ([]*Block, error) {
 	}
 
 	return blks, nil
+}
+
+func ConfirmBlock( block *im.Block, extCid cid.Cid ) *im.Block {
+
+	blk := &im.Block{}
+	var buf bytes.Buffer
+
+	if err := gob.NewEncoder(&buf).Encode(block); err != nil {
+		return nil
+	}
+
+	if err := gob.NewDecoder(bytes.NewBuffer(buf.Bytes())).Decode(blk); err != nil {
+		return nil
+	}
+
+	blk.ExtraData = extCid.Bytes()
+
+	return blk
 }

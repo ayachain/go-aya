@@ -2,7 +2,7 @@ package txlist
 
 import (
 	"container/list"
-	ATx "github.com/ayachain/go-aya/vdb/transaction"
+	"github.com/ayachain/go-aya/vdb/im"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/pkg/errors"
 	"sync"
@@ -15,7 +15,7 @@ var (
 
 type htx struct {
 
-	tx *ATx.Transaction
+	tx *im.Transaction
 
 	hash common.Hash
 }
@@ -28,7 +28,7 @@ type TxList struct {
 
 }
 
-func NewTxList( tx *ATx.Transaction ) *TxList {
+func NewTxList( tx *im.Transaction ) *TxList {
 
 	l := list.New()
 
@@ -56,7 +56,7 @@ func (l *TxList) Exist( hash common.Hash ) bool {
 	return false
 }
 
-func (l *TxList) Get( hash common.Hash ) *ATx.Transaction {
+func (l *TxList) Get( hash common.Hash ) *im.Transaction {
 
 	for i := l.list.Front(); i != nil; i = i.Next() {
 
@@ -79,7 +79,7 @@ func (l *TxList) Len() int {
 
 }
 
-func (l *TxList) FrontTx() *ATx.Transaction {
+func (l *TxList) FrontTx() *im.Transaction {
 
 	l.wmu.Lock()
 	defer l.wmu.Unlock()
@@ -120,7 +120,7 @@ func (l *TxList) RemoveFromTid( tid uint64 ) bool {
 
 }
 
-func (l *TxList) GetLinearTxsFromFront() []*ATx.Transaction {
+func (l *TxList) GetLinearTxsFromFront() []*im.Transaction {
 
 	l.wmu.Lock()
 	defer l.wmu.Unlock()
@@ -129,7 +129,7 @@ func (l *TxList) GetLinearTxsFromFront() []*ATx.Transaction {
 		return nil
 	}
 
-	var txs []*ATx.Transaction
+	var txs []*im.Transaction
 
 	stid := l.list.Front().Value.(*htx).tx.Tid
 
@@ -150,7 +150,7 @@ func (l *TxList) GetLinearTxsFromFront() []*ATx.Transaction {
 	return txs
 }
 
-func (l *TxList) AddTx( transaction *ATx.Transaction ) error {
+func (l *TxList) AddTx( transaction *im.Transaction ) error {
 
 	l.wmu.Lock()
 	defer l.wmu.Unlock()

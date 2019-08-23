@@ -2,8 +2,10 @@ package assets
 
 import (
 	AvdbComm "github.com/ayachain/go-aya/vdb/common"
+	"github.com/ayachain/go-aya/vdb/im"
 	"github.com/ayachain/go-aya/vdb/indexes"
 	EComm "github.com/ethereum/go-ethereum/common"
+	"github.com/golang/protobuf/proto"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/storage"
 	"sync"
@@ -63,18 +65,23 @@ func (c *aCache) MergerBatch() *leveldb.Batch {
 	return batch
 }
 
-func (c *aCache) Put( addr EComm.Address, ast *Assets ) {
+func (c *aCache) Put( addr EComm.Address, ast *im.Assets ) {
 
 	c.snLock.Lock()
 	defer c.snLock.Unlock()
 
-	if err := c.cdb.Put( addr.Bytes(), ast.Encode(), AvdbComm.WriteOpt ); err != nil {
+	bs, err := proto.Marshal(ast)
+	if err != nil {
+		panic(err)
+	}
+
+	if err := c.cdb.Put( addr.Bytes(), bs, AvdbComm.WriteOpt ); err != nil {
 		panic(err)
 	}
 
 }
 
-func (c *aCache) AssetsOf( addr EComm.Address, idx ... *indexes.Index ) ( *Assets, error ) {
+func (c *aCache) AssetsOf( addr EComm.Address, idx ... *indexes.Index ) ( *im.Assets, error ) {
 
 	c.snLock.RLock()
 	defer c.snLock.RUnlock()
@@ -95,8 +102,8 @@ func (c *aCache) AssetsOf( addr EComm.Address, idx ... *indexes.Index ) ( *Asset
 			panic(err)
 		}
 
-		rcd := &Assets{}
-		if err := rcd.Decode(bnc); err != nil {
+		rcd := &im.Assets{}
+		if err := proto.Unmarshal(bnc, rcd); err != nil {
 			return nil, err
 		}
 

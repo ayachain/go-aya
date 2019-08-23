@@ -2,7 +2,7 @@ package msgcenter
 
 import (
 	"bytes"
-	ANode "github.com/ayachain/go-aya/vdb/node"
+	"github.com/ayachain/go-aya/vdb/im"
 	EComm "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"time"
@@ -14,15 +14,18 @@ type ReviewMessage struct {
 
 	Hash EComm.Hash
 
-	Nodes []*ANode.Node
+	Nodes []*im.Node
+
+	MsgPrefix string
 }
 
-func NewReviewMessage( contnet []byte, sender *ANode.Node, dfunc func(hash EComm.Hash) ) *ReviewMessage {
+func NewReviewMessage( content []byte, sender *im.Node, prefix string, dfunc func(hash EComm.Hash) ) *ReviewMessage {
 
 	message := &ReviewMessage{
-		Content:contnet,
-		Hash:crypto.Keccak256Hash(contnet),
-		Nodes:[]*ANode.Node{sender},
+		Content:content,
+		Hash:crypto.Keccak256Hash(content),
+		Nodes:[]*im.Node{sender},
+		MsgPrefix:prefix,
 	}
 
 	go func() {
@@ -40,7 +43,7 @@ func NewReviewMessage( contnet []byte, sender *ANode.Node, dfunc func(hash EComm
 	return message
 }
 
-func (msg *ReviewMessage) AddConfirmNode( confirmer *ANode.Node ) {
+func (msg *ReviewMessage) AddConfirmNode( confirmer *im.Node ) {
 
 	for _, n := range msg.Nodes {
 
@@ -57,7 +60,7 @@ func (msg *ReviewMessage) VoteInfo() (votes uint64, scount uint, ncount uint) {
 
 	for _, n := range msg.Nodes {
 
-		if n.Type == ANode.NodeTypeSuper {
+		if n.Type == im.NodeType_Super {
 			scount ++
 		}
 		votes += n.Votes

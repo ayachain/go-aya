@@ -8,15 +8,13 @@ import (
 	ASD "github.com/ayachain/go-aya/chain/sdaemon/common"
 	"github.com/ayachain/go-aya/chain/txpool/txlist"
 	"github.com/ayachain/go-aya/vdb"
-	AvdbComm "github.com/ayachain/go-aya/vdb/common"
 	AElectoral "github.com/ayachain/go-aya/vdb/electoral"
+	"github.com/ayachain/go-aya/vdb/im"
 	"github.com/ayachain/go-aya/vdb/indexes"
-	AMBlock "github.com/ayachain/go-aya/vdb/mblock"
-	"github.com/ayachain/go-aya/vdb/node"
-	ATx "github.com/ayachain/go-aya/vdb/transaction"
 	EAccount "github.com/ethereum/go-ethereum/accounts"
 	EComm "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/golang/protobuf/proto"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-ipfs/core"
 	"github.com/ipfs/go-ipfs/pin"
@@ -57,7 +55,7 @@ type TxPool interface {
 
 	PowerOn( ctx context.Context )
 
-	PublishTx( tx *ATx.Transaction ) error
+	PublishTx( tx *im.Transaction ) error
 
 	ElectoralServices() AElectoral.MemServices
 
@@ -65,7 +63,7 @@ type TxPool interface {
 
 	GetState() *State
 
-	GetTx( hash EComm.Hash ) *ATx.Transaction
+	GetTx( hash EComm.Hash ) *im.Transaction
 }
 
 type aTxPool struct {
@@ -87,7 +85,7 @@ type aTxPool struct {
 	mblockChannel string
 	asd ASD.StatDaemon
 
-	lmblock *AMBlock.MBlock
+	lmblock *im.Block
 }
 
 func NewTxPool( ind *core.IpfsNode, chainID string, cvfs vdb.CVFS, acc EAccount.Account, mchannel string, asd ASD.StatDaemon ) TxPool {
@@ -171,7 +169,7 @@ func (pool *aTxPool) PowerOn( ctx context.Context ) {
 	}
 }
 
-func (pool *aTxPool) PublishTx( tx *ATx.Transaction ) error {
+func (pool *aTxPool) PublishTx( tx *im.Transaction ) error {
 
 	if !tx.Verify() {
 		return ErrMessageVerifyExpected
@@ -213,7 +211,7 @@ func (pool *aTxPool) GetState() *State {
 	return s
 }
 
-func (pool *aTxPool) GetTx( hash EComm.Hash ) *ATx.Transaction {
+func (pool *aTxPool) GetTx( hash EComm.Hash ) *im.Transaction {
 
 	pool.pmu.Lock()
 	defer pool.pmu.Unlock()
@@ -231,12 +229,12 @@ func (pool *aTxPool) GetTx( hash EComm.Hash ) *ATx.Transaction {
 }
 
 /// Private methods
-func (pool *aTxPool) createMiningBlock() *AMBlock.MBlock {
+func (pool *aTxPool) createMiningBlock() *im.Block {
 
 	pool.pmu.Lock()
 	defer pool.pmu.Unlock()
 
-	var packtxs []*ATx.Transaction
+	var packtxs []*im.Transaction
 
 	for addr, txl := range pool.pending {
 
@@ -290,15 +288,15 @@ func (pool *aTxPool) createMiningBlock() *AMBlock.MBlock {
 		return nil
 	}
 
-	mblk := &AMBlock.MBlock{}
-	mblk.ExtraData = ""
+	mblk := &im.Block{}
+	mblk.ExtraData = nil
 	mblk.Index = bindex.BlockIndex + 1
 	mblk.ChainID = pool.chainID
 	mblk.Parent = bindex.Hash.String()
-	mblk.Timestamp = uint64(time.Now().Unix())
+	mblk.Timestamp = uint32(time.Now().Unix())
 	mblk.Packager = pool.ownerAccount.Address.String()
-	mblk.Txc = uint16(len(packtxs))
-	mblk.Txs = iblk.Cid()
+	mblk.Txc = uint32(len(packtxs))
+	mblk.Txs = iblk.Cid().Bytes()
 
 	return mblk
 }
@@ -311,7 +309,7 @@ func (pool *aTxPool) judgingMode() AtxPoolWorkMode {
 
 		pool.workmode = AtxPoolWorkModeNormal
 
-	} else if nd.Type == node.NodeTypeSuper {
+	} else if nd.Type == im.NodeType_Super {
 
 		pool.workmode = AtxPoolWorkModeSuper
 
@@ -323,19 +321,21 @@ func (pool *aTxPool) judgingMode() AtxPoolWorkMode {
 	return pool.workmode
 }
 
-func (pool *aTxPool) doBroadcast( coder AvdbComm.AMessageEncode, topic string) error {
+func (pool *aTxPool) doBroadcast( pmsg proto.Message, topic string) error {
 
-	cbs := coder.RawMessageEncode()
+	cbs, err := proto.Marshal(pmsg)
+	if err != nil {
+		return err
+	}
 
 	if len(cbs) <= 0 {
 		return ErrRawDBEndoedZeroLen
 	}
 
 	return pool.ind.PubSub.Publish( topic, cbs )
-
 }
 
-func (pool *aTxPool) storeTransaction( tx *ATx.Transaction ) error {
+func (pool *aTxPool) storeTransaction( tx *im.Transaction ) error {
 
 	pool.pmu.Lock()
 	defer pool.pmu.Unlock()
@@ -345,14 +345,14 @@ func (pool *aTxPool) storeTransaction( tx *ATx.Transaction ) error {
 	}
 
 	/// verify tid
-	txsum, err := pool.cvfs.Transactions().GetTxCount(tx.From)
+	txsum, err := pool.cvfs.Transactions().GetTxCount( EComm.BytesToAddress(tx.From) )
 	if err != nil || tx.Tid < txsum {
 		return ErrTxVerifyExpected
 	}
 
-	if list, exist := pool.pending[tx.From]; !exist {
+	if list, exist := pool.pending[ EComm.BytesToAddress(tx.From) ]; !exist {
 
-		pool.pending[tx.From] = txlist.NewTxList(tx)
+		pool.pending[ EComm.BytesToAddress(tx.From) ] = txlist.NewTxList(tx)
 
 		return nil
 
@@ -363,14 +363,14 @@ func (pool *aTxPool) storeTransaction( tx *ATx.Transaction ) error {
 
 }
 
-func (pool *aTxPool) confirmTxs( txs []*ATx.Transaction ) error {
+func (pool *aTxPool) confirmTxs( txs []*im.Transaction ) error {
 
 	pool.pmu.Lock()
 	defer pool.pmu.Unlock()
 
 	for _, stx := range txs {
 
-		if tlist, exist := pool.pending[stx.From]; exist {
+		if tlist, exist := pool.pending[ EComm.BytesToAddress(stx.From) ]; exist {
 			_ = tlist.RemoveFromTid( stx.Tid )
 		}
 
@@ -379,20 +379,23 @@ func (pool *aTxPool) confirmTxs( txs []*ATx.Transaction ) error {
 	return nil
 }
 
-func (pool *aTxPool) doPackMBlock() (*AMBlock.MBlock, error) {
+func (pool *aTxPool) doPackMBlock() (*im.Block, error) {
 
 	mblock := pool.createMiningBlock()
 	if mblock == nil {
 		return nil, ErrCannotCreateMiningBlock
 	}
 
-	cbs := mblock.RawMessageEncode()
+	cbs,err := proto.Marshal(mblock)
+	if err != nil {
+		return nil, err
+	}
 
 	if len(cbs) <= 0 {
 		return nil, ErrRawDBEndoedZeroLen
 	}
 
-	err := pool.ind.PubSub.Publish( pool.channelTopics[ATxPoolThreadRepeater], cbs )
+	err = pool.ind.PubSub.Publish( pool.channelTopics[ATxPoolThreadRepeater], cbs )
 
 	return mblock, err
 }

@@ -3,20 +3,18 @@ package cmd
 import (
 	AChain "github.com/ayachain/go-aya/chain"
 	ARsponse "github.com/ayachain/go-aya/response"
-	ABlock "github.com/ayachain/go-aya/vdb/block"
+	"github.com/ayachain/go-aya/vdb/im"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-ipfs-cmds"
 	"github.com/ipfs/go-ipfs/core/commands/cmdenv"
 	"github.com/pkg/errors"
-	"io/ioutil"
 )
 
 var addCmd = &cmds.Command {
 
 	Helptext:cmds.HelpText{
 		Tagline: "init aya chain connection",
-	},
-	Arguments: []cmds.Argument {
-		cmds.FileArg("genblock", true, false, "first block json content"),
 	},
 	Options: []cmds.Option{
 		cmds.BoolOption("replace", "r", "if direct substitution already exists"),
@@ -28,19 +26,43 @@ var addCmd = &cmds.Command {
 			return ARsponse.EmitErrorResponse(re, errors.New("ipfs node get failed"))
 		}
 
-		file, err := cmdenv.GetFileArg(req.Files.Entries())
-		if err != nil {
-			return ARsponse.EmitSuccessResponse(re, err)
-		}
-
-		bs, err := ioutil.ReadAll(file)
-		if err != nil {
-			return ARsponse.EmitErrorResponse(re, err)
-		}
-
-		gblk := &ABlock.GenBlock{}
-		if err := gblk.Decode(bs); err != nil {
-			return ARsponse.EmitErrorResponse(re, errors.New("decode gen block config file expected") )
+		gblk := &im.GenBlock{
+			ChainID:"main",
+			Parent:"f919678e3089f1da5b4eac138c86efa0461555223f71f0d53a5a1ea9472834a0",
+			Index:0,
+			Timestamp:1564199977,
+			Txc:0,
+			Txs:cid.Undef.Bytes(),
+			ExtraData:nil,
+			AppendData:[]byte("SSUyMHJlc2VydmVkJTIwYW4lMjBpbXBvcnRhbnQlMjBtZXNzYWdlJTIwaW4lMjBwYXJlbnQlMjBoYXNoLg=="),
+			Award: map[string]uint64{
+				"0xB137D22eD06f22A3C6E2C5fdeAB49C612678bd6F": 1000000000000,
+				"0x8E0A21BCDb37eF545f4b04ef30a773F137DCb372": 1000000000000,
+				"0x17C6594CCf4798DB4eF9fE169A8C269847520D3c": 1000000000000,
+			},
+			SuperNodes: []*im.Node{
+				{
+					Type:im.NodeType_Super,
+					Votes:1000000000000,
+					PeerID:"QmX9s1TVMiP3u9k4ZRvqhu3fWXnVF6Q5hsBHV2oRwNsTka",
+					Owner:common.HexToAddress("0xB137D22eD06f22A3C6E2C5fdeAB49C612678bd6F").Bytes(),
+					Sig:[]byte(""),
+				},
+				{
+					Type:im.NodeType_Super,
+					Votes:1000000000000,
+					PeerID:"QmRkgBZcs8sSFW6ruksT9jvSjXgq29bTVguMW2zaUX7nrx",
+					Owner:common.HexToAddress("0x17C6594CCf4798DB4eF9fE169A8C269847520D3c").Bytes(),
+					Sig:[]byte(""),
+				},
+				{
+					Type:im.NodeType_Super,
+					Votes:1000000000000,
+					PeerID:"QmQgTSEAq2Q5adZrm8NaQ1dkjhQhbwoQ4d5v6kKgoRcbdr",
+					Owner:common.HexToAddress("0x8E0A21BCDb37eF545f4b04ef30a773F137DCb372").Bytes(),
+					Sig:[]byte(""),
+				},
+			},
 		}
 
 		r, _ := req.Options["replace"].(bool)

@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package im;
+
+message Receipt {
+
+    int32               Stat = 1;
+
+    string              Message = 2;
+
+    repeated string     Event = 3;
+
+}

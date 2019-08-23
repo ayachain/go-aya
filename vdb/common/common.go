@@ -29,11 +29,6 @@ var WriteOpt = &opt.WriteOptions{
 	Sync:true,
 }
 
-type RawDBCoder interface {
-	Encode() []byte
-	Decode([]byte) error
-}
-
 type AMessageEncode interface {
 	RawMessageEncode() []byte
 	RawMessageDecode( bs []byte ) error

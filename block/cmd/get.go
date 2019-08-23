@@ -4,9 +4,8 @@ import (
 	"context"
 	AChain "github.com/ayachain/go-aya/chain"
 	ARsponse "github.com/ayachain/go-aya/response"
-	"github.com/ayachain/go-aya/vdb/block"
+	"github.com/ayachain/go-aya/vdb/im"
 	"github.com/ayachain/go-aya/vdb/indexes"
-	"github.com/ayachain/go-aya/vdb/transaction"
 	"github.com/ipfs/go-ipfs-cmds"
 	"github.com/ipfs/go-ipfs/core/commands/cmdenv"
 	"github.com/pkg/errors"
@@ -107,8 +106,8 @@ var getCmd = &cmds.Command {
 				defer rcancel()
 
 				type BlockDetail struct {
-					*block.Block
-					TxList []*transaction.Transaction
+					*im.Block
+					TxList []*im.Transaction
 				}
 
 				bd := &BlockDetail{

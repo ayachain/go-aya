@@ -4,7 +4,9 @@ import (
 	"fmt"
 	ADB "github.com/ayachain/go-aya-alvm-adb"
 	AvdbComm "github.com/ayachain/go-aya/vdb/common"
+	"github.com/ayachain/go-aya/vdb/im"
 	"github.com/ayachain/go-aya/vdb/indexes"
+	"github.com/golang/protobuf/proto"
 	"github.com/pkg/errors"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/storage"
@@ -62,13 +64,16 @@ func (cache *aCache) MergerBatch() *leveldb.Batch {
 	return batch
 }
 
-func (cache *aCache) InsertBootstrapNodes( nds []Node ) {
+func (cache *aCache) InsertBootstrapNodes( nds []*im.Node ) {
 
 	for i, v := range nds {
 
-		key := []byte( fmt.Sprintf("%v%d", NodeTypeSuper, i) )
+		key := []byte( fmt.Sprintf("%v%d", im.NodeType_Super, i) )
 
-		value := v.Encode()
+		value, err := proto.Marshal(v)
+		if err != nil {
+			panic(err)
+		}
 
 		if err := cache.cdb.Put( []byte(v.PeerID), value, AvdbComm.WriteOpt ); err != nil {
 			panic(err)
@@ -81,13 +86,13 @@ func (cache *aCache) InsertBootstrapNodes( nds []Node ) {
 	}
 }
 
-func (cache *aCache) Insert( peerId string, node *Node ) error {
+func (cache *aCache) Insert( peerId string, node *im.Node ) error {
 
 	if exist, err := cache.cdb.Has([]byte(peerId), nil); err == nil && exist {
 		return ErrNodeAlreadyExist
 	}
 
-	if node.Type == NodeTypeSuper {
+	if node.Type == im.NodeType_Super {
 
 		superNodes := cache.sourceReader.GetSuperNodeList()
 
@@ -103,9 +108,14 @@ func (cache *aCache) Insert( peerId string, node *Node ) error {
 
 		for i, v := range superNodes {
 
-			key := []byte( fmt.Sprintf("%v%d", NodeTypeSuper, i) )
+			key := []byte( fmt.Sprintf("%v%d", im.NodeType_Super, i) )
 
-			if err := cache.cdb.Put( key, v.Encode(), AvdbComm.WriteOpt ); err != nil {
+			bs, err := proto.Marshal(v)
+			if err != nil {
+				panic(err)
+			}
+
+			if err := cache.cdb.Put( key, bs, AvdbComm.WriteOpt ); err != nil {
 				return err
 			}
 
@@ -114,7 +124,13 @@ func (cache *aCache) Insert( peerId string, node *Node ) error {
 		return nil
 
 	} else {
-		return cache.cdb.Put([]byte(peerId), node.Encode(), AvdbComm.WriteOpt)
+
+		bs, err := proto.Marshal(node)
+		if err != nil {
+			panic(err)
+		}
+
+		return cache.cdb.Put([]byte(peerId), bs, AvdbComm.WriteOpt)
 	}
 
 }
@@ -126,7 +142,7 @@ func (cache *aCache) Del( peerId string ) {
 		return
 	}
 
-	if nd.Type == NodeTypeSuper {
+	if nd.Type == im.NodeType_Super {
 
 		n := 0
 
@@ -135,13 +151,19 @@ func (cache *aCache) Del( peerId string ) {
 		for _, v := range superNodes {
 
 			if v.PeerID == peerId {
-				_ = cache.cdb.Put( []byte(fmt.Sprintf("%v%d", NodeTypeSuper, n)), v.Encode(), AvdbComm.WriteOpt )
+
+				bs, err := proto.Marshal(v)
+				if err != nil {
+					panic(err)
+				}
+
+				_ = cache.cdb.Put( []byte(fmt.Sprintf("%v%d", im.NodeType_Super, n)), bs, AvdbComm.WriteOpt )
 			}
 
 			n ++
 		}
 
-		delkey := []byte(fmt.Sprintf("%v%d", NodeTypeSuper, n - 1))
+		delkey := []byte(fmt.Sprintf("%v%d", im.NodeType_Super, n - 1))
 
 		_ = cache.cdb.Delete(delkey, nil)
 
@@ -162,7 +184,7 @@ func (cache *aCache) DoRead( readingFunc ADB.ReadingFunc, idx ... *indexes.Index
 	return cache.sourceReader.DoRead( readingFunc )
 }
 
-func (cache *aCache) GetNodeByPeerId( peerId string, idx ... *indexes.Index ) (*Node, error) {
+func (cache *aCache) GetNodeByPeerId( peerId string, idx ... *indexes.Index ) (*im.Node, error) {
 	return cache.sourceReader.GetNodeByPeerId(peerId)
 }
 
@@ -170,7 +192,7 @@ func (cache *aCache) GetSuperMaterTotalVotes( idx ... *indexes.Index ) uint64 {
 	return cache.sourceReader.GetSuperMaterTotalVotes()
 }
 
-func (cache *aCache) GetSuperNodeList( idx ... *indexes.Index ) []*Node {
+func (cache *aCache) GetSuperNodeList( idx ... *indexes.Index ) []*im.Node {
 	return cache.sourceReader.GetSuperNodeList()
 }
 

@@ -6,8 +6,10 @@ import (
 	"fmt"
 	ADB "github.com/ayachain/go-aya-alvm-adb"
 	AVdbComm "github.com/ayachain/go-aya/vdb/common"
+	"github.com/ayachain/go-aya/vdb/im"
 	"github.com/ayachain/go-aya/vdb/indexes"
 	EComm "github.com/ethereum/go-ethereum/common"
+	"github.com/golang/protobuf/proto"
 	"github.com/ipfs/go-ipfs/core"
 	"github.com/pkg/errors"
 	"github.com/prometheus/common/log"
@@ -98,7 +100,7 @@ func (txs *aTransactions) GetTxCount( address EComm.Address, idx ... *indexes.In
 }
 
 
-func (txs *aTransactions) GetTxByHash( hash EComm.Hash, idx ... *indexes.Index ) (*Transaction, error) {
+func (txs *aTransactions) GetTxByHash( hash EComm.Hash, idx ... *indexes.Index ) (*im.Transaction, error) {
 
 	var lidx *indexes.Index
 	var err error
@@ -120,18 +122,22 @@ func (txs *aTransactions) GetTxByHash( hash EComm.Hash, idx ... *indexes.Index )
 	}
 	defer cls()
 
-	tx := &Transaction{}
+	tx := &im.Transaction{}
 	if err := ADB.ReadClose( dbroot, func(db *leveldb.DB) error {
 
 		it := db.NewIterator( util.BytesPrefix(hash.Bytes()) , nil)
 		defer it.Release()
 
 		if it.Next() {
-			if err := tx.Decode(it.Value()); err != nil {
+
+			if err := proto.Unmarshal(it.Value(), tx); err != nil {
 				return fmt.Errorf("%v can't found transaction", hash.String())
 			}
+
 		} else {
+
 			return fmt.Errorf("%v can't found transaction", hash.String())
+
 		}
 
 		return nil
@@ -144,7 +150,7 @@ func (txs *aTransactions) GetTxByHash( hash EComm.Hash, idx ... *indexes.Index )
 }
 
 
-func (txs *aTransactions) GetTxByHashBs( hsbs []byte, idx ... *indexes.Index ) (*Transaction, error) {
+func (txs *aTransactions) GetTxByHashBs( hsbs []byte, idx ... *indexes.Index ) (*im.Transaction, error) {
 
 	hash := EComm.BytesToHash(hsbs)
 
@@ -210,7 +216,7 @@ func (txs *aTransactions) GetHistoryHash( address EComm.Address, offset uint64, 
 	return hashs
 }
 
-func (txs *aTransactions) GetHistoryContent( address EComm.Address, offset uint64, size uint64, idx ... *indexes.Index) ([]*Transaction, error) {
+func (txs *aTransactions) GetHistoryContent( address EComm.Address, offset uint64, size uint64, idx ... *indexes.Index) ([]*im.Transaction, error) {
 
 	var lidx *indexes.Index
 	var err error
@@ -232,7 +238,7 @@ func (txs *aTransactions) GetHistoryContent( address EComm.Address, offset uint6
 	}
 	defer cls()
 
-	var tlist []*Transaction
+	var tlist []*im.Transaction
 	if err := ADB.ReadClose( dbroot, func(db *leveldb.DB) error {
 
 		itkey := append(TxHistoryPrefix, address.Bytes()...)
@@ -261,8 +267,9 @@ func (txs *aTransactions) GetHistoryContent( address EComm.Address, offset uint6
 				return err
 			}
 
-			tx := &Transaction{}
-			if err := tx.Decode(bs); err != nil {
+			tx := &im.Transaction{}
+
+			if err := proto.Unmarshal(bs, tx); err != nil {
 				return err
 			}
 

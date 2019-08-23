@@ -2,9 +2,8 @@ package minerpool
 
 import (
 	VDB "github.com/ayachain/go-aya/vdb"
-	AMBlock "github.com/ayachain/go-aya/vdb/mblock"
+	"github.com/ayachain/go-aya/vdb/im"
 	"github.com/ayachain/go-aya/vdb/merger"
-	ATx "github.com/ayachain/go-aya/vdb/transaction"
 	"github.com/pkg/errors"
 )
 
@@ -12,25 +11,22 @@ var (
 	ErrNotLinearBlock	= errors.New("not a linear mining block")
 	ErrInvalidLatest	= errors.New("invalid latest block")
 	ErrInvalidChainID	= errors.New("invalid ChainID")
-	ErrContextCancel 	= errors.New("parent context cancel")
 	ErrCreateBatch   	= errors.New("create cvfs merger failed")
 	ErrReadTxsTimeOut	= errors.New("read transaction list from IPFS dag timeout")
-	ErrReadIdxServices  = errors.New("can not use cid create index services")
 	ErrLinkCVFS			= errors.New("can not link to target CVFS")
 	ErrCreateCVFSCache  = errors.New("can not create cvfs cache(writer)")
-	ErrWorkingTimeout	= errors.New("mining timeout")
 )
 
 type MiningTask struct {
 
-	MiningBlock *AMBlock.MBlock
+	MiningBlock *im.Block
 
-	Txs			[]*ATx.Transaction
+	Txs			[]*im.Transaction
 
 	VWriter 	VDB.CacheCVFS
 }
 
-func NewTask( block *AMBlock.MBlock ) *MiningTask {
+func NewTask( block *im.Block ) *MiningTask {
 	return &MiningTask{
 		MiningBlock:block,
 	}

@@ -10,6 +10,8 @@ require (
 	github.com/ayachain/go-aya-alvm-adb v0.0.0-00010101000000-000000000000
 	github.com/deckarep/golang-set v1.7.1 // indirect
 	github.com/ethereum/go-ethereum v1.8.27
+	github.com/gogo/protobuf v1.2.1
+	github.com/golang/protobuf v1.3.1
 	github.com/hashicorp/go-multierror v1.0.0
 	github.com/ipfs/go-block-format v0.0.2
 	github.com/ipfs/go-cid v0.0.2

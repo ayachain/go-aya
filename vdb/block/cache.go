@@ -2,7 +2,9 @@ package block
 
 import (
 	AvdbComm "github.com/ayachain/go-aya/vdb/common"
+	"github.com/ayachain/go-aya/vdb/im"
 	"github.com/ayachain/go-aya/vdb/indexes"
+	"github.com/golang/protobuf/proto"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/storage"
 )
@@ -38,7 +40,7 @@ func (cache *aCache) SetLatestPosBlockIndex( idx uint64 ) {
 	_ = cache.cdb.Put(LatestPosBlockIdxKey, AvdbComm.BigEndianBytes(idx), AvdbComm.WriteOpt)
 }
 
-func (cache *aCache) AppendBlocks( blocks...*Block ) {
+func (cache *aCache) AppendBlocks( blocks...*im.Block ) {
 
 	if len(blocks) <= 0 {
 		return
@@ -46,18 +48,28 @@ func (cache *aCache) AppendBlocks( blocks...*Block ) {
 
 	for _, v := range blocks {
 
-		if err := cache.cdb.Put(v.GetHash().Bytes(), v.Encode(), AvdbComm.WriteOpt); err != nil {
+		bs, err := proto.Marshal(v)
+		if err != nil {
+			panic(err)
+		}
+
+		if err := cache.cdb.Put(v.GetHash().Bytes(), bs, AvdbComm.WriteOpt); err != nil {
 			panic(err)
 		}
 	}
 
 }
 
-func (cache *aCache) WriteGenBlock( gen *GenBlock ) {
+func (cache *aCache) WriteGenBlock( gen *im.GenBlock ) {
 
 	hash := gen.GetHash().Bytes()
 
-	if err := cache.cdb.Put(hash, gen.Encode(), AvdbComm.WriteOpt); err != nil {
+	bs, err := proto.Marshal(gen)
+	if err != nil {
+		panic(err)
+	}
+
+	if err := cache.cdb.Put(hash, bs, AvdbComm.WriteOpt); err != nil {
 		panic(err)
 	}
 
@@ -84,11 +96,11 @@ func (cache *aCache) MergerBatch() *leveldb.Batch {
 }
 
 /// Reader mock impl
-func (cache *aCache) GetLatestBlock() (*Block, error) {
+func (cache *aCache) GetLatestBlock() (*im.Block, error) {
 	return cache.sourceReader.GetLatestBlock()
 }
 
-func (cache *aCache) GetBlocks( hashOrIndex...interface{} ) ([]*Block, error) {
+func (cache *aCache) GetBlocks( hashOrIndex...interface{} ) ([]*im.Block, error) {
 	return cache.sourceReader.GetBlocks(hashOrIndex...)
 }
 

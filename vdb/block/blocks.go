@@ -6,8 +6,10 @@ import (
 	"errors"
 	ADB "github.com/ayachain/go-aya-alvm-adb"
 	AVdbComm "github.com/ayachain/go-aya/vdb/common"
+	"github.com/ayachain/go-aya/vdb/im"
 	"github.com/ayachain/go-aya/vdb/indexes"
 	EComm "github.com/ethereum/go-ethereum/common"
+	"github.com/golang/protobuf/proto"
 	"github.com/ipfs/go-ipfs/core"
 	"github.com/prometheus/common/log"
 	"github.com/syndtr/goleveldb/leveldb"
@@ -89,7 +91,7 @@ func (blks *aBlocks) GetLatestPosBlockIndex( idx ... *indexes.Index ) uint64 {
 	return r
 }
 
-func (blks *aBlocks) GetLatestBlock() (*Block, error) {
+func (blks *aBlocks) GetLatestBlock() (*im.Block, error) {
 
 	blocks, err := blks.GetBlocks(BlockNameLatest)
 	if err != nil {
@@ -103,7 +105,7 @@ func (blks *aBlocks) GetLatestBlock() (*Block, error) {
 	return blocks[0], nil
 }
 
-func (blks *aBlocks) GetBlocks( hashOrIndex...interface{} ) ([]*Block, error) {
+func (blks *aBlocks) GetBlocks( hashOrIndex...interface{} ) ([]*im.Block, error) {
 
 	lidx, err := blks.idxs.GetLatest()
 	if err != nil {
@@ -176,7 +178,7 @@ func (blks *aBlocks) GetBlocks( hashOrIndex...interface{} ) ([]*Block, error) {
 		hashList = append(hashList, bhash)
 	}
 
-	var blist []*Block
+	var blist []*im.Block
 	if err := ADB.ReadClose(dbroot, func(db *leveldb.DB) error {
 
 		for _, bhash := range hashList {
@@ -186,8 +188,8 @@ func (blks *aBlocks) GetBlocks( hashOrIndex...interface{} ) ([]*Block, error) {
 				return ErrBlockNotFound
 			}
 
-			subBlock := &Block{}
-			if err := subBlock.Decode(dbval); err != nil {
+			subBlock := &im.Block{}
+			if err := proto.Unmarshal(dbval, subBlock); err != nil {
 				return ErrBlockNotFound
 			}
 

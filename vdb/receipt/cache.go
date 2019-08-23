@@ -2,8 +2,10 @@ package receipt
 
 import (
 	AvdbComm "github.com/ayachain/go-aya/vdb/common"
+	"github.com/ayachain/go-aya/vdb/im"
 	"github.com/ayachain/go-aya/vdb/indexes"
 	EComm "github.com/ethereum/go-ethereum/common"
+	"github.com/golang/protobuf/proto"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/storage"
 )
@@ -50,11 +52,16 @@ func (cache *aCache) MergerBatch() *leveldb.Batch {
 }
 
 
-func (cache *aCache) Put( txhs EComm.Hash, bindex uint64, receipt []byte ) {
+func (cache *aCache) Put( txhs EComm.Hash, bindex uint64, receipt *im.Receipt ) {
 
 	key := append(txhs.Bytes(), AvdbComm.BigEndianBytes(bindex)... )
 
-	if err := cache.cdb.Put( key, receipt, AvdbComm.WriteOpt ); err != nil {
+	bs, err := proto.Marshal(receipt)
+	if err != nil {
+		panic(err)
+	}
+
+	if err := cache.cdb.Put( key, bs, AvdbComm.WriteOpt ); err != nil {
 		panic(err)
 	}
 
@@ -65,7 +72,7 @@ func (cache *aCache) Close() {
 }
 
 /// Reader mock impl
-func (cache *aCache) GetTransactionReceipt( txhs EComm.Hash, idx ... *indexes.Index ) (*Receipt, error) {
+func (cache *aCache) GetTransactionReceipt( txhs EComm.Hash, idx ... *indexes.Index ) (*im.Receipt, error) {
 	return cache.sourceReader.GetTransactionReceipt(txhs)
 }
 

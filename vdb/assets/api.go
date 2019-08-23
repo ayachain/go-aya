@@ -2,22 +2,19 @@ package assets
 
 import (
 	AVdbComm "github.com/ayachain/go-aya/vdb/common"
+	"github.com/ayachain/go-aya/vdb/im"
 	"github.com/ayachain/go-aya/vdb/indexes"
 	EComm "github.com/ethereum/go-ethereum/common"
 )
 
-const (
-	//Default assets record version code
-	DRVer 				= byte(1)
-	DBPath 				= "/assets"
-)
+const DBPath = "/assets"
 
 type reader interface {
-	AssetsOf( addr EComm.Address, idx... *indexes.Index ) ( *Assets, error )
+	AssetsOf( addr EComm.Address, idx... *indexes.Index ) ( *im.Assets, error )
 }
 
 type writer interface {
-	Put( addr EComm.Address, ast *Assets )
+	Put( addr EComm.Address, ast *im.Assets )
 }
 
 type Services interface {

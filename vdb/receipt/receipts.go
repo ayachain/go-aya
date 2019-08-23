@@ -4,8 +4,10 @@ import (
 	"context"
 	ADB "github.com/ayachain/go-aya-alvm-adb"
 	AVdbComm "github.com/ayachain/go-aya/vdb/common"
+	"github.com/ayachain/go-aya/vdb/im"
 	"github.com/ayachain/go-aya/vdb/indexes"
 	EComm "github.com/ethereum/go-ethereum/common"
+	"github.com/golang/protobuf/proto"
 	"github.com/ipfs/go-ipfs/core"
 	"github.com/prometheus/common/log"
 	"github.com/syndtr/goleveldb/leveldb"
@@ -70,7 +72,7 @@ func (r *aReceipt) HasTransactionReceipt( txhs EComm.Hash, idx ... *indexes.Inde
 	return exist
 }
 
-func (r *aReceipt) GetTransactionReceipt( txhs EComm.Hash, idx ... *indexes.Index ) (*Receipt, error) {
+func (r *aReceipt) GetTransactionReceipt( txhs EComm.Hash, idx ... *indexes.Index ) (*im.Receipt, error) {
 
 	var lidx *indexes.Index
 	var err error
@@ -93,7 +95,7 @@ func (r *aReceipt) GetTransactionReceipt( txhs EComm.Hash, idx ... *indexes.Inde
 	}
 	defer cls()
 
-	rp := &Receipt{}
+	rp := &im.Receipt{}
 	if err := ADB.ReadClose( dbroot, func(db *leveldb.DB) error {
 
 		it := db.NewIterator( util.BytesPrefix(txhs.Bytes()), nil )
@@ -101,7 +103,7 @@ func (r *aReceipt) GetTransactionReceipt( txhs EComm.Hash, idx ... *indexes.Inde
 
 		if it.Next() {
 
-			if err := rp.Decode( it.Value() ); err != nil {
+			if err := proto.Unmarshal(it.Value(), rp); err != nil {
 				return err
 			}
 

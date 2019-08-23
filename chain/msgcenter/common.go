@@ -10,8 +10,8 @@ type MessageChannel string
 const (
 	Version 									= "AyaMessageCenter V0.0.1"
 	MessageChannelMiningBlock	MessageChannel	= "MiningBlock"
-	MessageChannelBatcher		MessageChannel	= "Batch"
-	MessageChannelAppend		MessageChannel	= "Appender"
+	MessageChannelMined			MessageChannel	= "Mined"
+	MessageChannelChainInfo		MessageChannel	= "ChainInfo"
 )
 
 func GetChannelTopics( chainID string, c MessageChannel ) string {

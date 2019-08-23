@@ -3,6 +3,7 @@ package node
 import (
 	ADB "github.com/ayachain/go-aya-alvm-adb"
 	AVdbComm "github.com/ayachain/go-aya/vdb/common"
+	"github.com/ayachain/go-aya/vdb/im"
 	"github.com/ayachain/go-aya/vdb/indexes"
 )
 
@@ -10,11 +11,11 @@ const DBPath = "/nodes"
 
 type reader interface {
 
-	GetNodeByPeerId( peerId string, idx... *indexes.Index ) (*Node, error)
+	GetNodeByPeerId( peerId string, idx... *indexes.Index ) (*im.Node, error)
 
 	GetSuperMaterTotalVotes( idx... *indexes.Index ) uint64
 
-	GetSuperNodeList( idx... *indexes.Index ) []*Node
+	GetSuperNodeList( idx... *indexes.Index ) []*im.Node
 
 	GetSuperNodeCount( idx... *indexes.Index ) int64
 
@@ -23,9 +24,9 @@ type reader interface {
 
 type writer interface {
 
-	InsertBootstrapNodes( nds []Node )
+	InsertBootstrapNodes( nds []*im.Node )
 
-	Insert( peerId string, node *Node ) error
+	Insert( peerId string, node *im.Node ) error
 
 	Del( peerId string )
 }

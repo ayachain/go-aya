@@ -2,8 +2,8 @@ package txpool
 
 import (
 	"context"
-	MBlock "github.com/ayachain/go-aya/vdb/mblock"
-	"github.com/ayachain/go-aya/vdb/node"
+	"github.com/ayachain/go-aya/vdb/im"
+	"github.com/golang/protobuf/proto"
 	"github.com/prometheus/common/log"
 	"sync"
 )
@@ -34,14 +34,14 @@ func (pool *aTxPool) threadMiningBlockRepeater( ctx context.Context, awaiter *sy
 
 		} else {
 
-			if nd.Type != node.NodeTypeSuper {
+			if nd.Type != im.NodeType_Super {
 				continue
 			}
 
 		}
 
-		mblock := &MBlock.MBlock{}
-		if err := mblock.RawMessageDecode(msg.Data); err != nil {
+		mblock := &im.Block{}
+		if err := proto.Unmarshal(msg.Data, mblock); err != nil {
 			log.Warn(err)
 			continue
 		}

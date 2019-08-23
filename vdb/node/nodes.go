@@ -4,7 +4,9 @@ import (
 	"context"
 	ADB "github.com/ayachain/go-aya-alvm-adb"
 	AVdbComm "github.com/ayachain/go-aya/vdb/common"
+	"github.com/ayachain/go-aya/vdb/im"
 	"github.com/ayachain/go-aya/vdb/indexes"
+	"github.com/golang/protobuf/proto"
 	"github.com/ipfs/go-ipfs/core"
 	"github.com/prometheus/common/log"
 	"github.com/syndtr/goleveldb/leveldb"
@@ -33,7 +35,7 @@ func (api *aNodes) NewWriter() (AVdbComm.VDBCacheServices, error) {
 	return newWriter( api )
 }
 
-func (api *aNodes) GetNodeByPeerId( peerId string, idx ... *indexes.Index ) (*Node, error) {
+func (api *aNodes) GetNodeByPeerId( peerId string, idx ... *indexes.Index ) (*im.Node, error) {
 
 	var lidx *indexes.Index
 	var err error
@@ -55,7 +57,7 @@ func (api *aNodes) GetNodeByPeerId( peerId string, idx ... *indexes.Index ) (*No
 	}
 	defer cls()
 
-	nd := &Node{}
+	nd := &im.Node{}
 	if err := ADB.ReadClose(dbroot, func(db *leveldb.DB) error {
 
 		bs, err := db.Get( []byte(peerId), nil )
@@ -63,7 +65,7 @@ func (api *aNodes) GetNodeByPeerId( peerId string, idx ... *indexes.Index ) (*No
 			return err
 		}
 
-		if err := nd.Decode(bs); err != nil {
+		if err := proto.Unmarshal(bs, nd); err != nil {
 			return err
 		}
 		return nil
@@ -76,7 +78,7 @@ func (api *aNodes) GetNodeByPeerId( peerId string, idx ... *indexes.Index ) (*No
 	return nd, nil
 }
 
-func (api *aNodes) GetSuperNodeList( idx ... *indexes.Index ) []*Node {
+func (api *aNodes) GetSuperNodeList( idx ... *indexes.Index ) []*im.Node {
 
 	var lidx *indexes.Index
 	var err error
@@ -98,10 +100,10 @@ func (api *aNodes) GetSuperNodeList( idx ... *indexes.Index ) []*Node {
 	}
 	defer cls()
 
-	var rets[] *Node
+	var rets[] *im.Node
 	if err := ADB.ReadClose( dbroot, func(db *leveldb.DB) error {
 
-		it := db.NewIterator( util.BytesPrefix( []byte(NodeTypeSuper) ), nil )
+		it := db.NewIterator( util.BytesPrefix( []byte( im.NodeType_Super.String() )), nil )
 
 		defer it.Release()
 
@@ -114,8 +116,8 @@ func (api *aNodes) GetSuperNodeList( idx ... *indexes.Index ) []*Node {
 				return err
 			}
 
-			nd := &Node{}
-			if err := nd.Decode(bs); err == nil {
+			nd := &im.Node{}
+			if err := proto.UnmarshalMerge(bs, nd); err == nil {
 				rets = append(rets, nd)
 			}
 		}
@@ -154,7 +156,7 @@ func (api *aNodes) GetSuperMaterTotalVotes( idx ... *indexes.Index ) uint64 {
 	var total uint64
 	if err := ADB.ReadClose( dbroot, func(db *leveldb.DB) error {
 
-		it := db.NewIterator( util.BytesPrefix( []byte(NodeTypeSuper) ), nil )
+		it := db.NewIterator( util.BytesPrefix( []byte(im.NodeType_Super.String()) ), nil )
 		defer it.Release()
 
 		for it.Next() {
@@ -166,8 +168,8 @@ func (api *aNodes) GetSuperMaterTotalVotes( idx ... *indexes.Index ) uint64 {
 				panic(err)
 			}
 
-			nd := &Node{}
-			if err := nd.Decode(bs); err == nil {
+			nd := &im.Node{}
+			if err := proto.UnmarshalMerge(bs, nd); err == nil {
 				total += nd.Votes
 			}
 		}
@@ -181,7 +183,7 @@ func (api *aNodes) GetSuperMaterTotalVotes( idx ... *indexes.Index ) uint64 {
 	return total
 }
 
-func (api *aNodes) GetFirst( idx ... *indexes.Index ) *Node {
+func (api *aNodes) GetFirst( idx ... *indexes.Index ) *im.Node {
 
 	var lidx *indexes.Index
 	var err error
@@ -203,7 +205,7 @@ func (api *aNodes) GetFirst( idx ... *indexes.Index ) *Node {
 	}
 	defer cls()
 
-	nd := &Node{}
+	nd := &im.Node{}
 	if err := ADB.ReadClose( dbroot, func(db *leveldb.DB) error {
 
 		if bs, err := db.Get( []byte("Super00000001"), nil ); err != nil {
@@ -212,7 +214,7 @@ func (api *aNodes) GetFirst( idx ... *indexes.Index ) *Node {
 
 		} else {
 
-			if err := nd.Decode(bs); err != nil {
+			if err := proto.UnmarshalMerge(bs, nd); err != nil {
 				return err
 			}
 
@@ -251,7 +253,7 @@ func (api *aNodes) GetSuperNodeCount( idx ... *indexes.Index ) int64 {
 	var s = int64(0)
 	if err := ADB.ReadClose( dbroot, func(db *leveldb.DB) error {
 
-		it := db.NewIterator( util.BytesPrefix([]byte(NodeTypeSuper)), nil)
+		it := db.NewIterator( util.BytesPrefix([]byte(im.NodeType_Super.String())), nil)
 		defer it.Release()
 
 		for it.Next() {
