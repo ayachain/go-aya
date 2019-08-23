@@ -21,9 +21,9 @@ var _ = math.Inf
 const _ = proto.ProtoPackageIsVersion3 // please upgrade the proto package
 
 type Assets struct {
-	Avail                uint64   `protobuf:"varint,2,opt,name=Avail,proto3" json:"Avail,omitempty"`
-	Vote                 uint64   `protobuf:"varint,3,opt,name=Vote,proto3" json:"Vote,omitempty"`
-	Locked               uint64   `protobuf:"varint,4,opt,name=Locked,proto3" json:"Locked,omitempty"`
+	Avail                uint64   `protobuf:"varint,1,opt,name=Avail,proto3" json:"Avail,omitempty"`
+	Vote                 uint64   `protobuf:"varint,2,opt,name=Vote,proto3" json:"Vote,omitempty"`
+	Locked               uint64   `protobuf:"varint,3,opt,name=Locked,proto3" json:"Locked,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -75,19 +75,84 @@ func (m *Assets) GetLocked() uint64 {
 	return 0
 }
 
+type GenAssets struct {
+	Avail                uint64   `protobuf:"varint,1,opt,name=Avail,proto3" json:"Avail,omitempty"`
+	Vote                 uint64   `protobuf:"varint,2,opt,name=Vote,proto3" json:"Vote,omitempty"`
+	Locked               uint64   `protobuf:"varint,3,opt,name=Locked,proto3" json:"Locked,omitempty"`
+	Owner                []byte   `protobuf:"bytes,4,opt,name=Owner,proto3" json:"Owner,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *GenAssets) Reset()         { *m = GenAssets{} }
+func (m *GenAssets) String() string { return proto.CompactTextString(m) }
+func (*GenAssets) ProtoMessage()    {}
+func (*GenAssets) Descriptor() ([]byte, []int) {
+	return fileDescriptor_610ca40ce07a87fe, []int{1}
+}
+
+func (m *GenAssets) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_GenAssets.Unmarshal(m, b)
+}
+func (m *GenAssets) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_GenAssets.Marshal(b, m, deterministic)
+}
+func (m *GenAssets) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GenAssets.Merge(m, src)
+}
+func (m *GenAssets) XXX_Size() int {
+	return xxx_messageInfo_GenAssets.Size(m)
+}
+func (m *GenAssets) XXX_DiscardUnknown() {
+	xxx_messageInfo_GenAssets.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_GenAssets proto.InternalMessageInfo
+
+func (m *GenAssets) GetAvail() uint64 {
+	if m != nil {
+		return m.Avail
+	}
+	return 0
+}
+
+func (m *GenAssets) GetVote() uint64 {
+	if m != nil {
+		return m.Vote
+	}
+	return 0
+}
+
+func (m *GenAssets) GetLocked() uint64 {
+	if m != nil {
+		return m.Locked
+	}
+	return 0
+}
+
+func (m *GenAssets) GetOwner() []byte {
+	if m != nil {
+		return m.Owner
+	}
+	return nil
+}
+
 func init() {
 	proto.RegisterType((*Assets)(nil), "im.Assets")
+	proto.RegisterType((*GenAssets)(nil), "im.GenAssets")
 }
 
 func init() { proto.RegisterFile("assets.proto", fileDescriptor_610ca40ce07a87fe) }
 
 var fileDescriptor_610ca40ce07a87fe = []byte{
-	// 101 bytes of a gzipped FileDescriptorProto
+	// 127 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0xe2, 0x49, 0x2c, 0x2e, 0x4e,
 	0x2d, 0x29, 0xd6, 0x2b, 0x28, 0xca, 0x2f, 0xc9, 0x17, 0x62, 0xca, 0xcc, 0x55, 0xf2, 0xe2, 0x62,
-	0x73, 0x04, 0x8b, 0x09, 0x89, 0x70, 0xb1, 0x3a, 0x96, 0x25, 0x66, 0xe6, 0x48, 0x30, 0x29, 0x30,
-	0x6a, 0xb0, 0x04, 0x41, 0x38, 0x42, 0x42, 0x5c, 0x2c, 0x61, 0xf9, 0x25, 0xa9, 0x12, 0xcc, 0x60,
-	0x41, 0x30, 0x5b, 0x48, 0x8c, 0x8b, 0xcd, 0x27, 0x3f, 0x39, 0x3b, 0x35, 0x45, 0x82, 0x05, 0x2c,
-	0x0a, 0xe5, 0x25, 0xb1, 0x81, 0x8d, 0x35, 0x06, 0x04, 0x00, 0x00, 0xff, 0xff, 0xd7, 0xa3, 0x39,
-	0x23, 0x66, 0x00, 0x00, 0x00,
+	0x73, 0x04, 0x8b, 0x09, 0x89, 0x70, 0xb1, 0x3a, 0x96, 0x25, 0x66, 0xe6, 0x48, 0x30, 0x2a, 0x30,
+	0x6a, 0xb0, 0x04, 0x41, 0x38, 0x42, 0x42, 0x5c, 0x2c, 0x61, 0xf9, 0x25, 0xa9, 0x12, 0x4c, 0x60,
+	0x41, 0x30, 0x5b, 0x48, 0x8c, 0x8b, 0xcd, 0x27, 0x3f, 0x39, 0x3b, 0x35, 0x45, 0x82, 0x19, 0x2c,
+	0x0a, 0xe5, 0x29, 0x25, 0x73, 0x71, 0xba, 0xa7, 0xe6, 0x51, 0xcb, 0x38, 0x90, 0x09, 0xfe, 0xe5,
+	0x79, 0xa9, 0x45, 0x12, 0x2c, 0x0a, 0x8c, 0x1a, 0x3c, 0x41, 0x10, 0x4e, 0x12, 0x1b, 0xd8, 0xed,
+	0xc6, 0x80, 0x00, 0x00, 0x00, 0xff, 0xff, 0xa0, 0xd0, 0x4e, 0x5e, 0xcb, 0x00, 0x00, 0x00,
 }

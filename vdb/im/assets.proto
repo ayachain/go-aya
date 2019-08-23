@@ -4,10 +4,20 @@ package im;
 
 message Assets {
 
-    uint64  Avail = 2;
+    uint64  Avail = 1;
 
-    uint64  Vote = 3;
+    uint64  Vote = 2;
 
-    uint64  Locked = 4;
+    uint64  Locked = 3;
+}
 
+message GenAssets {
+
+    uint64  Avail = 1;
+
+    uint64  Vote = 2;
+
+    uint64  Locked = 3;
+
+    bytes   Owner = 4;
 }

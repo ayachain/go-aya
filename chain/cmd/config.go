@@ -35,10 +35,25 @@ var configCmd = &cmds.Command {
 			Txs:cid.Undef.Bytes(),
 			ExtraData:nil,
 			AppendData:[]byte("SSUyMHJlc2VydmVkJTIwYW4lMjBpbXBvcnRhbnQlMjBtZXNzYWdlJTIwaW4lMjBwYXJlbnQlMjBoYXNoLg=="),
-			Award: map[string]uint64{
-				"0xB137D22eD06f22A3C6E2C5fdeAB49C612678bd6F": 1000000000000,
-				"0x8E0A21BCDb37eF545f4b04ef30a773F137DCb372": 1000000000000,
-				"0x17C6594CCf4798DB4eF9fE169A8C269847520D3c": 1000000000000,
+			Award: []*im.GenAssets {
+				{
+					Avail:1000000000000,
+					Vote:1000000000000,
+					Locked:0,
+					Owner:common.HexToAddress("0xB137D22eD06f22A3C6E2C5fdeAB49C612678bd6F").Bytes(),
+				},
+				{
+					Avail:1000000000000,
+					Vote:1000000000000,
+					Locked:0,
+					Owner:common.HexToAddress("0x17C6594CCf4798DB4eF9fE169A8C269847520D3c").Bytes(),
+				},
+				{
+					Avail:1000000000000,
+					Vote:1000000000000,
+					Locked:0,
+					Owner:common.HexToAddress("0x8E0A21BCDb37eF545f4b04ef30a773F137DCb372").Bytes(),
+				},
 			},
 			SuperNodes: []*im.Node{
 				{

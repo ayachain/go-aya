@@ -3,6 +3,7 @@ syntax = "proto3";
 package im;
 
 import "node.proto";
+import "assets.proto";
 
 message Block {
 
@@ -28,25 +29,25 @@ message Block {
 
 message GenBlock {
 
-    string      ChainID = 1;
+    string          ChainID = 1;
 
-    string      Parent = 2;
+    string          Parent = 2;
 
-    uint64      Index = 3;
+    uint64          Index = 3;
 
-    uint32      Timestamp = 4;
+    uint32          Timestamp = 4;
 
-    string      Packager = 5;
+    string          Packager = 5;
 
-    uint32      Txc = 6;
+    uint32          Txc = 6;
 
-    bytes       Txs = 7;             // Cid
+    bytes           Txs = 7;             // Cid
 
-    bytes       ExtraData = 8;       // Cid
+    bytes           ExtraData = 8;       // Cid
 
-    bytes       AppendData = 9;
+    bytes           AppendData = 9;
 
-    map<string, uint64> Award = 10;
+    repeated GenAssets Award = 10;
 
-    repeated Node SuperNodes = 11;
+    repeated Node   SuperNodes = 11;
 }

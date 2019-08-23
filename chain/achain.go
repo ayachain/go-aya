@@ -27,7 +27,6 @@ var(
 	ErrMergeInvalidChainID			= errors.New("invalid chain id")
 	ErrMergeInvalidLatest			= errors.New("invalid latest block")
 	ErrMergeNonlinear				= errors.New("nonlinear merge batch ")
-	ErrMergeUnlinkCVFS				= errors.New("can not link target CVFS")
 )
 
 const AChainMapKey = "AChainMapKey"

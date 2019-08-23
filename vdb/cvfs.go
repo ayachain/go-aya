@@ -104,11 +104,11 @@ func CreateVFS( block *im.GenBlock, ind *core.IpfsNode, idxSer AIndexes.IndexesS
 	}
 
 	// Award
-	for addr, amount := range block.Award {
+	for _, gast := range block.Award {
 
-		assetBn := AAssets.NewAssets( amount / 2, amount, amount / 2 )
+		ast := AAssets.NewAssets( gast.Avail, gast.Vote, gast.Locked )
 
-		writer.Assetses().Put( EComm.HexToAddress(addr), assetBn )
+		writer.Assetses().Put( EComm.BytesToAddress( gast.Owner ), ast )
 	}
 
 	// Block
