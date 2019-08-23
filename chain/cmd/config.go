@@ -11,13 +11,13 @@ import (
 	"github.com/pkg/errors"
 )
 
-var addCmd = &cmds.Command {
+var configCmd = &cmds.Command {
 
 	Helptext:cmds.HelpText{
 		Tagline: "init aya chain connection",
 	},
 	Options: []cmds.Option{
-		cmds.BoolOption("replace", "r", "if direct substitution already exists"),
+		cmds.BoolOption("reload", "r", "if direct substitution already exists"),
 	},
 	Run:func(req *cmds.Request, re cmds.ResponseEmitter, env cmds.Environment) error {
 
@@ -65,7 +65,7 @@ var addCmd = &cmds.Command {
 			},
 		}
 
-		r, _ := req.Options["replace"].(bool)
+		r, _ := req.Options["reload"].(bool)
 
 		if err := AChain.AddChain(gblk, ind, r); err != nil {
 			return ARsponse.EmitErrorResponse(re, err )

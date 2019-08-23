@@ -30,7 +30,7 @@ var(
 	ErrMergeUnlinkCVFS				= errors.New("can not link target CVFS")
 )
 
-const  AChainMapKey = "aya.chain.list.map"
+const AChainMapKey = "AChainMapKey"
 
 type Chain interface {
 
