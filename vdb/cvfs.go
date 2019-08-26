@@ -271,6 +271,7 @@ func ( vfs *aCVFS ) ForkMergeBatch( merger VDBMerge.CVFSMerger ) (cid.Cid, error
 	if err := merger.ForEach(func(k string, bc *leveldb.Batch) error {
 
 		vdbroot, err := VDBComm.LookupDBPath(root, k)
+
 		if err != nil {
 			panic(err)
 		}
@@ -282,13 +283,16 @@ func ( vfs *aCVFS ) ForkMergeBatch( merger VDBMerge.CVFSMerger ) (cid.Cid, error
 		return nil
 
 	}); err != nil {
+
 		return cid.Undef, err
 	}
-	
+
 	nd, err := mfs.FlushPath(context.TODO(), root, "/")
 	if err != nil {
 		return cid.Undef, err
 	}
+
+	log.Infof("MergeRet:%v", nd.Cid().String())
 
 	return nd.Cid(), nil
 }
