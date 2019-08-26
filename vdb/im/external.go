@@ -58,6 +58,20 @@ func ( m *GenBlock ) GetHash() EComm.Hash {
 	return crypto.Keccak256Hash(bs)
 }
 
+func ( m *ChainInfo ) GetHash() EComm.Hash {
+
+	bs, err := proto.Marshal(m)
+	if err != nil {
+		panic("unrecoverable computing exception : Hash")
+	}
+
+	if bs == nil {
+		panic("unrecoverable computing exception : Hash")
+	}
+
+	return crypto.Keccak256Hash(bs)
+}
+
 func ( m *Transaction ) GetHash256( ) EComm.Hash {
 
 	buff := bytes.NewBuffer([]byte("AyaTransactionPrefix"))

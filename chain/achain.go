@@ -153,7 +153,9 @@ func (chain *aChain) TrustMessageSwitcher( ctx context.Context, msg interface{} 
 				MBlock:mblock,
 				Batcher:mret.Batcher.Upload(chain.INode).Bytes(),
 			}, AMsgCenter.GetChannelTopics(mblock.ChainID, AMsgCenter.MessageChannelMined) ); err != nil {
+
 				log.Warn(err)
+
 			}
 
 			return
@@ -178,6 +180,7 @@ func (chain *aChain) TrustMessageSwitcher( ctx context.Context, msg interface{} 
 
 		} else {
 
+			log.Infof("MBlock:%08d ChainInfo:%v", mined.MBlock.Index, cinfo.GetHash().String() )
 			if err := chain.AMC.PublishMessage( cinfo, AMsgCenter.GetChannelTopics(mined.MBlock.ChainID, AMsgCenter.MessageChannelChainInfo)); err != nil {
 				log.Warn(err)
 				return

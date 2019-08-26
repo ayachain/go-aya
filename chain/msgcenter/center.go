@@ -259,8 +259,6 @@ func (mc *aMessageCenter) PowerOn( ctx context.Context, chainID string, ind *cor
 				return
 			}
 
-			log.Infof("ChainInfo <- %v", msg.GetFrom().Pretty())
-
 			mc.Push(msg, ACInfo.MessagePrefix)
 		}
 
