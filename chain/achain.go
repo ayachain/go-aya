@@ -181,8 +181,6 @@ func (chain *aChain) TrustMessageSwitcher( ctx context.Context, msg interface{} 
 			if err := chain.AMC.PublishMessage( cinfo, AMsgCenter.GetChannelTopics(mined.MBlock.ChainID, AMsgCenter.MessageChannelChainInfo)); err != nil {
 				log.Warn(err)
 				return
-			} else {
-				log.Info("ChainInfo Published")
 			}
 
 			chain.ASD.SendingSignal( mined.MBlock.Index, ASDaemon.SignalDoConfirming )

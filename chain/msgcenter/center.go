@@ -149,6 +149,7 @@ func (mc *aMessageCenter) Push( msg *pubsub.Message, prefix string ) {
 
 			case ACInfo.MessagePrefix:
 
+				log.Infof("ChainInfo <- %v", msg.GetFrom().Pretty())
 				msg := &im.ChainInfo{}
 				if err := proto.Unmarshal(m.Content, msg); err != nil {
 					return
