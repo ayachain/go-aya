@@ -149,7 +149,6 @@ func (mc *aMessageCenter) Push( msg *pubsub.Message, prefix string ) {
 
 			case ACInfo.MessagePrefix:
 
-				log.Infof("ChainInfo <- %v", msg.GetFrom().Pretty())
 				msg := &im.ChainInfo{}
 				if err := proto.Unmarshal(m.Content, msg); err != nil {
 					return
@@ -191,12 +190,6 @@ func (mc *aMessageCenter) PowerOn( ctx context.Context, chainID string, ind *cor
 	msctx, mscancel := context.WithCancel(ctx)
 	bsctx, bscancel := context.WithCancel(ctx)
 	asctx, ascancel := context.WithCancel(ctx)
-
-	defer func() {
-		mscancel()
-		bscancel()
-		ascancel()
-	}()
 
 	// Create Subscribe
 	mblockSuber, err = ind.PubSub.Subscribe( GetChannelTopics(chainID, MessageChannelMiningBlock) )
@@ -265,6 +258,8 @@ func (mc *aMessageCenter) PowerOn( ctx context.Context, chainID string, ind *cor
 			if err != nil {
 				return
 			}
+
+			log.Infof("ChainInfo <- %v", msg.GetFrom().Pretty())
 
 			mc.Push(msg, ACInfo.MessagePrefix)
 		}
