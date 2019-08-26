@@ -17,7 +17,7 @@ import (
 
 type CVFSMerger interface {
 
-	GetBatchMap() map[string]*leveldb.Batch
+	ForEach( func(k string, bc *leveldb.Batch) error ) error
 
 	Put( dbKey string, k []byte, v []byte )
 
@@ -29,6 +29,7 @@ type CVFSMerger interface {
 
 	Load([]byte) error
 
+	PutBatch( dbkey string, batch *leveldb.Batch )
 }
 
 type aCVFSMerger struct {
@@ -44,8 +45,27 @@ func NewMerger() CVFSMerger {
 	}
 }
 
-func (tbg *aCVFSMerger) GetBatchMap() map[string]*leveldb.Batch{
-	return tbg.batchs
+func (tbg *aCVFSMerger) PutBatch( dbkey string, batch *leveldb.Batch ) {
+	tbg.batchs[dbkey] = batch
+}
+
+func (tbg *aCVFSMerger) ForEach( f func(k string, bc *leveldb.Batch) error ) error {
+
+	for _, k := range VDBComm.StorageDBPaths {
+
+		if batch, exist := tbg.batchs[k]; exist {
+
+			if batch != nil {
+
+				if err := f(k, batch); err != nil {
+					return err
+				}
+
+			}
+		}
+	}
+
+	return nil
 }
 
 // Byte 0 - 7 		: Header json bytes content len

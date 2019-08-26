@@ -14,13 +14,13 @@ import (
 	AReceipts "github.com/ayachain/go-aya/vdb/receipt"
 	ATx "github.com/ayachain/go-aya/vdb/transaction"
 	EComm "github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-ipfs/core"
 	"github.com/ipfs/go-merkledag"
 	"github.com/ipfs/go-mfs"
 	"github.com/ipfs/go-unixfs"
 	"github.com/prometheus/common/log"
+	"github.com/syndtr/goleveldb/leveldb"
 	"sync"
 )
 
@@ -212,21 +212,23 @@ func ( vfs *aCVFS ) writeGenBatch( root *mfs.Root, merger VDBMerge.CVFSMerger ) 
 	vfs.smu.Lock()
 	defer vfs.smu.Unlock()
 
-	var err error
-	for dbkey, batch := range merger.GetBatchMap() {
+	if err := merger.ForEach( func(k string, bc *leveldb.Batch ) error {
 
-		if batch == nil {
-			continue
-		}
-
-		vdbroot, err := VDBComm.LookupDBPath(root, dbkey)
+		vdbroot, err := VDBComm.LookupDBPath(root, k)
 		if err != nil {
 			panic(err)
 		}
 
-		if err := ADB.MergeClose(vdbroot, batch, dbkey); err != nil {
-			return cid.Undef, err
+		if err := ADB.MergeClose(vdbroot, bc, k); err != nil {
+			return err
 		}
+
+		return nil
+
+	}); err != nil {
+
+		return cid.Undef, err
+
 	}
 
 	nd, err := mfs.FlushPath(context.TODO(), root, "/")
@@ -266,29 +268,27 @@ func ( vfs *aCVFS ) ForkMergeBatch( merger VDBMerge.CVFSMerger ) (cid.Cid, error
 		}
 	}
 
-	for dbkey, batch := range merger.GetBatchMap() {
+	if err := merger.ForEach(func(k string, bc *leveldb.Batch) error {
 
-		if batch == nil {
-			continue
-		}
-
-		vdbroot, err := VDBComm.LookupDBPath(root, dbkey)
+		vdbroot, err := VDBComm.LookupDBPath(root, k)
 		if err != nil {
 			panic(err)
 		}
 
-		if err := ADB.MergeClose(vdbroot, batch, dbkey); err != nil {
-			return cid.Undef, err
+		if err := ADB.MergeClose(vdbroot, bc, k); err != nil {
+			return err
 		}
-	}
 
+		return nil
+
+	}); err != nil {
+		return cid.Undef, err
+	}
+	
 	nd, err := mfs.FlushPath(context.TODO(), root, "/")
 	if err != nil {
 		return cid.Undef, err
 	}
-
-	bs := merger.Dump()
-	log.Infof("Fork LIDX:%v, Batch:%v, F:%v", lidx.Hash.String(), crypto.Keccak256Hash(bs).String(), nd.Cid().String() )
 
 	return nd.Cid(), nil
 }

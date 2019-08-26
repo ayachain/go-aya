@@ -202,11 +202,11 @@ func (cache *aCacheCVFS) MergeGroup() merger.CVFSMerger {
 
 				if batch.Len() > 0 {
 
-					merger.GetBatchMap()[path] = batch
+					merger.PutBatch(path, batch)
 
 				} else {
 
-					merger.GetBatchMap()[path] = nil
+					merger.PutBatch(path, nil)
 				}
 
 			}
