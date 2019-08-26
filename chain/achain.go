@@ -2,7 +2,6 @@ package chain
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	AMinerPool "github.com/ayachain/go-aya/chain/minerpool"
@@ -154,9 +153,7 @@ func (chain *aChain) TrustMessageSwitcher( ctx context.Context, msg interface{} 
 				MBlock:mblock,
 				Batcher:mret.Batcher.Upload(chain.INode).Bytes(),
 			}, AMsgCenter.GetChannelTopics(mblock.ChainID, AMsgCenter.MessageChannelMined) ); err != nil {
-
 				log.Warn(err)
-
 			}
 
 			return
@@ -181,9 +178,6 @@ func (chain *aChain) TrustMessageSwitcher( ctx context.Context, msg interface{} 
 
 		} else {
 
-			jbs, _ := json.Marshal(cinfo)
-
-			log.Infof("ChainInfo H:%v \nContent:%v", mined.MBlock.Index, cinfo.GetHash().String(), string(jbs) )
 			if err := chain.AMC.PublishMessage( cinfo, AMsgCenter.GetChannelTopics(mined.MBlock.ChainID, AMsgCenter.MessageChannelChainInfo)); err != nil {
 				log.Warn(err)
 				return
@@ -288,6 +282,7 @@ func (chain *aChain) ForkMergeBatch( ctx context.Context, mret *im.Minined ) (*i
 	if cblock == nil {
 		return nil, ErrMergeFailed
 	}
+	log.Infof("ConfirmBlock:%v", cblock.GetHash().String())
 
 	/// Append confirm block
 	bbc, err := proto.Marshal(cblock)
@@ -301,6 +296,7 @@ func (chain *aChain) ForkMergeBatch( ctx context.Context, mret *im.Minined ) (*i
 	if err != nil {
 		return nil, ErrMergeFailed
 	}
+	log.Infof("ForkMergeBatch:%v", ccid.String())
 
 	/// try fork merge
 	idxfcid, err := AIndexs.ForkMerge(chain.INode, chain.ChainId, &AIndexs.Index{
@@ -308,6 +304,7 @@ func (chain *aChain) ForkMergeBatch( ctx context.Context, mret *im.Minined ) (*i
 		Hash:cblock.GetHash(),
 		FullCID:ccid,
 	})
+	log.Infof("AIndexs.ForkMerge:%v", idxfcid.String())
 
 	if err != nil || idxfcid == cid.Undef {
 		return nil, err
