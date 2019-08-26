@@ -282,7 +282,6 @@ func (chain *aChain) ForkMergeBatch( ctx context.Context, mret *im.Minined ) (*i
 	if cblock == nil {
 		return nil, ErrMergeFailed
 	}
-	log.Infof("ConfirmBlock:%v", cblock.GetHash().String())
 
 	/// Append confirm block
 	bbc, err := proto.Marshal(cblock)
@@ -296,7 +295,6 @@ func (chain *aChain) ForkMergeBatch( ctx context.Context, mret *im.Minined ) (*i
 	if err != nil {
 		return nil, ErrMergeFailed
 	}
-	log.Infof("ForkMergeBatch:%v", ccid.String())
 
 	/// try fork merge
 	idxfcid, err := AIndexs.ForkMerge(chain.INode, chain.ChainId, &AIndexs.Index{

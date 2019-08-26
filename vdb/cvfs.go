@@ -14,6 +14,7 @@ import (
 	AReceipts "github.com/ayachain/go-aya/vdb/receipt"
 	ATx "github.com/ayachain/go-aya/vdb/transaction"
 	EComm "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-ipfs/core"
 	"github.com/ipfs/go-merkledag"
@@ -238,15 +239,24 @@ func ( vfs *aCVFS ) writeGenBatch( root *mfs.Root, merger VDBMerge.CVFSMerger ) 
 
 func ( vfs *aCVFS ) ForkMergeBatch( merger VDBMerge.CVFSMerger ) (cid.Cid, error) {
 
+	var (
+		lidx *AIndexes.Index
+		err error
+	)
+
 	vfs.smu.Lock()
 	defer vfs.smu.Unlock()
 
 	var root *mfs.Root
 
-	if lidx, err := vfs.indexServices.GetLatest(); err != nil {
+	if lidx, err = vfs.indexServices.GetLatest(); err != nil {
+
 		panic(err)
+
 	} else if lidx == nil {
+
 		panic(errors.New("get latest idx expected"))
+
 	} else {
 
 		if rt, err := newMFSRoot( context.TODO(), lidx.FullCID, vfs.inode ); err != nil {
@@ -256,7 +266,6 @@ func ( vfs *aCVFS ) ForkMergeBatch( merger VDBMerge.CVFSMerger ) (cid.Cid, error
 		}
 	}
 
-	var err error
 	for dbkey, batch := range merger.GetBatchMap() {
 
 		if batch == nil {
@@ -277,6 +286,9 @@ func ( vfs *aCVFS ) ForkMergeBatch( merger VDBMerge.CVFSMerger ) (cid.Cid, error
 	if err != nil {
 		return cid.Undef, err
 	}
+
+	bs := merger.Dump()
+	log.Infof("Fork LIDX:%v, Batch:%v, F:%v", lidx.Hash.String(), crypto.Keccak256Hash(bs).String(), nd.Cid().String() )
 
 	return nd.Cid(), nil
 }
