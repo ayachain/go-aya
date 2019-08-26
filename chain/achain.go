@@ -2,6 +2,7 @@ package chain
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	AMinerPool "github.com/ayachain/go-aya/chain/minerpool"
@@ -180,7 +181,9 @@ func (chain *aChain) TrustMessageSwitcher( ctx context.Context, msg interface{} 
 
 		} else {
 
-			log.Infof("MBlock:%08d ChainInfo:%v", mined.MBlock.Index, cinfo.GetHash().String() )
+			jbs, _ := json.Marshal(cinfo)
+
+			log.Infof("ChainInfo H:%v \nContent:%v", mined.MBlock.Index, cinfo.GetHash().String(), string(jbs) )
 			if err := chain.AMC.PublishMessage( cinfo, AMsgCenter.GetChannelTopics(mined.MBlock.ChainID, AMsgCenter.MessageChannelChainInfo)); err != nil {
 				log.Warn(err)
 				return
