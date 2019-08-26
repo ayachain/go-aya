@@ -3,6 +3,7 @@ package chain
 import (
 	"context"
 	"errors"
+	"fmt"
 	AMinerPool "github.com/ayachain/go-aya/chain/minerpool"
 	AMsgCenter "github.com/ayachain/go-aya/chain/msgcenter"
 	ASDaemon "github.com/ayachain/go-aya/chain/sdaemon/common"
@@ -136,8 +137,9 @@ func (chain *aChain) TrustMessageSwitcher( ctx context.Context, msg interface{} 
 
 		go func() {
 
+			fmt.Print("\n\n")
 			st := time.Now().UnixNano()
-			defer log.Infof("\n\nMBlock\t%08d:%v ms", mblock.Index, float64(time.Now().UnixNano() - st) / float64(1e6) )
+			defer log.Infof("MBlock\t%08d:%v ms", mblock.Index, float64(time.Now().UnixNano() - st) / float64(1e6) )
 
 			mret := chain.AMP.PutTask( AMinerPool.NewTask( mblock ) )
 			if mret.Err != nil {
@@ -151,7 +153,13 @@ func (chain *aChain) TrustMessageSwitcher( ctx context.Context, msg interface{} 
 				MBlock:mblock,
 				Batcher:mret.Batcher.Upload(chain.INode).Bytes(),
 			}, AMsgCenter.GetChannelTopics(mblock.ChainID, AMsgCenter.MessageChannelMined) ); err != nil {
+
 				log.Warn(err)
+
+			} else {
+
+				defer log.Info("Published")
+
 			}
 
 			return
@@ -179,6 +187,10 @@ func (chain *aChain) TrustMessageSwitcher( ctx context.Context, msg interface{} 
 			if err := chain.AMC.PublishMessage( cinfo, AMsgCenter.GetChannelTopics(mined.MBlock.ChainID, AMsgCenter.MessageChannelChainInfo)); err != nil {
 				log.Warn(err)
 				return
+			} else {
+
+				defer log.Info("Published")
+
 			}
 
 			chain.ASD.SendingSignal( mined.MBlock.Index, ASDaemon.SignalDoConfirming )
