@@ -137,7 +137,7 @@ func (chain *aChain) TrustMessageSwitcher( ctx context.Context, msg interface{} 
 
 		go func() {
 
-			fmt.Print("\n\n")
+			fmt.Print("\n")
 			st := time.Now().UnixNano()
 			defer log.Infof("MBlock\t%08d:%v ms", mblock.Index, float64(time.Now().UnixNano() - st) / float64(1e6) )
 
@@ -153,13 +153,7 @@ func (chain *aChain) TrustMessageSwitcher( ctx context.Context, msg interface{} 
 				MBlock:mblock,
 				Batcher:mret.Batcher.Upload(chain.INode).Bytes(),
 			}, AMsgCenter.GetChannelTopics(mblock.ChainID, AMsgCenter.MessageChannelMined) ); err != nil {
-
 				log.Warn(err)
-
-			} else {
-
-				defer log.Info("Published")
-
 			}
 
 			return
@@ -187,10 +181,6 @@ func (chain *aChain) TrustMessageSwitcher( ctx context.Context, msg interface{} 
 			if err := chain.AMC.PublishMessage( cinfo, AMsgCenter.GetChannelTopics(mined.MBlock.ChainID, AMsgCenter.MessageChannelChainInfo)); err != nil {
 				log.Warn(err)
 				return
-			} else {
-
-				defer log.Info("Published")
-
 			}
 
 			chain.ASD.SendingSignal( mined.MBlock.Index, ASDaemon.SignalDoConfirming )
@@ -255,6 +245,10 @@ func (chain *aChain) TrustMessageSwitcher( ctx context.Context, msg interface{} 
 }
 
 func (chain *aChain) ForkMergeBatch( ctx context.Context, mret *im.Minined ) (*im.ChainInfo, error) {
+
+	log.Infof("Merging")
+	st := time.Now().UnixNano()
+	defer log.Infof("Merging Success:\t%08d:%v ms", mret.MBlock.Index, float64(time.Now().UnixNano() - st) / float64(1e6) )
 
 	if mret.MBlock.ChainID != chain.ChainId {
 		return nil, ErrMergeInvalidChainID
