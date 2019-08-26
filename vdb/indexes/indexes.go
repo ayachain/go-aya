@@ -376,7 +376,7 @@ func ( i *aIndexes ) SyncToCID( fullCID cid.Cid ) error {
 	i.latestCID = fullCID
 
 	// test read latest index
-	lidx, success := i.simpleVerifyNoLock()
+	_, success := i.simpleVerifyNoLock()
 	if !success {
 		goto NeedRollBack
 	}
