@@ -6,7 +6,6 @@ import (
 	"github.com/ayachain/go-aya/vdb"
 	AIndexes "github.com/ayachain/go-aya/vdb/indexes"
 	"github.com/ipfs/go-ipfs/core"
-	"github.com/prometheus/common/log"
 	"time"
 )
 
@@ -40,9 +39,6 @@ func NewPool( ind *core.IpfsNode, chainID string, idxser AIndexes.IndexesService
 }
 
 func (mp *aMinerPool) PutTask( task *MiningTask ) *MiningResult {
-
-	st := time.Now().UnixNano()
-	defer log.Infof("Mining BlockIndex:%v UseTime:%.8f ms", task.MiningBlock.Index, float64(time.Now().UnixNano() - st) / float64(1e6) )
 
 	var err error
 

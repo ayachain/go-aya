@@ -137,10 +137,8 @@ func (chain *aChain) TrustMessageSwitcher( ctx context.Context, msg interface{} 
 		go func() {
 
 			st := time.Now().UnixNano()
-			log.Info("Starting Mining")
-			defer func() {
-				log.Info("End Mining : %v ms", float64(time.Now().UnixNano() - st) / float64(1e6) )
-			}()
+			log.Info("Mining")
+			defer log.Infof("Duration: %v ms", float64(time.Now().UnixNano() - st) / float64(1e6) )
 
 			mret := chain.AMP.PutTask( AMinerPool.NewTask( mblock ) )
 			if mret.Err != nil {
@@ -167,10 +165,9 @@ func (chain *aChain) TrustMessageSwitcher( ctx context.Context, msg interface{} 
 		mined := msg.(*im.Minined)
 
 		st := time.Now().UnixNano()
-		log.Info("Starting ForkMerge")
-		defer func() {
-			log.Info("End ForkMerge : %v ms", float64(time.Now().UnixNano() - st) / float64(1e6) )
-		}()
+		log.Info("ForkMerge")
+		defer log.Infof("Duration: %v ms", float64(time.Now().UnixNano() - st) / float64(1e6) )
+
 
 		sctx, cancel := context.WithTimeout(ctx, time.Second * 32)
 		defer cancel()
@@ -197,10 +194,8 @@ func (chain *aChain) TrustMessageSwitcher( ctx context.Context, msg interface{} 
 		cinfo := msg.(*im.ChainInfo)
 
 		st := time.Now().UnixNano()
-		log.Info("Starting ConfirmChainInfo")
-		defer func() {
-			log.Info("End ConfirmChainInfo : %v ms", float64(time.Now().UnixNano() - st) / float64(1e6) )
-		}()
+		log.Info("ChainInfo")
+		defer log.Infof("Duration: %v ms", float64(time.Now().UnixNano() - st) / float64(1e6) )
 
 		/// check chain id
 		if cinfo.ChainID != chain.ChainId {
@@ -364,4 +359,5 @@ func ReadMergeFromCID ( ctx context.Context, ind *core.IpfsNode, c cid.Cid) VDBM
 	case b := <- reply:
 		return b
 	}
+
 }
