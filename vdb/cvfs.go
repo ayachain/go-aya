@@ -292,8 +292,6 @@ func ( vfs *aCVFS ) ForkMergeBatch( merger VDBMerge.CVFSMerger ) (cid.Cid, error
 		return cid.Undef, err
 	}
 
-	log.Infof("MergeRet:%v", nd.Cid().String())
-
 	return nd.Cid(), nil
 }
 

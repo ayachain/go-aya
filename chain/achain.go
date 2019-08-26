@@ -302,7 +302,6 @@ func (chain *aChain) ForkMergeBatch( ctx context.Context, mret *im.Minined ) (*i
 		Hash:cblock.GetHash(),
 		FullCID:ccid,
 	})
-	log.Infof("AIndexs.ForkMerge:%v", idxfcid.String())
 
 	if err != nil || idxfcid == cid.Undef {
 		return nil, err
