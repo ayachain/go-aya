@@ -126,8 +126,6 @@ func (mc *aMessageCenter) Push( msg *pubsub.Message, prefix string ) {
 
 		m.AddConfirmNode(sender)
 
-		log.Infof("Confirm Hash:[%v]%v <- %v", m.MsgPrefix, m.Hash.String()[:10], sender.PeerID[20:] )
-
 		v, s, n := m.VoteInfo()
 		if v > mc.threshold && s > mc.cnf.SuperNodeMin && n > mc.cnf.NodeTotalMin {
 
