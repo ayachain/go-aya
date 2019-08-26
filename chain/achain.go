@@ -327,8 +327,10 @@ func ReadMergeFromCID ( ctx context.Context, ind *core.IpfsNode, c cid.Cid) VDBM
 
 		merger := VDBMerge.NewMerger()
 		if err := merger.Load(blk.RawData()); err != nil {
+
 			reply <- nil
 			return
+
 		} else {
 
 			reply <- merger

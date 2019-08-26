@@ -15,8 +15,8 @@ import (
 func ( b *Block ) GetHash() EComm.Hash {
 
 	bs, err := proto.Marshal(b)
-	if err == nil {
-		panic("unrecoverable computing exception : Hash")
+	if err != nil {
+		panic(err)
 	}
 
 	return crypto.Keccak256Hash(bs)
